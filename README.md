@@ -1,45 +1,102 @@
-# python-template
+# Aiven MCP Server
 
-Use this repository as a template to create a python project.
-This repository includes:
+An MCP server for Aiven.
 
-* pyproject.toml
-* ASL 2.0 License
-* example-readme.md
-* Security.md
-* Code of Conduct
-* Contributing
-* .pre-commit-config.yaml
-* [python-template example module](python-template/README.md)
-* [tests](tests/README.md)
+## Features
 
-## pyproject.toml
+### Tools
 
-The template has a base [pyproject.toml](https://packaging.python.org/en/latest/specifications/pyproject-toml/). This is where all project metadata for the python project should be stored.
-The pyproject.toml uses a [hatch backend](https://hatch.pypa.io/latest/config/metadata/) for building python package.
+* `list_projects`
+  - List all projects on your Aiven account.
 
-Remember to replace all references to python-template inside the pyproject.toml and to update the [classifiers](https://pypi.org/classifiers/)
+* `list_services`
+  - List all services in a specific Aiven project.
 
-## License
+* `get_service_details`
+  - Get the detail of your service in a specific Aiven project.
 
-The template comes with ASL 2.0 License
+* `get_metadata`
+  - Get the metadata of a specific Aiven service, currently only working for Aiven for PostgreSQL®.
 
-## Example Readme
+* `run_query`
+  - Run a query against a specific Aiven service, currently only working for Aiven for PostgreSQL®.
 
-Replace this README.md file with the templated EXAMPLE_README.md.
+## Configuration for Claude Desktop
 
-## Security
+1. Open the Claude Desktop configuration file located at:
+   - On macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+   - On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
 
-The template comes with the default aiven security policy for reporting security issues with a repository
+2. Add the following:
 
-## Code of Conduct
+```json
+{
+  "mcpServers": {
+    "mcp-clickhouse": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "$REPOSITORY_DIRECTORY",
+        "run",
+        "--with-editable",
+        "$REPOSITORY_DIRECTORY",
+        "--python",
+        "3.13",
+        "mcp-aiven"
+      ],
+      "env": {
+        "AIVEN_BASE_URL": "https://api.aiven.io",
+        "AIVEN_PROJECT_NAME": "$DEFAULT_PROJECT_NAME",
+        "AIVEN_TOKEN": "$AIVEN_TOKEN"
+      }
+    }
+  }
+}
+```
 
-The template comes with the default aiven code of conduct policy
+Update the environment variables:
+* `$REPOSITORY_DIRECTORY` to point to the folder cointaining the repository
+* `AIVEN_PROJECT_NAME` to the default project name
+* `AIVEN_TOKEN` to the [Aiven login token](https://aiven.io/docs/platform/howto/create_authentication_token).
 
-## Contributing
 
-The template comes with a template CONTRIBUTING.md file. Fill in this template to explain how other developers can contribute to the project.
+3. Locate the command entry for `uv` and replace it with the absolute path to the `uv` executable. This ensures that the correct version of `uv` is used when starting the server. On a mac, you can find this path using `which uv`.
 
-## .pre-commit-config.yaml
+4. Restart Claude Desktop to apply the changes.
 
-The template comes with a base pre-commit-config that can be used to lint and format the code before commits and push
+## Configuration for Cursor
+
+1. Navigate to Cursor -> Settings -> Cursor Settings
+
+2. Select "MCP Servers"
+
+3. Add a new server with 
+
+    * Name: `mcp-aiven`
+    * Type: `command`
+    * Command: `uv --directory $REPOSITORY_DIRECTORY run --with-editable $REPOSITORY_DIRECTORY --python 3.13 mcp-aiven`
+
+Where `$REPOSITORY_DIRECTORY` is the path to the repository. You might need to add the `AIVEN_BASE_URL`, `AIVEN_PROJECT_NAME` and `AIVEN_TOKEN` as variables
+
+## Development
+
+1. Add the following variables to a `.env` file in the root of the repository.
+
+```
+AIVEN_BASE_URL=https://api.aiven.io
+AIVEN_PROJECT_NAME=$DEFAULT_PROJECT_NAME
+AIVEN_TOKEN=$AIVEN_TOKEN
+```
+
+2. Run `uv sync` to install the dependencies. To install `uv` follow the instructions [here](https://docs.astral.sh/uv/). Then do `source .venv/bin/activate`.
+
+3. For easy testing, you can run `mcp dev mcp_aiven/mcp_server.py` to start the MCP server.
+
+### Environment Variables
+
+The following environment variables are used to configure the ClickHouse connection:
+
+#### Required Variables
+* `AIVEN_BASE_URL`: The Aiven API url
+* `AIVEN_PROJECT_NAME`: The default project name
+* `AIVEN_TOKEN`: The authentication token
