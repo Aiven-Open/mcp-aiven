@@ -1,0 +1,44 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "python-template"
+authors = [
+  { name="Aiven", email="opensource@aiven.io" },
+]
+description = "Astacus, cluster (database) backup tool"
+readme = "README.md"
+requires-python = ">=3.12"
+classifiers=[
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.12",
+
+]
+license = { text = "Apache License 2.0" }
+dynamic = ["version"]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "mypy",
+    "pytest",
+    "ruff"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/Aiven-Open/python-template"
+"Bug Tracker" = "https://github.com/Aiven-Open/python-template/issues"
+
+[project.scripts]
+
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "python-template/version.py"
