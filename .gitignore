@@ -1,0 +1,6 @@
+.cursor
+.env
+mcp_aiven/__pycache__
+.venv
+uv.lock
+*.code-workspace
