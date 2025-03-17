@@ -31,7 +31,7 @@ dev = [
 packages = ["mcp_aiven"]
 
 [tool.ruff]
-line-length = 100
+line-length = 101
 
 [build-system]
 requires = ["hatchling"]
