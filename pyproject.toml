@@ -13,19 +13,18 @@ dependencies = [
      "aiven-client>=4.5.1",
      "pip-system-certs>=4.0",
      "psycopg2-binary>=2.8.6",
-     "psycopg2>=2.9.10",
 ]
 
 [project.scripts]
 mcp-aiven = "mcp_aiven.main:main"
 
 [project.urls]
-Home = "https://github.com/Aiven/mcp-aiven"
+Home = "https://github.com/Aiven-Open/mcp-aiven"
 
 [project.optional-dependencies]
 dev = [
     "ruff",
-    "pytest"
+    "pytest",
 ]
 
 [tool.hatch.build.targets.wheel]

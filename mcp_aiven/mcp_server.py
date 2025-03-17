@@ -116,23 +116,7 @@ def run_query(project_name, service_name, query):
 
 
 def build_conn_string(service):
-    avnadmin_pwd = list(
-        filter(lambda x: x["username"] == "avnadmin", service["users"])
-    )[0]["password"]
 
-    service_conn_info = service["connection_info"]["pg_params"][0]
+    service_conn_info = service["connection_info"]["pg_replica_uri"]
 
-    """Builds conntection string"""
-    connstr = (
-        "postgres://avnadmin:"
-        + avnadmin_pwd
-        + "@"
-        + service_conn_info["host"]
-        + ":"
-        + service_conn_info["port"]
-        + "/"
-        + service_conn_info["dbname"]
-        + "?sslmode="
-        + service_conn_info["sslmode"]
-    )
-    return connstr
+    return service_conn_info
