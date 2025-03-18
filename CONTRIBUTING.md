@@ -1,6 +1,6 @@
 # Welcome
 
-Contributions are very welcome on {{ PROJECT }}. When contributing please keep this in mind:
+Contributions are very welcome on MCP Aiven. When contributing please keep this in mind:
 
 - Open an issue to discuss new bigger features.
 - Write code consistent with the project style and make sure the tests are passing.
@@ -8,15 +8,7 @@ Contributions are very welcome on {{ PROJECT }}. When contributing please keep t
 
 ## Development
 
-### Local Environment
-
-### Tests
-
-### Static checking and Linting
-
-### Manual testing
-
-#### Configuration
+You can find all the instructions to set up a local environment in the [README](README.md)
 
 ## Opening a PR
 
