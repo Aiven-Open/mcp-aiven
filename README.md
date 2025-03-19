@@ -1,6 +1,8 @@
 # Aiven MCP Server
 
-An MCP server for Aiven.
+A [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server for Aiven.
+
+This provides access to the Aiven for PostgreSQL, Kafka, ClickHouse, Valkey and OpenSearch services running in Aiven and the wider Aiven ecosystem of native connectors. Enabling LLMs to build full stack solutions for all use-cases.
 
 ## Features
 
