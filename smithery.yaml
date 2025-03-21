@@ -1,0 +1,31 @@
+# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+
+startCommand:
+  type: stdio
+  configSchema:
+    # JSON Schema defining the configuration options for the MCP.
+    type: object
+    required:
+      - aivenBaseUrl
+      - aivenToken
+    properties:
+      aivenBaseUrl:
+        type: string
+        description: The Aiven API Base URL.
+      aivenToken:
+        type: string
+        description: The Aiven authentication token.
+  commandFunction:
+    # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
+    |-
+    (config) => ({
+      command: 'mcp-aiven',
+      args: [],
+      env: {
+        AIVEN_BASE_URL: config.aivenBaseUrl,
+        AIVEN_TOKEN: config.aivenToken
+      }
+    })
+  exampleConfig:
+    aivenBaseUrl: https://api.aiven.io
+    aivenToken: EXAMPLE_TOKEN
