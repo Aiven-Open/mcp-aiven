@@ -1,5 +1,7 @@
 # Aiven MCP Server
 
+[![smithery badge](https://smithery.ai/badge/@Aiven-Open/mcp-aiven)](https://smithery.ai/server/@Aiven-Open/mcp-aiven)
+
 A [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server for Aiven.
 
 This provides access to the Aiven for PostgreSQL, Kafka, ClickHouse, Valkey and OpenSearch services running in Aiven and the wider Aiven ecosystem of native connectors. Enabling LLMs to build full stack solutions for all use-cases.
@@ -118,3 +120,4 @@ This section outlines key developer responsibilities and security considerations
 * AI Agent permissions are directly tied to API token permissions.
 * Exercise extreme caution when providing credentials to AI Agents.
 * Strictly adhere to the principle of least privilege when managing API tokens.
+
