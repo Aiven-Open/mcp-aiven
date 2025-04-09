@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.scripts]
-mcp-aiven = "mcp_aiven.main:main"
+mcp-aiven = "mcp_aiven.__main__:main"
 
 [project.urls]
 Home = "https://github.com/Aiven-Open/mcp-aiven"

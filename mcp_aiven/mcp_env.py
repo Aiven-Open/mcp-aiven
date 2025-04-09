@@ -28,12 +28,15 @@ class AivenConfig:
     @property
     def url(self) -> str:
         """Get the Aiven Base URL."""
-        return os.getenv("AIVEN_BASE_URL")
+        return os.getenv("AIVEN_BASE_URL", "https://api.aiven.io")
 
     @property
     def token(self) -> str:
         """Get the Aiven Token."""
-        return os.getenv("AIVEN_TOKEN")
+        token = os.getenv("AIVEN_TOKEN")
+        if not token:
+            raise ValueError("AIVEN_TOKEN is not set")
+        return token
 
     def get_client_config(self) -> dict:
         """Get the configuration dictionary for aiven_connect client.
@@ -61,9 +64,7 @@ class AivenConfig:
                 missing_vars.append(var)
 
         if missing_vars:
-            raise ValueError(
-                f"Missing required environment variables: {', '.join(missing_vars)}"
-            )
+            raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
 
 
 # Global instance for easy access
