@@ -1,11 +1,13 @@
 import json
 import logging
 import os
-from typing import Any, Dict, List, Optional, Callable, Type, Set
+from typing import Any, Dict, List, Optional, Callable, Type
+import tempfile
+import subprocess
 
 import httpx
 from mcp.server.fastmcp import FastMCP
-from pydantic import BaseModel, Field, create_model
+from pydantic import BaseModel, Field
 
 from mcp_aiven.mcp_env import config
 
@@ -23,7 +25,38 @@ deps = [
     "python-dotenv",
     "uvicorn",
     "pip-system-certs",
+    "datamodel-code-generator",
 ]
+
+
+def generate_models(openapi_spec: Dict[str, Any], output_dir: str) -> None:
+    """Generate Pydantic models from OpenAPI spec using datamodel-code-generator."""
+    spec_file = os.path.join(output_dir, "openapi.json")
+    output_file = os.path.join(output_dir, "models.py")
+
+    # Write the OpenAPI spec to a temporary file
+    with open(spec_file, "w") as f:
+        json.dump(openapi_spec, f)
+
+    try:
+        # Run datamodel-code-generator
+        cmd = [
+            "datamodel-codegen",
+            "--input",
+            spec_file,
+            "--input-file-type",
+            "openapi",
+            "--output",
+            output_file,
+            "--use-schema-description",
+            "--target-python-version",
+            "3.13",
+        ]
+        subprocess.run(cmd, check=True)
+        logger.info(f"Generated models in {output_file}")
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Failed to generate models: {e}")
+        raise
 
 
 class AivenAPI:
@@ -34,7 +67,7 @@ class AivenAPI:
             headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
         )
         self._load_openapi_spec()
-        self._create_models()
+        self._generate_models()
         self._index_operations()
 
     def _load_openapi_spec(self) -> None:
@@ -50,46 +83,31 @@ class AivenAPI:
             logger.error(f"Failed to load OpenAPI spec: {e}")
             raise
 
-    def _create_models(self) -> None:
-        """Create Pydantic models from OpenAPI components."""
-        self.models = {}
-        components = self.spec.get("components", {}).get("schemas", {})
+    def _generate_models(self) -> None:
+        """Generate Pydantic models from OpenAPI components."""
+        try:
+            # Create a temporary directory for model generation
+            with tempfile.TemporaryDirectory() as temp_dir:
+                generate_models(self.spec, temp_dir)
 
-        for name, schema in components.items():
-            try:
-                # Create a model for each component
-                fields = {}
-                for field_name, field_schema in schema.get("properties", {}).items():
-                    field_type = self._get_python_type(field_schema.get("type", "string"))
-                    required = field_name in schema.get("required", [])
+                # Import the generated models
+                import sys
 
-                    if required:
-                        fields[field_name] = (
-                            field_type,
-                            Field(description=field_schema.get("description", "")),
-                        )
-                    else:
-                        fields[field_name] = (
-                            field_type,
-                            Field(default=None, description=field_schema.get("description", "")),
-                        )
+                sys.path.insert(0, temp_dir)
+                import models
 
-                self.models[name] = create_model(name, **fields)
-                logger.debug(f"Created model: {name}")
-            except Exception as e:
-                logger.warning(f"Error creating model {name}: {e}")
+                sys.path.pop(0)
 
-    def _get_python_type(self, openapi_type: str) -> Type:
-        """Convert OpenAPI types to Python types."""
-        type_mapping = {
-            "string": str,
-            "integer": int,
-            "number": float,
-            "boolean": bool,
-            "array": list,
-            "object": dict,
-        }
-        return type_mapping.get(openapi_type, str)
+                # Store models in a dict for easy access
+                self.models = {}
+                for name, obj in vars(models).items():
+                    if isinstance(obj, type) and issubclass(obj, BaseModel):
+                        self.models[name] = obj
+                        logger.debug(f"Loaded model: {name}")
+        except Exception as e:
+            logger.error(f"Failed to generate models: {e}")
+            # Continue without models, we'll handle errors gracefully
+            self.models = {}
 
     def _index_operations(self) -> None:
         """Index GET operations by their tags."""
@@ -124,10 +142,16 @@ class AivenAPI:
             return response.json()
         except httpx.HTTPError as e:
             status = 500
+            error_msg = str(e)
             if isinstance(e, httpx.HTTPStatusError):
                 status = e.response.status_code
-            logger.error(f"HTTP error occurred: {e}")
-            return {"error": str(e), "status_code": status}
+                try:
+                    error_data = e.response.json()
+                    error_msg = error_data.get("message", str(e))
+                except:
+                    pass
+            logger.error(f"HTTP error occurred: {error_msg}")
+            return {"error": error_msg, "status_code": status}
         except Exception as e:
             logger.error(f"Error making request: {e}")
             return {"error": str(e), "status_code": 500}
@@ -151,6 +175,15 @@ class AivenAPI:
             path, operation = operations[operation_id]
             params = {k: v for k, v in kwargs.items() if v is not None}
 
+            # Make the request
+            response_data = await self._make_request(path, params=params)
+
+            # If we got an error response, return it directly
+            if isinstance(response_data, dict) and (
+                "error" in response_data or "status_code" in response_data
+            ):
+                return response_data
+
             # Get response schema if available
             response_schema = (
                 operation.get("responses", {})
@@ -164,15 +197,16 @@ class AivenAPI:
             if response_ref and response_ref.startswith("#/components/schemas/"):
                 model_name = response_ref.split("/")[-1]
                 if model_name in self.models:
-                    # Use the model to validate the response
                     try:
-                        response_data = await self._make_request(path, params=params)
-                        return self.models[model_name](**response_data).model_dump()
+                        model = self.models[model_name]
+                        validated_data = model.model_validate(response_data)
+                        return validated_data.model_dump()
                     except Exception as e:
-                        return {"error": f"Response validation failed: {str(e)}", "status_code": 400}
+                        logger.error(f"Validation error for {model_name}: {e}")
+                        # If validation fails, return the raw response
+                        return response_data
 
-            # If no model available, just return the raw response
-            return await self._make_request(path, params=params)
+            return response_data
 
         # Set function metadata
         tag_tool.__name__ = f"{tag}_resource"

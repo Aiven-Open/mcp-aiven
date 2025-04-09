@@ -12,6 +12,7 @@ dependencies = [
      "uvicorn>=0.34.0",
      "aiven-client>=4.5.1",
      "pip-system-certs>=4.0",
+     "datamodel-code-generator>=0.25.4",
 ]
 
 [project.scripts]
