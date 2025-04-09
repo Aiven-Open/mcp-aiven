@@ -4,6 +4,7 @@ import os
 from typing import Any, Dict, List, Optional, Callable, Type
 import tempfile
 import subprocess
+from collections import defaultdict
 
 import httpx
 from mcp.server.fastmcp import FastMCP
@@ -110,23 +111,28 @@ class AivenAPI:
             self.models = {}
 
     def _index_operations(self) -> None:
-        """Index GET operations by their tags."""
-        self.operations = {}
+        """Index operations by tag."""
+        self.operations = defaultdict(dict)
+        paths = self.spec.get("paths", {})
+        logger.debug(f"Indexing {len(paths)} paths")
 
-        logger.debug("Indexing GET operations from OpenAPI spec")
-        for path, path_item in self.spec.get("paths", {}).items():
-            if "get" not in path_item:
-                continue
+        for path, path_item in paths.items():
+            for method, operation in path_item.items():
+                if not isinstance(operation, dict):
+                    continue
 
-            operation = path_item["get"]
-            operation_id = operation.get("operationId", "")
-            if not operation_id:
-                continue
+                operation_id = operation.get("operationId")
+                if not operation_id:
+                    continue
 
-            tags = operation.get("tags", ["default"])
-            for tag in tags:
-                if tag not in self.operations:
-                    self.operations[tag] = {}
+                tags = operation.get("tags", ["default"])
+                tag = tags[0] if tags else "default"
+
+                # Log full operation details for debugging
+                logger.debug(f"Operation {operation_id}:")
+                logger.debug(f"  Path: {path}")
+                logger.debug(f"  Method: {method}")
+                logger.debug(f"  Parameters: {operation.get('parameters', [])}")
 
                 self.operations[tag][operation_id] = (path, operation)
                 logger.debug(f"Indexed operation: {tag} - {operation_id} - {path}")
@@ -135,9 +141,47 @@ class AivenAPI:
 
     async def _make_request(self, path: str, **kwargs) -> Any:
         """Make an HTTP request to the Aiven API."""
-        url = f"{self.base_url}{path}"
+        # Initialize params
+        raw_params = kwargs.get('params', {})
+        if isinstance(raw_params, str):
+            try:
+                params = json.loads(raw_params)
+            except json.JSONDecodeError:
+                params = {}
+        elif isinstance(raw_params, dict):
+            # Handle nested kwargs structure
+            params = raw_params.get('kwargs', raw_params)
+            if isinstance(params, str):
+                try:
+                    params = json.loads(params)
+                except json.JSONDecodeError:
+                    params = {}
+        else:
+            params = {}
+
+        # Remove any None values from params
+        params = {k: v for k, v in params.items() if v is not None}
+
+        # Format the URL by replacing path parameters
+        formatted_path = path
+        path_params_to_remove = []
+
+        # First identify path parameters
+        for param_name, param_value in params.items():
+            placeholder = "{" + param_name + "}"
+            if placeholder in formatted_path:
+                formatted_path = formatted_path.replace(placeholder, str(param_value))
+                path_params_to_remove.append(param_name)
+
+        # Then remove them from the query params
+        for param_name in path_params_to_remove:
+            params.pop(param_name)
+
+        url = f"{self.base_url}{formatted_path}"
+
         try:
-            response = await self.client.get(url, **kwargs)
+            logger.debug(f"Making request to {url} with params {params}")
+            response = await self.client.get(url, params=params)
             response.raise_for_status()
             return response.json()
         except httpx.HTTPError as e:
@@ -151,10 +195,26 @@ class AivenAPI:
                 except:
                     pass
             logger.error(f"HTTP error occurred: {error_msg}")
-            return {"error": error_msg, "status_code": status}
+            return {
+                "error": error_msg,
+                "status_code": status,
+                "request_details": {
+                    "url": url,
+                    "params": params,
+                    "original_params": raw_params
+                }
+            }
         except Exception as e:
             logger.error(f"Error making request: {e}")
-            return {"error": str(e), "status_code": 500}
+            return {
+                "error": str(e),
+                "status_code": 500,
+                "request_details": {
+                    "url": url,
+                    "params": params,
+                    "original_params": raw_params
+                }
+            }
 
     def create_tag_tool(self, tag: str) -> Optional[Callable]:
         """Create a tool function for a tag of operations."""
@@ -173,10 +233,21 @@ class AivenAPI:
                 }
 
             path, operation = operations[operation_id]
-            params = {k: v for k, v in kwargs.items() if v is not None}
+            logger.debug(f"Original path: {path}")
+            logger.debug(f"Operation parameters: {operation.get('parameters', [])}")
 
-            # Make the request
-            response_data = await self._make_request(path, params=params)
+            # Extract actual parameters from kwargs if they're nested
+            actual_kwargs = kwargs.get("kwargs", {})
+            if isinstance(actual_kwargs, str):
+                try:
+                    actual_kwargs = json.loads(actual_kwargs)
+                except json.JSONDecodeError:
+                    actual_kwargs = {}
+
+            logger.debug(f"Processed kwargs: {actual_kwargs}")
+
+            # Make the request with parameters
+            response_data = await self._make_request(path, params=actual_kwargs)
 
             # If we got an error response, return it directly
             if isinstance(response_data, dict) and (
