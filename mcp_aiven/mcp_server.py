@@ -31,7 +31,7 @@ def list_projects():
     logger.info("Listing all projects")
     results = aiven_client.get_projects()
     logger.info(f"Found {len(results)} projects")
-    return [result['project_name'] for result in results]
+    return [result["project_name"] for result in results]
 
 
 @mcp.tool()
