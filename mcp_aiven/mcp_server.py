@@ -47,3 +47,21 @@ def get_service_details(project_name, service_name):
     logger.info("Fetching details for service: %s in project: %s", service_name, project_name)
     result = aiven_client.get_service(project=project_name, service=service_name)
     return result
+
+
+@mcp.tool()
+def get_pg_query_stats(project_name, service_name):
+    logger.info("Fetching query stats for service: %s in project: %s", service_name, project_name)
+    result = aiven_client.get_pg_service_query_stats(project=project_name, service=service_name)
+    return result
+
+
+@mcp.tool()
+def get_pg_current_queries(project_name, service_name):
+    logger.info(
+        "Fetching current queries for service: %s in project: %s", service_name, project_name
+    )
+    result = aiven_client.get_pg_service_current_queries(project=project_name, service=service_name)
+    if not result:
+        return "No current queries found"
+    return result
