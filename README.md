@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/aiven-open-mcp-aiven-badge.png)](https://mseep.ai/app/aiven-open-mcp-aiven)
+
 # Aiven MCP Server
 
 A [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server for Aiven.
