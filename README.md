@@ -1,4 +1,5 @@
 # Aiven MCP Server
+[![Trust Score](https://archestra.ai/mcp-catalog/api/badge/quality/Aiven-Open/mcp-aiven)](https://archestra.ai/mcp-catalog/aiven-open__mcp-aiven)
 
 A [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server for Aiven.
 
