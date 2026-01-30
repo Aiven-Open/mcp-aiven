@@ -57,6 +57,12 @@ This MCP server implements credential filtering to prevent sensitive information
 * `create_access_token` - Create a new API access token.
 * `revoke_access_token` - Revoke an access token.
 
+### Account Management Tools
+
+* `create_user` - Create a new Aiven user account (password set via email verification).
+* `open_signup_page` - Open the Aiven signup page in your browser.
+* `login` - Authenticate with Aiven after signup (token stored for session, not exposed).
+
 ## Configuration for Claude Desktop
 
 1. Open the Claude Desktop configuration file located at:

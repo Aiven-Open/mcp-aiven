@@ -10,6 +10,7 @@ Security Note: All responses are filtered to prevent credential leakage.
 """
 
 import logging
+import webbrowser
 from typing import Optional
 
 from aiven.client import client
@@ -656,3 +657,121 @@ def revoke_access_token(token_prefix: str) -> dict:
     aiven_client.access_token_revoke(token_prefix=token_prefix)
     logger.info("Access token %s revoked", token_prefix)
     return {"status": "revoked", "token_prefix": token_prefix}
+
+
+# =============================================================================
+# Account Management Tools
+# =============================================================================
+
+
+@mcp.tool()
+def create_user(email: str, real_name: str) -> dict:
+    """Create a new Aiven user account.
+
+    This creates a new user account. The user will receive an email
+    to verify their address and set their password.
+
+    Note: Password is NOT set via this tool for security reasons.
+    The user will set their password through the email verification flow.
+
+    Args:
+        email: The email address for the new user.
+        real_name: The user's full name.
+
+    Returns:
+        User creation confirmation with user info (no sensitive data).
+    """
+    logger.info("Creating new user account for: %s", email)
+    result = aiven_client.create_user(
+        email=email,
+        password=None,  # User will set password via email verification
+        real_name=real_name,
+    )
+    logger.info("User account created for: %s", email)
+    return filter_credentials(result)
+
+
+@mcp.tool()
+def open_signup_page() -> dict:
+    """Open the Aiven signup page in the default browser.
+
+    This opens https://console.aiven.io/signup in your browser to create
+    a new Aiven account. After completing signup and email verification,
+    use the `login` tool to authenticate.
+
+    Returns:
+        Status message with next steps.
+    """
+    signup_url = "https://console.aiven.io/signup"
+    logger.info("Opening Aiven signup page: %s", signup_url)
+
+    try:
+        webbrowser.open(signup_url)
+        return {
+            "status": "opened",
+            "url": signup_url,
+            "next_steps": [
+                "1. Complete the signup form in your browser",
+                "2. Verify your email address",
+                "3. Set your password",
+                "4. Use the login() tool with your email and password to authenticate",
+            ],
+        }
+    except Exception as e:
+        logger.error("Failed to open browser: %s", str(e))
+        return {
+            "status": "error",
+            "message": f"Could not open browser automatically. Please visit: {signup_url}",
+            "url": signup_url,
+        }
+
+
+@mcp.tool()
+def login(email: str, password: str, otp: Optional[str] = None) -> dict:
+    """Authenticate with Aiven and configure the session.
+
+    Use this after signing up to authenticate and enable API access.
+    The authentication token is stored for the current session only
+    and is NOT returned in the response for security.
+
+    Args:
+        email: Your Aiven account email.
+        password: Your Aiven account password.
+        otp: One-time password if 2FA is enabled (optional).
+
+    Returns:
+        Authentication status and user info (no token exposed).
+    """
+    logger.info("Authenticating user: %s", email)
+
+    try:
+        result = aiven_client.authenticate_user(
+            email=email,
+            password=password,
+            otp=otp,
+        )
+
+        # Extract and set the token for this session
+        token = result.get("token")
+        if token:
+            aiven_client.set_auth_token(token)
+            logger.info("Authentication successful for: %s", email)
+
+            # Return user info without the token
+            return {
+                "status": "authenticated",
+                "message": "Login successful. You can now use all Aiven tools.",
+                "user": filter_credentials(result.get("user", {})),
+            }
+        else:
+            return {
+                "status": "error",
+                "message": "Authentication succeeded but no token received.",
+            }
+
+    except Exception as e:
+        logger.error("Authentication failed for %s: %s", email, str(e))
+        return {
+            "status": "error",
+            "message": f"Authentication failed: {str(e)}",
+        }
