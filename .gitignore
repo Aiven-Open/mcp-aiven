@@ -1,6 +1,35 @@
-.cursor
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Generated files
+src/generated/
+
+# Environment
 .env
-mcp_aiven/__pycache__
-.venv
-uv.lock
+.env.local
+.env.*.local
+
+# IDE
+.cursor
+.vscode/
+.idea/
 *.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test coverage
+coverage/
+
+# Cache
+.cache/
+*.tsbuildinfo
+

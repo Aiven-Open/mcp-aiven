@@ -1,0 +1,446 @@
+overlay: '1.0.0'
+info:
+  title: Aiven MCP Overlay
+  version: '1.0.0'
+  description: |
+    Minimal enrichments only where the OpenAPI schema lacks critical info.
+
+actions:
+  # optimize_query is manually implemented in src/tools/pg.ts
+  # because it requires base64 encoding of the query
+  - target: "$.paths['/account/{account_id}/pg/query/optimize'].post"
+    description: AI query optimization (excluded — manual implementation)
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project'].post"
+    description: Project creation — typically a one-time console action
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}'].put"
+    description: Project update — admin-level operation
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/users'].get"
+    description: Project user list — admin-level operation
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/user/{user_email}'].put"
+    description: Project user update — admin-level operation
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/user/{service_username}'].put"
+    description: Service user credentials modify — admin-level operation
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/invite'].post"
+    description: Deprecated — use Organizations APIs
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/invite/{invite_verification_code}'].post"
+    description: Deprecated — use Organizations APIs
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/invite/{invited_email}'].delete"
+    description: Deprecated — use Organizations APIs
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/query/stats'].post"
+    description: Deprecated PG query statistics endpoint
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/kafka/schema/subjects/{subject_name}/versions/{version_id}/schema'].get"
+    description: Deprecated Schema Registry raw schema endpoint
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/kms/ca/{ca_name}'].get"
+    description: Raw CA certificate retrieval
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/kms/keypairs/{keypair_name}'].get"
+    description: Raw keypair retrieval — security sensitive
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/download-sbom/{file_format}/{download_cookie}'].get"
+    description: SBOM binary download
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/generate-sbom-download-url/{file_format}'].get"
+    description: SBOM download URL generation
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/tenants/{tenant}/os-available-plugins'].get"
+    description: Tenant-scoped OpenSearch plugin list
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/tenants/{tenant}/pg-available-extensions'].get"
+    description: Tenant-scoped PG extensions — per-service endpoint is more useful
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/tenants/{tenant}/privatelink-availability'].get"
+    description: Tenant-scoped privatelink pricing
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/tenants/{tenant}/static-ip-availability'].get"
+    description: Tenant-scoped static IP pricing
+    update:
+      x-mcp-exclude: true
+
+  # --- Kafka topic create: defaults + wait instructions ---
+
+  - target: "$.paths['/project/{project}/service/{service_name}/topic'].post"
+    description: Kafka topic create — add required defaults and wait instruction
+    update:
+      x-mcp-description: |
+        Create a Kafka topic.
+
+        **IMPORTANT:** Always include `partitions` and `replication` in the request. The API may accept them as optional but topics created without these fields may not work correctly.
+
+        Recommended defaults:
+        - `partitions`: 1 (or more depending on throughput needs)
+        - `replication`: 3 (must not exceed the number of brokers in the cluster)
+
+        After creation, do NOT immediately call `aiven_kafka_topic_get` or other tools on this topic. Tell the user the topic was created and will be available shortly.
+
+  - target: "$.paths['/service_types'].get"
+    description: Public service types — project-scoped version is more useful
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service_types'].get"
+    description: Duplicate of project service types list
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/service_versions'].get"
+    description: Service version list — low LLM utility
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/task'].post"
+    description: Internal service task creation — niche
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/task/{task_id}'].get"
+    description: Internal service task result — only useful with task_create
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/pg/database-metadata-query'].get"
+    description: Unstable — may be changed or removed at any time
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/pg/query/metadata-validate'].post"
+    description: Unstable — may be changed or removed at any time
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/pg/query/validate'].post"
+    description: Unstable — may be changed or removed at any time
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/privatelink/aws'].post"
+    description: AWS Privatelink — infrastructure plumbing
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/privatelink/aws'].put"
+    description: AWS Privatelink — infrastructure plumbing
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/privatelink/aws'].delete"
+    description: AWS Privatelink — infrastructure plumbing
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/privatelink/aws'].get"
+    description: AWS Privatelink — infrastructure plumbing
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/privatelink/aws/connections'].get"
+    description: AWS Privatelink connections — infrastructure plumbing
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/privatelink/azure'].post"
+    description: Azure Privatelink — infrastructure plumbing
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/privatelink/azure'].put"
+    description: Azure Privatelink — infrastructure plumbing
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/privatelink/azure'].delete"
+    description: Azure Privatelink — infrastructure plumbing
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/privatelink/azure'].get"
+    description: Azure Privatelink — infrastructure plumbing
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/privatelink/azure/connections'].get"
+    description: Azure Privatelink connections — infrastructure plumbing
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/privatelink/azure/connections/{privatelink_connection_id}'].put"
+    description: Azure Privatelink connection update — infrastructure plumbing
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/privatelink/azure/connections/{privatelink_connection_id}/approve'].post"
+    description: Azure Privatelink connection approval — infrastructure plumbing
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/privatelink-availability'].get"
+    description: Privatelink availability pricing — niche
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/clouds'].get"
+    description: Global cloud list — project-scoped version is more useful
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/backup_to_another_region/report'].post"
+    description: Cross-region backup report — niche
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/enable-writes'].post"
+    description: Enable writes on read-only service — rare edge case
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/query/stats/reset'].put"
+    description: Reset query statistics — destructive, niche
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/service_type'].patch"
+    description: Change service type — risky, rarely done via LLM
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}'].delete"
+    description: Delete project — too destructive for LLM
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/db/{dbname}'].delete"
+    description: Delete database — too destructive for LLM
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/user/{service_username}'].delete"
+    description: Delete service user — too destructive for LLM
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/user/{user_email}'].delete"
+    description: Remove project user — too destructive for LLM
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/vpcs/{project_vpc_id}/peering-connections/peer-accounts/{peer_cloud_account}/peer-vpcs/{peer_vpc}/peer-regions/{peer_region}'].delete"
+    description: VPC peering delete with region — variant of base delete
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/vpcs/{project_vpc_id}/peering-connections/peer-accounts/{peer_cloud_account}/peer-resource-groups/{peer_resource_group}/peer-vpcs/{peer_vpc}'].delete"
+    description: VPC peering delete with resource group — variant of base delete
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/user/{service_username}/credentials/reset'].put"
+    description: Credential reset — destructive, rarely needed via LLM
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/tags'].get"
+    description: Project tags list — low LLM utility
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/tags'].put"
+    description: Project tags replace — low LLM utility
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/tags'].patch"
+    description: Project tags update — low LLM utility
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/tags'].get"
+    description: Service tags list — low LLM utility
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/tags'].put"
+    description: Service tags replace — low LLM utility
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/tags'].patch"
+    description: Service tags update — low LLM utility
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service'].get"
+    description: Service list — trim to essential fields
+    update:
+      x-mcp-formatter: service_list
+
+  - target: "$.paths['/project/{project}/service/{service_name}/connectors'].post"
+    description: Connector create — replaced by custom tool with credential resolution
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}/connectors/{connector_name}'].put"
+    description: Connector edit — replaced by custom tool with credential resolution
+    update:
+      x-mcp-exclude: true
+
+  - target: "$.paths['/project/{project}/service'].post"
+    description: Create service — types not in schema
+    update:
+      x-mcp-description: |
+        Create a new Aiven managed service.
+
+        **Service Types:**
+        - `pg`: PostgreSQL database with high availability
+        - `kafka`: Apache Kafka streaming platform
+        - `clickhouse`: ClickHouse analytics database
+        - `opensearch`: OpenSearch search and analytics
+        - `redis`: Redis in-memory database
+        - `mysql`: MySQL database
+        - `grafana`: Grafana dashboards
+        - `flink`: Apache Flink stream processing
+
+        **Example clouds:** google-us-east1, aws-us-west-2, azure-eastus
+        **Example plans:** startup-4, business-8, premium-16
+
+        **IMPORTANT:** `user_config` is a nested object with service-specific settings. For PostgreSQL, always set `pg_version`.
+
+        **Example — create a PostgreSQL service:**
+        ```
+        aiven_service_create(
+          project="my-project",
+          service_name="my-pg",
+          service_type="pg",
+          plan="startup-4",
+          cloud="google-europe-west1",
+          user_config={"pg_version": "17"}
+        )
+        ```
+
+        **IMPORTANT:** After creation, do NOT immediately call any other tools on this service. The service takes a few minutes to provision. Tell the user to wait and check the service state later with `aiven_service_get` — it must reach `state: RUNNING` before it can accept connections or queries.
+
+        **Forking:** To fork from an existing service, set `service_to_fork_from` (and optionally `project_to_fork_from` for cross-project forks). Use `recovery_target_time` for point-in-time recovery.
+
+        **Example — create a Kafka service with Kafka Connect and Schema Registry:**
+        ```
+        aiven_service_create(
+          project="my-project",
+          service_name="my-kafka",
+          service_type="kafka",
+          plan="business-4",
+          cloud="google-europe-west1",
+          user_config={"kafka_connect": true, "schema_registry": true}
+        )
+        ```
+
+        **Read replica:** To create a PG read replica, use `service_to_fork_from` pointing to the primary, and set `user_config.pg_read_replica: true`. Then create a `read_replica` integration between the primary and the replica using the service integration endpoint.
+
+  - target: '$.components.schemas.ServiceCreateRequestBody.properties'
+    description: Add fork parameters to ServiceCreate
+    update:
+      service_to_fork_from:
+        type: string
+        maxLength: 64
+        description: 'Name of an existing service to fork from. The new service will be a copy (fork) of the specified service.'
+      project_to_fork_from:
+        type: string
+        maxLength: 63
+        description: 'Project containing the service to fork from. Only required for cross-project forks; defaults to the target project.'
+      recovery_target_time:
+        type: string
+        description: 'ISO 8601 timestamp for point-in-time recovery when forking (e.g. 2025-01-15T12:00:00Z). Only applicable when service_to_fork_from is set.'
+
+  - target: '$.components.schemas.ServiceCreateRequestBody.properties.project_vpc_id'
+    description: Allow null to explicitly place service on public internet
+    update:
+      nullable: true
+
+  - target: '$.components.schemas.ServiceUpdateRequestBody.properties.project_vpc_id'
+    description: Allow null to move service to public internet
+    update:
+      nullable: true
+
+  - target: "$.paths['/project/{project}/service/{service_name}'].put"
+    description: Update service — downtime warning
+    update:
+      x-mcp-description: |
+        Update an existing Aiven service.
+
+        Can change: plan, cloud region, user configuration, power state.
+        Plan changes may cause brief downtime during migration.
+
+        **Common user_config changes:**
+
+        Enable Kafka Connect on a Kafka service:
+        ```
+        aiven_service_update(project="my-project", service_name="my-kafka",
+          user_config={"kafka_connect": true})
+        ```
+
+        Enable Schema Registry (Karapace) on a Kafka service:
+        ```
+        aiven_service_update(project="my-project", service_name="my-kafka",
+          user_config={"schema_registry": true})
+        ```
+
+        Enable tiered storage on a Kafka service:
+        ```
+        aiven_service_update(project="my-project", service_name="my-kafka",
+          user_config={"tiered_storage": {"enabled": true}})
+        ```
+
+        Set PostgreSQL version:
+        ```
+        aiven_service_update(project="my-project", service_name="my-pg",
+          user_config={"pg_version": "17"})
+        ```
+
+  - target: "$.paths['/project/{project}/service/{service_name}'].delete"
+    description: Delete service — too destructive for LLM
+    update:
+      x-mcp-exclude: true

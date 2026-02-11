@@ -1,0 +1,202 @@
+/**
+ * Generate a ToolSpec manifest from categorized operations
+ */
+
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
+import type { ParsedOperation } from './parser.js';
+import type { CategorizedOperations, ServiceCategory } from './categorizer.js';
+import { generateInputSchema } from './schema-generator.js';
+
+const OUTPUT_DIR = path.join(process.cwd(), 'src', 'generated');
+
+const SERVICE_PREFIXES: Record<string, string[]> = {
+  pg: ['PG', 'PostgreSQL', 'Postgres'],
+  kafka: ['Kafka'],
+  core: [],
+};
+
+function camelToSnake(str: string): string {
+  return str
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2')
+    .replace(/([a-z\d])([A-Z])/g, '$1_$2')
+    .toLowerCase();
+}
+
+const usedNames = new Map<string, number>();
+
+function generateToolName(operationId: string, category: string): string {
+  let name = operationId;
+
+  const prefixes = SERVICE_PREFIXES[category] ?? [];
+  for (const prefix of prefixes) {
+    if (name.toLowerCase().startsWith(prefix.toLowerCase())) {
+      name = name.slice(prefix.length);
+    }
+  }
+
+  for (const prefix of prefixes) {
+    const combined = `Service${prefix}`;
+    if (name.toLowerCase().startsWith(combined.toLowerCase())) {
+      name = name.slice(combined.length);
+    }
+  }
+
+  name = camelToSnake(name);
+
+  name = name
+    .replace(/[^a-z0-9]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '');
+
+  if (!name) {
+    name = camelToSnake(operationId)
+      .replace(/[^a-z0-9]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_+|_+$/g, '');
+  }
+
+  const fullName = `${category}_${name}`;
+  const count = usedNames.get(fullName) ?? 0;
+  usedNames.set(fullName, count + 1);
+
+  if (count > 0) {
+    name = `${name}_${count + 1}`;
+  }
+
+  return name;
+}
+
+const CATEGORY_TO_ENUM: Record<string, string> = {
+  core: 'ServiceCategory.Core',
+  pg: 'ServiceCategory.Pg',
+  kafka: 'ServiceCategory.Kafka',
+};
+
+function getAnnotationName(method: string, urlPath: string): string {
+  if (method === 'GET') return 'READ_ONLY_ANNOTATIONS';
+  if (method === 'DELETE' || urlPath.includes('/terminate')) return 'DELETE_ANNOTATIONS';
+  if (method === 'PUT' || method === 'PATCH') return 'UPDATE_ANNOTATIONS';
+  return 'CREATE_ANNOTATIONS';
+}
+
+function stripHtml(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function buildDescription(op: ParsedOperation): string {
+  // Overlay description takes priority
+  if (op.mcpDescription) return op.mcpDescription;
+
+  const summary = op.summary ?? 'No description available';
+
+  // If there's an HTML description, clean it and append
+  if (op.description) {
+    const cleaned = stripHtml(op.description);
+    if (cleaned && cleaned !== summary) {
+      return `${summary}\n\n${cleaned}`;
+    }
+  }
+
+  return summary;
+}
+
+function operationToSpecCode(op: ParsedOperation, category: string): string {
+  const toolName = op.toolName ?? generateToolName(op.operationId, category);
+  const fullName = category === 'core' ? `aiven_${toolName}` : `aiven_${category}_${toolName}`;
+
+  const description = buildDescription(op);
+  const escapedDesc = description.replace(/`/g, '\\`').replace(/\$/g, '\\$');
+
+  const title = toolName
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+
+  const inputSchemaCode = generateInputSchema(
+    op.parameters.map((p) => ({
+      name: p.name,
+      required: p.required,
+      schema: p.schema,
+    })),
+    op.requestBody
+  );
+
+  const annotationName = getAnnotationName(op.method, op.path);
+
+  const formatterLine = op.formatter ? `\n    formatter: '${op.formatter}',` : '';
+
+  return `  {
+    name: '${fullName}',
+    category: ${CATEGORY_TO_ENUM[category] ?? `'${category}'`},
+    title: '${title.replace(/'/g, "\\'")}',
+    description: \`${escapedDesc}\`,
+    method: '${op.method}',
+    path: '${op.path}',
+    inputSchema: ${inputSchemaCode},
+    annotations: ${annotationName},${formatterLine}
+  }`;
+}
+
+/**
+ * Generate the full tools.ts manifest file
+ */
+function generateManifestContent(categorized: CategorizedOperations): string {
+  const categories = Object.keys(categorized) as ServiceCategory[];
+  const allSpecs: string[] = [];
+
+  const annotationNames = new Set<string>();
+
+  for (const category of categories) {
+    const operations = categorized[category];
+    if (!operations || operations.length === 0) continue;
+
+    usedNames.clear();
+
+    for (const op of operations) {
+      annotationNames.add(getAnnotationName(op.method, op.path));
+      allSpecs.push(operationToSpecCode(op, category));
+    }
+  }
+
+  const annotationImports = [...annotationNames].sort().join(',\n  ');
+
+  return `/**
+ * Generated tool manifest
+ * ⚠️ Auto-generated by pnpm generate. Do not edit manually.
+ */
+
+import { z } from 'zod';
+import type { ToolSpec } from '../types.js';
+import {
+  ServiceCategory,
+  ${annotationImports},
+} from '../types.js';
+
+export const TOOL_SPECS: ToolSpec[] = [
+${allSpecs.join(',\n\n')},
+];
+`;
+}
+
+export async function generateToolFiles(categorized: CategorizedOperations): Promise<void> {
+  await fs.mkdir(OUTPUT_DIR, { recursive: true });
+
+  const content = generateManifestContent(categorized);
+  const outputPath = path.join(OUTPUT_DIR, 'tools.ts');
+  await fs.writeFile(outputPath, content);
+
+  const totalTools = Object.values(categorized).reduce((sum, ops) => sum + ops.length, 0);
+  console.log(`Generated ${outputPath} with ${totalTools} tools`);
+  console.log(
+    `\nGeneration complete: ${Object.keys(categorized).length} categories, ${totalTools} tools`
+  );
+}
