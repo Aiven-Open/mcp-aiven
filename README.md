@@ -1,5 +1,7 @@
 # Aiven MCP Server
 
+[![Python](https://img.shields.io/badge/python-3.x-blue.svg)](https://www.python.org/) [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE) [![MCPAmpel](https://img.shields.io/endpoint?url=https://mcpampel.com/badge/aiven-open/mcp-aiven.json)](https://mcpampel.com/repo/aiven-open/mcp-aiven)
+
 A [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server for Aiven.
 
 This provides access to the Aiven for PostgreSQL, Kafka, ClickHouse, Valkey and OpenSearch services running in Aiven and the wider Aiven ecosystem of native connectors. Enabling LLMs to build full stack solutions for all use-cases.
