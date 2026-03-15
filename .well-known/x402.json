@@ -1,0 +1,28 @@
+{
+  "name": "Aiven-Open/mcp-aiven",
+  "description": "🐍 ☁️ 🎖️ -  Navigate your [Aiven projects](https://go.aiven.io/mcp-server) and interact with the PostgreSQL®, Apache Kafka®, ClickHouse® and OpenSearch® services",
+  "accepts": [
+    {
+      "network": "eip155:8453",
+      "asset": "USDC",
+      "address": "YOUR_WALLET_ADDRESS"
+    }
+  ],
+  "resources": [
+    {
+      "path": "/list_projects",
+      "price": "0.01",
+      "description": "Pay-per-call access to list_projects"
+    },
+    {
+      "path": "/list_services",
+      "price": "0.01",
+      "description": "Pay-per-call access to list_services"
+    },
+    {
+      "path": "/get_service_details",
+      "price": "0.01",
+      "description": "Pay-per-call access to get_service_details"
+    }
+  ]
+}
