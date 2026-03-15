@@ -1,0 +1,77 @@
+{
+  "name": "mcp-aiven",
+  "version": "0.1.5",
+  "description": "MCP server for Aiven cloud data platform - manage PostgreSQL, Kafka, and other services",
+  "type": "module",
+  "main": "dist/index.js",
+  "keywords": [
+    "mcp",
+    "aiven",
+    "postgresql",
+    "kafka",
+    "cloud",
+    "database",
+    "model-context-protocol"
+  ],
+  "author": "Aiven",
+  "license": "Apache-2.0",
+  "files": [
+    "dist",
+    "src/manifests",
+    "generator/schemas",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Aiven-Open/mcp-aiven"
+  },
+  "bugs": "https://github.com/Aiven-Open/mcp-aiven/issues",
+  "homepage": "https://github.com/Aiven-Open/mcp-aiven/blob/main/README.md",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.6.1",
+    "express": "^5.2.1",
+    "libpg-query": "^17.7.3",
+    "openapi-fetch": "^0.17.0",
+    "pg": "^8.18.0",
+    "yaml": "^2.4.0",
+    "zod": "^3.23.8"
+  },
+  "bin": {
+    "mcp-aiven": "dist/index.js"
+  },
+  "scripts": {
+    "generate": "tsx generator/src/cli.ts",
+    "build": "tsc && rm -rf dist/manifests && cp -r src/manifests dist/manifests",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "test": "vitest",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm generate && pnpm build && pnpm test --run",
+    "generate:api-types": "openapi-typescript https://api.aiven.io/doc/openapi.json -o src/generated/aiven-api.ts"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.16.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-security": "^3.0.0",
+    "globals": "^15.0.0",
+    "lint-staged": "^15.0.0",
+    "openapi-typescript": "^7.13.0",
+    "prettier": "^3.2.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

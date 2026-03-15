@@ -1,0 +1,147 @@
+# Core tools: projects, services, logs, events
+tools:
+  - name: aiven_project_list
+    method: GET
+    path: /project
+    category: core
+    response_filter:
+      key: projects
+      fields: [project_name, default_cloud, organization_id, tags]
+
+  - name: aiven_project_get
+    method: GET
+    path: /project/{project}
+    category: core
+
+  - name: aiven_list_project_clouds
+    method: GET
+    path: /project/{project}/clouds
+    category: core
+
+    response_filter:
+      key: clouds
+      fields: [cloud_name, cloud_description, provider, geo_region]
+
+  - name: aiven_service_list
+    method: GET
+    path: /project/{project}/service
+    category: core
+    exclude_params: [include_secrets]
+    response_filter:
+      key: services
+      fields: [service_name, service_type]
+
+  - name: aiven_service_type_plans
+    method: GET
+    path: /project/{project}/service-types/{service_type}/plans
+    category: core
+    response_filter:
+      key: service_plans
+      fields: [service_plan, node_count, service_type]
+    description: |
+      List available plans for a service type. Returns plan names, node counts, and service type. Requires `project` — use `aiven_project_list` first if unknown.
+
+      **Pricing is not included in this response.** Prices vary by cloud region. Use `aiven_service_plan_pricing` to get pricing for a specific plan and cloud.
+
+  - name: aiven_service_plan_pricing
+    method: GET
+    path: /project/{project}/pricing/service-types/{service_type}/plans/{service_plan}/clouds/{cloud}
+    category: core
+    readOnly: true
+    description: |
+      Get pricing for a specific service plan in a specific cloud region. Returns hourly USD price.
+
+      Use `aiven_service_type_plans` to list available plans, and `aiven_list_project_clouds` to list available clouds.
+
+  - name: aiven_service_create
+    method: POST
+    path: /project/{project}/service
+    category: core
+    defaults:
+      project_vpc_id: null
+    response_filter:
+      key: service
+      fields: [service_name, service_type, state, plan, cloud_name]
+    description: |
+      Create a new Aiven service. Always call `aiven_service_type_plans` first, present plans to the user, and let them choose before creating. Do not pick a plan yourself. Pick `cloud` from the chosen plan's `clouds` list. For PostgreSQL, set `user_config: {"pg_version": "17"}`. After creation, tell the user the service is provisioning (takes a few minutes) and ask them to tell you when to check the status. Do NOT poll `aiven_service_get` in a loop.
+
+      **Read replica:** set `service_to_fork_from` to the primary and `user_config.pg_read_replica: true`.
+
+  - name: aiven_service_get
+    method: GET
+    path: /project/{project}/service/{service_name}
+    category: core
+    exclude_params: [include_secrets]
+    description: |
+      Get service information. If the service `state` is not `RUNNING`, return the status to the user and stop. Do NOT call this tool again in a loop — let the user decide when to re-check.
+
+  - name: aiven_service_update
+    method: PUT
+    path: /project/{project}/service/{service_name}
+    category: core
+    destructive: true
+    defaults:
+      project_vpc_id: null
+    description: |
+      Update an existing Aiven service.
+
+      Can change: plan, cloud region, user configuration, power state.
+
+      **Warning:** Plan changes may cause brief service downtime during migration. Confirm with the user before changing plans.
+
+      **Common user_config changes:**
+
+      Enable Kafka Connect on a Kafka service:
+      ```
+      aiven_service_update(project="my-project", service_name="my-kafka",
+        user_config={"kafka_connect": true})
+      ```
+
+      Enable Schema Registry (Karapace) on a Kafka service:
+      ```
+      aiven_service_update(project="my-project", service_name="my-kafka",
+        user_config={"schema_registry": true})
+      ```
+
+      Enable tiered storage on a Kafka service:
+      ```
+      aiven_service_update(project="my-project", service_name="my-kafka",
+        user_config={"tiered_storage": {"enabled": true}})
+      ```
+
+      Set PostgreSQL version:
+      ```
+      aiven_service_update(project="my-project", service_name="my-pg",
+        user_config={"pg_version": "17"})
+      ```
+
+  - name: aiven_project_get_service_logs
+    method: POST
+    path: /project/{project}/service/{service_name}/logs
+    category: core
+    readOnly: true
+
+  - name: aiven_service_query_activity
+    method: POST
+    path: /project/{project}/service/{service_name}/query/activity
+    category: core
+    readOnly: true
+
+  - name: aiven_service_metrics_fetch
+    method: POST
+    path: /project/{project}/service/{service_name}/metrics
+    category: core
+    readOnly: true
+
+    description: |
+      Fetch service metrics for the specified time period.
+
+      Use `period` to control the time window: `hour`, `day`, `week`, `month`, or `year`.
+      For Kafka services, optionally pass `kafka_topic_name` to get topic-level metrics.
+
+      **Display format:** Render ALL metrics as a single ASCII dashboard using box-drawing characters (┌─┐│└┘) and progress bars (█░). One section per metric group. Show every metric returned — do not summarize or omit. Do NOT use markdown tables or bullet points. Do NOT generate scripts. Render directly as text. Add a blank line between each metric row for readability.
+
+  - name: aiven_project_get_event_logs
+    method: GET
+    path: /project/{project}/events
+    category: core

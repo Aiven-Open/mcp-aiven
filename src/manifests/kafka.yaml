@@ -1,0 +1,122 @@
+# Kafka tools: topics, connectors, schema registry
+tools:
+  - name: aiven_kafka_topic_list
+    method: GET
+    path: /project/{project}/service/{service_name}/topic
+    category: kafka
+
+  - name: aiven_kafka_topic_create
+    method: POST
+    path: /project/{project}/service/{service_name}/topic
+    category: kafka
+
+    description: |
+      Create a Kafka topic.
+
+      **IMPORTANT:** Always include `partitions` and `replication` in the request. The API may accept them as optional but topics created without these fields may not work correctly.
+
+      Recommended defaults:
+      - `partitions`: 1 (or more depending on throughput needs)
+      - `replication`: 3 (must not exceed the number of brokers in the cluster)
+
+      After creation, do NOT immediately call `aiven_kafka_topic_get` or other tools on this topic. Tell the user the topic was created and will be available shortly.
+
+  - name: aiven_kafka_topic_get
+    method: GET
+    path: /project/{project}/service/{service_name}/topic/{topic_name}
+    category: kafka
+
+  - name: aiven_kafka_topic_update
+    method: PUT
+    path: /project/{project}/service/{service_name}/topic/{topic_name}
+    category: kafka
+
+  - name: aiven_kafka_topic_delete
+    method: DELETE
+    path: /project/{project}/service/{service_name}/topic/{topic_name}
+    category: kafka
+
+  - name: aiven_kafka_topic_message_list
+    method: POST
+    path: /project/{project}/service/{service_name}/kafka/rest/topics/{topic_name}/messages
+    category: kafka
+    readOnly: true
+
+    description: |
+      Consume messages from a Kafka topic.
+
+      **REQUIRED BEFORE CALLING THIS TOOL — follow these steps in order:**
+      1. Kafka REST API must be enabled. Call `aiven_service_update` with `user_config: {"kafka_rest": true}` if not already enabled.
+      2. Call `aiven_service_get` once to check if `components` contains `kafka_rest` with `state: "running"`. If not ready, tell the user to wait and ask them when to re-check. Do NOT poll in a loop.
+
+      **Format:** The `format` must match how messages were produced. Use `"binary"` for Debezium CDC or any schema-encoded messages (values are returned as base64). Use `"json"` only for plain JSON messages produced without a schema.
+
+      The `partitions` parameter is an object keyed by partition number (as a string), each with an `offset` value.
+
+      **Example:**
+      ```
+      aiven_kafka_topic_message_list(
+        project="my-project",
+        service_name="my-kafka",
+        topic_name="my-topic",
+        partitions={"0": {"offset": 0}},
+        format="binary"
+      )
+      ```
+
+  - name: aiven_kafka_topic_message_produce
+    method: POST
+    path: /project/{project}/service/{service_name}/kafka/rest/topics/{topic_name}/produce
+    category: kafka
+
+    description: |
+      Produce messages into a Kafka topic.
+
+      **REQUIRED BEFORE CALLING THIS TOOL — follow these steps in order:**
+      1. Kafka REST API must be enabled. Call `aiven_service_update` with `user_config: {"kafka_rest": true}` if not already enabled.
+      2. Call `aiven_service_get` once to check if `components` contains `kafka_rest` with `state: "running"`. If not ready, tell the user to wait and ask them when to re-check. Do NOT poll in a loop.
+
+  - name: aiven_kafka_connect_available_connectors
+    method: GET
+    path: /project/{project}/service/{service_name}/available-connectors
+    category: kafka
+
+  - name: aiven_kafka_connect_list
+    method: GET
+    path: /project/{project}/service/{service_name}/connectors
+    category: kafka
+
+  - name: aiven_kafka_connect_get_connector_status
+    method: GET
+    path: /project/{project}/service/{service_name}/connectors/{connector_name}/status
+    category: kafka
+
+  - name: aiven_kafka_connect_pause_connector
+    method: POST
+    path: /project/{project}/service/{service_name}/connectors/{connector_name}/pause
+    category: kafka
+
+  - name: aiven_kafka_connect_resume_connector
+    method: POST
+    path: /project/{project}/service/{service_name}/connectors/{connector_name}/resume
+    category: kafka
+
+  - name: aiven_kafka_connect_restart_connector
+    method: POST
+    path: /project/{project}/service/{service_name}/connectors/{connector_name}/restart
+    category: kafka
+
+  - name: aiven_kafka_connect_delete_connector
+    method: DELETE
+    path: /project/{project}/service/{service_name}/connectors/{connector_name}
+    category: kafka
+
+  - name: aiven_kafka_schema_registry_subjects
+    method: GET
+    path: /project/{project}/service/{service_name}/kafka/schema/subjects
+    category: kafka
+
+  - name: aiven_kafka_schema_registry_subject_version_get
+    method: GET
+    path: /project/{project}/service/{service_name}/kafka/schema/subjects/{subject_name}/versions/{version_id}
+    category: kafka

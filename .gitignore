@@ -1,6 +1,39 @@
-.cursor
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment
 .env
-mcp_aiven/__pycache__
-.venv
-uv.lock
+.env.local
+.env.*.local
+
+# IDE
+.cursor
+.vscode/
+.idea/
 *.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test coverage
+coverage/
+
+# Cache
+*.tsbuildinfo
+
+# Internal planning docs
+DESIGN.md
+OAUTH_PLAN.md
+
+.husky/
+.cache/
+generator/schemas/
+src/generated/

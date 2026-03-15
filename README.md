@@ -1,120 +1,196 @@
 # Aiven MCP Server
 
-A [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server for Aiven.
+A [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server for the [Aiven](https://aiven.io/) cloud data platform.
 
-This provides access to the Aiven for PostgreSQL, Kafka, ClickHouse, Valkey and OpenSearch services running in Aiven and the wider Aiven ecosystem of native connectors. Enabling LLMs to build full stack solutions for all use-cases.
+Manage PostgreSQL, Apache Kafka, and other Aiven services directly from AI assistants like Claude, Cursor, and VS Code Copilot.
 
-## Features
+> [!WARNING]
+> **Security Considerations**
+>
+> **Self-Managed MCPs:** MCPs run in the user's environment, not hosted by Aiven. Users are responsible for their deployment, security, and compliance, following the [shared responsibility model](https://aiven.io/responsibility-matrix). Developers handle all aspects of MCP deployment, updates, and maintenance.
+>
+> **AI Agent Security:** Access is governed by the permissions of the API token used for authentication. Scope tokens carefully. AI agents may need access credentials (database connection strings, streaming tokens) to act on your behalf. Be careful when providing these. Follow your organization's security policies and do a risk assessment before giving AI agents access to sensitive resources.
+>
+> **API Token Best Practices:** Use the minimum permissions needed (principle of least privilege). Rotate tokens regularly and store them securely.
 
-### Tools
+## Quick Start
 
-* `list_projects`
-  - List all projects on your Aiven account.
+### Option 1: stdio (local)
 
-* `list_services`
-  - List all services in a specific Aiven project.
-
-* `get_service_details`
-  - Get the detail of your service in a specific Aiven project.
-
-## Configuration for Claude Desktop
-
-1. Open the Claude Desktop configuration file located at:
-   - On macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-   - On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
-
-2. Add the following:
+Add this to your MCP client config. The client starts the server as a child process:
 
 ```json
 {
   "mcpServers": {
     "mcp-aiven": {
-      "command": "uv",
-      "args": [
-        "--directory",
-        "$REPOSITORY_DIRECTORY",
-        "run",
-        "--with-editable",
-        "$REPOSITORY_DIRECTORY",
-        "--python",
-        "3.13",
-        "mcp-aiven"
-      ],
+      "command": "npx",
+      "args": ["-y", "mcp-aiven"],
       "env": {
-        "AIVEN_BASE_URL": "https://api.aiven.io",
-        "AIVEN_TOKEN": "$AIVEN_TOKEN"
+        "AIVEN_TOKEN": "your-token-here"
       }
     }
   }
 }
 ```
 
-Update the environment variables:
-* `$REPOSITORY_DIRECTORY` to point to the folder cointaining the repository
-* `AIVEN_TOKEN` to the [Aiven login token](https://aiven.io/docs/platform/howto/create_authentication_token).
+### Option 2: Streamable HTTP (remote)
+
+TBD
+
+### Config file locations
+
+| Client | Location |
+|---|---|
+| Claude Desktop (macOS) | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| Claude Desktop (Windows) | `%APPDATA%/Claude/claude_desktop_config.json` |
+| Claude Code | `claude mcp add mcp-aiven -- npx -y mcp-aiven` |
+| Cursor | Cursor Settings > MCP Servers |
+| VS Code | `.vscode/mcp.json` in your workspace |
 
 
-3. Locate the command entry for `uv` and replace it with the absolute path to the `uv` executable. This ensures that the correct version of `uv` is used when starting the server. On a mac, you can find this path using `which uv`.
+## Environment Variables
 
-4. Restart Claude Desktop to apply the changes.
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `AIVEN_TOKEN` | stdio only | -- | Aiven API token ([create one here](https://console.aiven.io/profile/auth)) |
+| `AIVEN_READ_ONLY` | No | `false` | Set to `true` to expose only read-only tools |
 
-## Configuration for Cursor
+In HTTP mode, `AIVEN_TOKEN` is not needed. The Bearer token from each request is used instead.
 
-1. Navigate to Cursor -> Settings -> Cursor Settings
+## Tools
 
-2. Select "MCP Servers"
+### Core
 
-3. Add a new server with 
+| Tool | Description |
+|---|---|
+| `aiven_project_list` | List projects |
+| `aiven_project_get` | Get project details |
+| `aiven_list_project_clouds` | List cloud platforms for a project |
+| `aiven_service_list` | List services |
+| `aiven_service_type_plans` | List plans with pricing and cloud availability |
+| `aiven_service_create` | Create a service |
+| `aiven_service_get` | Get service information |
+| `aiven_service_update` | Update a service (plan, config, power state) |
+| `aiven_project_get_service_logs` | Get service log entries |
+| `aiven_service_query_activity` | Fetch current queries for a service |
+| `aiven_service_metrics_fetch` | Fetch service metrics |
+| `aiven_project_get_event_logs` | Get project event log entries |
 
-    * Name: `mcp-aiven`
-    * Type: `command`
-    * Command: `uv --directory $REPOSITORY_DIRECTORY run --with-editable $REPOSITORY_DIRECTORY --python 3.13 mcp-aiven`
+### Kafka
 
-Where `$REPOSITORY_DIRECTORY` is the path to the repository. You might need to add the `AIVEN_BASE_URL`, `AIVEN_PROJECT_NAME` and `AIVEN_TOKEN` as variables
+| Tool | Description |
+|---|---|
+| `aiven_kafka_topic_list` | List Kafka topics |
+| `aiven_kafka_topic_create` | Create a Kafka topic |
+| `aiven_kafka_topic_get` | Get Kafka topic info |
+| `aiven_kafka_topic_update` | Update a Kafka topic |
+| `aiven_kafka_topic_delete` | Delete a Kafka topic |
+| `aiven_kafka_topic_message_list` | Read messages from a Kafka topic |
+| `aiven_kafka_topic_message_produce` | Produce messages into a Kafka topic |
+| `aiven_kafka_connect_available_connectors` | List available connector types |
+| `aiven_kafka_connect_list` | List running connectors |
+| `aiven_kafka_connect_create_connector` | Create a connector |
+| `aiven_kafka_connect_edit_connector` | Edit a connector |
+| `aiven_kafka_connect_get_connector_status` | Get connector status |
+| `aiven_kafka_connect_pause_connector` | Pause a connector |
+| `aiven_kafka_connect_resume_connector` | Resume a connector |
+| `aiven_kafka_connect_restart_connector` | Restart a connector |
+| `aiven_kafka_connect_delete_connector` | Delete a connector |
+| `aiven_kafka_schema_registry_subjects` | List Schema Registry subjects |
+| `aiven_kafka_schema_registry_subject_version_get` | Get Schema Registry subject version |
+
+### PostgreSQL
+
+| Tool | Description |
+|---|---|
+| `aiven_pg_service_available_extensions` | List available extensions |
+| `aiven_pg_service_query_statistics` | Fetch query statistics |
+| `aiven_pg_bouncer_create` | Create a PgBouncer connection pool |
+| `aiven_pg_bouncer_update` | Update a PgBouncer connection pool |
+| `aiven_pg_bouncer_delete` | Delete a PgBouncer connection pool |
+| `aiven_pg_read` | Run a read-only SQL query |
+| `aiven_pg_write` | Run a write SQL statement (INSERT, UPDATE, DELETE, CREATE TABLE, etc.) |
+| `aiven_pg_optimize_query` | AI-powered query optimization (EverSQL) |
 
 ## Development
 
-1. Add the following variables to a `.env` file in the root of the repository.
-
+```bash
+git clone https://github.com/Aiven-Open/mcp-aiven.git
+cd mcp-aiven
+pnpm install
+pnpm generate   # generate tool schemas from OpenAPI spec
+pnpm build
 ```
-AIVEN_BASE_URL=https://api.aiven.io
-AIVEN_TOKEN=$AIVEN_TOKEN
+
+### Running locally
+
+**stdio** -- point your MCP client at the built output:
+
+```json
+{
+  "mcpServers": {
+    "mcp-aiven": {
+      "command": "node",
+      "args": ["/absolute/path/to/mcp-aiven/dist/index.js"],
+      "env": {
+        "AIVEN_TOKEN": "your-token-here"
+      }
+    }
+  }
+}
 ```
 
-2. Run `uv sync` to install the dependencies. To install `uv` follow the instructions [here](https://docs.astral.sh/uv/). Then do `source .venv/bin/activate`.
+**HTTP** -- start the server and connect your client to it:
 
-3. For easy testing, you can run `mcp dev mcp_aiven/mcp_server.py` to start the MCP server.
+```bash
+pnpm build && node dist/index.js --transport http --port 3000
+```
 
-### Environment Variables
+### Scripts
 
-The following environment variables are used to configure the Aiven connection:
+| Command | Description |
+|---|---|
+| `pnpm generate` | Regenerate tool schemas from OpenAPI spec |
+| `pnpm build` | Compile TypeScript and copy manifests |
+| `pnpm test` | Run tests |
 
-#### Required Variables
-* `AIVEN_BASE_URL`: The Aiven API url
-* `AIVEN_TOKEN`: The authentication token
+### Adding a new API tool
 
-## Developer Considerations for Model Context Protocols (MCPs) and AI Agents
+Tools are defined in YAML manifests under `src/manifests/`. Each entry maps to an Aiven API endpoint.
 
-This section outlines key developer responsibilities and security considerations when working with Model Context Protocols (MCPs) and AI Agents within this system.
-**Self-Managed MCPs:**
+1. **Add a manifest entry** in `src/manifests/<category>.yaml`:
 
-* **Customer Responsibility:** MCPs are executed within the user's environment, not hosted by Aiven. Therefore, users are solely responsible for their operational management, security, and compliance, adhering to the shared responsibility model. (https://aiven.io/responsibility-matrix)
-* **Deployment and Maintenance:** Developers must handle all aspects of MCP deployment, updates, and maintenance.
+```yaml
+- name: aiven_opensearch_index_list
+  method: GET
+  path: /project/{project}/service/{service_name}/opensearch/index
+  category: opensearch
+```
 
-**AI Agent Security:**
+Each entry needs `name`, `method`, `path`, and `category`. Optional fields:
 
-* **Permission Control:** Access and capabilities of AI Agents are strictly governed by the permissions granted to the API token used for their authentication. Developers must meticulously manage these permissions.
-* **Credential Handling:** Be acutely aware that AI Agents may require access credentials (e.g., database connection strings, streaming service tokens) to perform actions on your behalf. Exercise extreme caution when providing such credentials to AI Agents.
-* **Risk Assessment:** Adhere to your organization's security policies and conduct thorough risk assessments before granting AI Agents access to sensitive resources.
+```yaml
+  description: |              # override the OpenAPI description
+    Custom description here.
+  readOnly: true              # mark as read-only (useful for POST endpoints that don't mutate)
+  destructive: true           # mark as destructive (adds destructiveHint annotation)
+  defaults:                   # inject default body fields
+    project_vpc_id: null
+  response_filter:            # trim the API response before returning to the LLM
+    key: services
+    fields: [service_name, state]
+    summarize: regions        # compact a nested object field
+```
 
-**API Token Best Practices:**
+2. **Register the category** (if new) -- add it to `ServiceCategory` in `src/types.ts`
 
-* **Principle of Least Privilege:** Always adhere to the principle of least privilege. API tokens should be scoped and restricted to the minimum permissions necessary for their intended function.
-* **Token Management:** Implement robust token management practices, including regular rotation and secure storage.
+3. **Regenerate and build**:
 
-**Key Takeaways:**
+```bash
+pnpm generate   # extracts JSON Schema from OpenAPI spec for each manifest entry
+pnpm build
+```
 
-* Users retain full control and responsibility for MCP execution and security.
-* AI Agent permissions are directly tied to API token permissions.
-* Exercise extreme caution when providing credentials to AI Agents.
-* Strictly adhere to the principle of least privilege when managing API tokens.
+## License
+
+[Apache-2.0](LICENSE)

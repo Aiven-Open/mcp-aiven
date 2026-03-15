@@ -1,0 +1,27 @@
+# PostgreSQL tools: extensions, query stats, connection pools
+tools:
+  - name: aiven_pg_service_available_extensions
+    method: GET
+    path: /project/{project}/service/{service_name}/pg/available-extensions
+    category: pg
+
+  - name: aiven_pg_service_query_statistics
+    method: POST
+    path: /project/{project}/service/{service_name}/pg/query/stats
+    category: pg
+    readOnly: true
+
+  - name: aiven_pg_bouncer_create
+    method: POST
+    path: /project/{project}/service/{service_name}/connection_pool
+    category: pg
+
+  - name: aiven_pg_bouncer_update
+    method: PUT
+    path: /project/{project}/service/{service_name}/connection_pool/{pool_name}
+    category: pg
+
+  - name: aiven_pg_bouncer_delete
+    method: DELETE
+    path: /project/{project}/service/{service_name}/connection_pool/{pool_name}
+    category: pg
