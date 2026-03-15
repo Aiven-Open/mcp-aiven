@@ -30,6 +30,7 @@ export function startHttpServer(
   config: HttpServerConfig
 ): void {
   const app = express();
+  app.set('trust proxy', true);
   app.use(express.json({ limit: '5mb' }));
 
   app.get('/health', (_req: Request, res: Response) => {
