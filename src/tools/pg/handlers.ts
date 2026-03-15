@@ -36,7 +36,11 @@ export function createPgCustomTools(client: AivenClient): ToolDefinition[] {
           const typedParams = params as z.infer<typeof optimizeQueryInput>;
           const encodedQuery = Buffer.from(typedParams.query).toString('base64');
 
-          const opts = context?.token ? { token: context.token } : undefined;
+          const opts = {
+            token: context?.token,
+            mcpClient: context?.mcpClient,
+            toolName: PgToolName.OptimizeQuery,
+          };
           const data = await client.post<Record<string, unknown>>(
             `/account/${typedParams.account_id}/pg/query/optimize`,
             {
@@ -76,6 +80,8 @@ export function createPgCustomTools(client: AivenClient): ToolDefinition[] {
           limit,
           offset,
           token: context?.token,
+          mcpClient: context?.mcpClient,
+          toolName: PgToolName.Read,
         });
       },
     },
@@ -103,6 +109,8 @@ export function createPgCustomTools(client: AivenClient): ToolDefinition[] {
           limit,
           offset,
           token: context?.token,
+          mcpClient: context?.mcpClient,
+          toolName: PgToolName.Write,
         });
       },
     },

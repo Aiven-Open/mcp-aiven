@@ -1,5 +1,5 @@
 import type { AivenClient } from '../../client.js';
-import type { ServiceConnectionInfo } from '../../types.js';
+import type { RequestOptions, ServiceConnectionInfo } from '../../types.js';
 import { getServiceConnectionInfo } from '../../shared/service-info.js';
 
 const ROUTING_KEYS = new Set([
@@ -53,7 +53,7 @@ function detectFieldMapping(connectorClass: string): Record<string, string> | un
 export async function buildConnectorConfig(
   client: AivenClient,
   params: Record<string, unknown>,
-  token?: string
+  opts?: RequestOptions
 ): Promise<Record<string, unknown>> {
   const project = String(params['project']);
   const connectorClass = String(params['connector_class']);
@@ -69,7 +69,7 @@ export async function buildConnectorConfig(
   config['connector.class'] = connectorClass;
 
   if (sourceService) {
-    const connInfo = await getServiceConnectionInfo(client, project, sourceService, token);
+    const connInfo = await getServiceConnectionInfo(client, project, sourceService, opts);
 
     const fieldMapping = detectFieldMapping(connectorClass);
     if (fieldMapping) {
