@@ -32,9 +32,13 @@ export function createKafkaCustomTools(client: AivenClient): ToolDefinition[] {
             Record<string, unknown>;
           const { project, service_name: serviceName } = typedParams;
 
-          const config = await buildConnectorConfig(client, typedParams, context?.token);
+          const opts = {
+            token: context?.token,
+            mcpClient: context?.mcpClient,
+            toolName: KafkaToolName.ConnectCreateConnector,
+          };
+          const config = await buildConnectorConfig(client, typedParams, opts);
 
-          const opts = context?.token ? { token: context.token } : undefined;
           const data = await client.post<Record<string, unknown>>(
             `/project/${encodeURIComponent(project)}/service/${encodeURIComponent(serviceName)}/connectors`,
             config,
@@ -62,9 +66,13 @@ export function createKafkaCustomTools(client: AivenClient): ToolDefinition[] {
           const typedParams = params as z.infer<typeof editConnectorInput> & Record<string, unknown>;
           const { project, service_name: serviceName, connector_name: connectorName } = typedParams;
 
-          const config = await buildConnectorConfig(client, typedParams, context?.token);
+          const opts = {
+            token: context?.token,
+            mcpClient: context?.mcpClient,
+            toolName: KafkaToolName.ConnectEditConnector,
+          };
+          const config = await buildConnectorConfig(client, typedParams, opts);
 
-          const opts = context?.token ? { token: context.token } : undefined;
           const data = await client.put<Record<string, unknown>>(
             `/project/${encodeURIComponent(project)}/service/${encodeURIComponent(serviceName)}/connectors/${encodeURIComponent(connectorName)}`,
             config,

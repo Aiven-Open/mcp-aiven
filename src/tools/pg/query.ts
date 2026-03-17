@@ -100,9 +100,11 @@ export async function executePgQuery(
   const rateLimitError = checkRateLimit(token);
   if (rateLimitError) return toolError(rateLimitError);
 
+  const apiOpts = { token, mcpClient: options.mcpClient, toolName: options.toolName };
+
   let pgClient;
   try {
-    pgClient = await connectToService(client, project, service_name, database, token);
+    pgClient = await connectToService(client, project, service_name, database, apiOpts);
   } catch (err) {
     return toolError(errorMessage(err));
   }

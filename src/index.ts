@@ -36,7 +36,10 @@ function registerTools(server: McpServer, tools: ToolDefinition[]): void {
         ...(tool.definition.outputSchema ? { outputSchema: tool.definition.outputSchema } : {}),
       },
       async (params, extra) => {
-        const context = extra.authInfo ? { token: extra.authInfo.token } : undefined;
+        const context = {
+          token: extra.authInfo?.token,
+          mcpClient: server.server.getClientVersion()?.name,
+        };
         return tool.handler(params, context);
       }
     );
