@@ -134,12 +134,38 @@ tools:
     readOnly: true
 
     description: |
-      Fetch service metrics for the specified time period.
+      Fetch metrics for **managed data services** (PostgreSQL, Kafka, OpenSearch, etc.) — i.e. not `service_type: application`.
+
+      **Do not use** for **application** services (custom apps deployed as an Aiven “application” service). For those, use **`aiven_service_application_metrics_get`** instead (GET `…/application/metrics`). If unsure, call `aiven_service_get` first and check `service_type`.
 
       Use `period` to control the time window: `hour`, `day`, `week`, `month`, or `year`.
       For Kafka services, optionally pass `kafka_topic_name` to get topic-level metrics.
 
       **Display format:** Render ALL metrics as a single ASCII dashboard using box-drawing characters (┌─┐│└┘) and progress bars (█░). One section per metric group. Show every metric returned — do not summarize or omit. Do NOT use markdown tables or bullet points. Do NOT generate scripts. Render directly as text. Add a blank line between each metric row for readability.
+
+  # Not in public OpenAPI — schema is maintained here (see generator manual_schema).
+  - name: aiven_service_application_metrics_get
+    method: GET
+    path: /project/{project}/service/{service_name}/application/metrics
+    category: core
+    readOnly: true
+    manual_schema:
+      type: object
+      properties:
+        project:
+          type: string
+        service_name:
+          type: string
+      required:
+        - project
+        - service_name
+    manual_strict: true
+    description: |
+      **Preferred tool** when the user asks for **application** metrics, or the target is an **application** service (`service_type: application`).
+
+      Calls **`GET …/application/metrics`**. Do **not** use `aiven_service_metrics_fetch` for these — that tool targets **`POST …/metrics`** for managed data services only.
+
+      If the service type is unknown, call **`aiven_service_get`** first, then choose this tool if `service_type` is `application`.
 
   - name: aiven_project_get_event_logs
     method: GET
