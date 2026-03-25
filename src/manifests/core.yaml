@@ -161,7 +161,7 @@ tools:
         - service_name
     manual_strict: true
     description: |
-      **Preferred tool** when the user asks for **application** metrics, or the target is an **application** service (`service_type: application`), including **mcp-aiven** and similar app deployments.
+      **Preferred tool** when the user asks for **application** metrics, or the target is an **application** service (`service_type: application`).
 
       Calls **`GET …/application/metrics`**. Do **not** use `aiven_service_metrics_fetch` for these — that tool targets **`POST …/metrics`** for managed data services only.
 
