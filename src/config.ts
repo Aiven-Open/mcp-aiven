@@ -4,8 +4,8 @@ import type { AivenConfig } from './types.js';
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json') as { version: string };
 export const VERSION = pkg.version;
-export const API_ORIGIN = process.env['AIVEN_API_ORIGIN'] ?? 'https://api.aiven.io';
-// export const API_ORIGIN = 'https://public-aiven-rest-aiven-public-yonatan-dvir-test.a.avns.net';
+//export const API_ORIGIN = process.env['AIVEN_API_ORIGIN'] ?? 'https://api.aiven.io';
+export const API_ORIGIN = 'https://public-aiven-rest-aiven-public-yonatan-dvir-test.a.avns.net';
 export const API_BASE_URL = `${API_ORIGIN}/v1`;
 
 export function loadConfig(transport: 'stdio' | 'http' = 'stdio'): AivenConfig {
