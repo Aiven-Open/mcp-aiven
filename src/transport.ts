@@ -40,7 +40,7 @@ export function startHttpServer(
   app.get('/.well-known/oauth-protected-resource', (req: Request, res: Response) => {
     const host = req.headers.host;
     res.json({
-      resource: `https://${host}`,
+      resource: `${req.protocol}://${host}`,
       authorization_servers: [config.apiOrigin],
       scopes_supported: config.scopes,
       bearer_methods_supported: ['header'],
