@@ -1,4 +1,14 @@
 # Kafka tools: topics, connectors, schema registry
+
+kafka_connect_plan_gate: &kafka_connect_plan_gate |
+  **Kafka Connect plan gate — call `aiven_service_get` first.** Read `service.plan`. On **free** Kafka plans (e.g. `free-0`), Kafka Connect is usually **not** included: Connect REST calls may return **403** (e.g. "Kafka Connect API disabled"). Do **not** call this tool when `service.plan` is `free-*` or the tier is known not to include Connect; tell the user to upgrade instead of hitting the API.
+
+  **Typically no Kafka Connect:** `free-*` (e.g. `free-0`).
+
+  **Typically includes Kafka Connect:** `startup-*` (e.g. `startup-2`, `startup-4`), `business-*`, `premium-*`.
+
+  On supported plans you may still need `user_config.kafka_connect: true`. A **403** saying Kafka Connect is **disabled** is usually a **plan / product** limit, not missing token permissions.
+
 tools:
   - name: aiven_kafka_topic_list
     method: GET
@@ -80,36 +90,43 @@ tools:
     method: GET
     path: /project/{project}/service/{service_name}/available-connectors
     category: kafka
+    description: *kafka_connect_plan_gate
 
   - name: aiven_kafka_connect_list
     method: GET
     path: /project/{project}/service/{service_name}/connectors
     category: kafka
+    description: *kafka_connect_plan_gate
 
   - name: aiven_kafka_connect_get_connector_status
     method: GET
     path: /project/{project}/service/{service_name}/connectors/{connector_name}/status
     category: kafka
+    description: *kafka_connect_plan_gate
 
   - name: aiven_kafka_connect_pause_connector
     method: POST
     path: /project/{project}/service/{service_name}/connectors/{connector_name}/pause
     category: kafka
+    description: *kafka_connect_plan_gate
 
   - name: aiven_kafka_connect_resume_connector
     method: POST
     path: /project/{project}/service/{service_name}/connectors/{connector_name}/resume
     category: kafka
+    description: *kafka_connect_plan_gate
 
   - name: aiven_kafka_connect_restart_connector
     method: POST
     path: /project/{project}/service/{service_name}/connectors/{connector_name}/restart
     category: kafka
+    description: *kafka_connect_plan_gate
 
   - name: aiven_kafka_connect_delete_connector
     method: DELETE
     path: /project/{project}/service/{service_name}/connectors/{connector_name}
     category: kafka
+    description: *kafka_connect_plan_gate
 
   - name: aiven_kafka_schema_registry_subjects
     method: GET

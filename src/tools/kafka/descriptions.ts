@@ -1,8 +1,12 @@
-const CONNECTOR_SUFFIX = `When \`source_service\` is provided, connection credentials (hostname, port, user, password) are automatically resolved from that Aiven service — no need to look up or provide passwords manually.
+const CONNECTOR_SUFFIX = `**Kafka Connect plan gate — call \`aiven_service_get\` first.** Read \`service.plan\`. On **free** Kafka plans (e.g. \`free-0\`), Kafka Connect is usually **not** available and the API returns **403** (e.g. "Kafka Connect API disabled"). Do **not** call Kafka Connect tools when \`service.plan\` is \`free-*\` or you know the tier lacks Connect; explain upgrade instead of invoking the API.
+
+**Plans that typically include Kafka Connect:** \`startup-*\` (e.g. \`startup-2\`, \`startup-4\`), \`business-*\`, \`premium-*\`. A 403 mentioning Connect being **disabled** is typically a **plan** limitation, not token RBAC.
+
+When \`source_service\` is provided, connection credentials (hostname, port, user, password) are automatically resolved from that Aiven service — no need to look up or provide passwords manually.
 
 Supports Debezium CDC connectors (PostgreSQL, MySQL), JDBC source/sink, and any connector class. Extra configuration fields are passed through as-is.
 
-**Prerequisites:** The Kafka service must have Kafka Connect enabled (\`user_config.kafka_connect: true\`). If using Schema Registry for value/key converters, enable it too (\`user_config.schema_registry: true\`).
+**Prerequisites:** On a **supported** plan, the Kafka service must have Kafka Connect enabled (\`user_config.kafka_connect: true\`). If using Schema Registry for value/key converters, enable it too (\`user_config.schema_registry: true\`).
 
 **IMPORTANT — Kafka Connect takes time to initialize.** After enabling via \`aiven_service_update\`, call \`aiven_service_get\` once to check if \`state\` is \`RUNNING\` and \`components\` includes \`kafka_connect\` in state \`running\`. If not ready, tell the user and let them decide when to re-check. Do NOT poll in a loop or retry on 503.
 
