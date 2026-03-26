@@ -37,9 +37,11 @@ tools:
     category: core
     response_filter:
       key: service_plans
-      fields: [service_plan, node_count, service_type]
+      fields: [service_plan, node_count, service_type, regions, clouds]
     description: |
-      List available plans for a service type. Returns plan names, node counts, and service type. Requires `project` — use `aiven_project_list` first if unknown.
+      List available plans for a service type. Requires `project` — use `aiven_project_list` first if unknown.
+
+      Each plan may include **`regions`** (and sometimes **`clouds`**) describing where that plan can run. Use those fields to show the user **which cloud names** (e.g. `do-fra`, `aws-eu-central-1`) are valid for their chosen plan before calling `aiven_service_create`.
 
       **Pricing is not included in this response.** Prices vary by cloud region. Use `aiven_service_plan_pricing` to get pricing for a specific plan and cloud.
 
@@ -63,7 +65,11 @@ tools:
       key: service
       fields: [service_name, service_type, state, plan, cloud_name]
     description: |
-      Create a new Aiven service. Always call `aiven_service_type_plans` first, present plans to the user, and let them choose before creating. Do not pick a plan yourself. Pick `cloud` from the chosen plan's `clouds` list. For PostgreSQL, set `user_config: {"pg_version": "17"}`. After creation, tell the user the service is provisioning (takes a few minutes) and ask them to tell you when to check the status. Do NOT poll `aiven_service_get` in a loop.
+      Create a new Aiven service. Always call `aiven_service_type_plans` first, present plans to the user, and let them choose before creating. Do not pick a plan yourself.
+
+      **Cloud (`cloud`) — never guess or silently default.** After the user picks a plan, show valid cloud names from that plan’s **`regions` / `clouds`** in the `aiven_service_type_plans` response and **ask which cloud they want**. Do not invent a region (e.g. do not assume `do-fra`). If per-plan clouds are unclear, call `aiven_list_project_clouds` and still require an **explicit user choice** unless they told you to use a specific cloud or the project’s default.
+
+      For PostgreSQL, set `user_config: {"pg_version": "17"}`. After creation, tell the user the service is provisioning (takes a few minutes) and ask them to tell you when to check the status. Do NOT poll `aiven_service_get` in a loop.
 
       **Read replica:** set `service_to_fork_from` to the primary and `user_config.pg_read_replica: true`.
 
