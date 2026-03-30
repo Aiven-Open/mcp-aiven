@@ -4,6 +4,10 @@ A [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server for Ai
 
 This provides access to the Aiven for PostgreSQL, Kafka, ClickHouse, Valkey and OpenSearch services running in Aiven and the wider Aiven ecosystem of native connectors. Enabling LLMs to build full stack solutions for all use-cases.
 
+## Hosted deployment
+
+A hosted deployment is available on [Fronteir AI](https://fronteir.ai/mcp/aiven-open-mcp-aiven).
+
 ## Features
 
 ### Tools
