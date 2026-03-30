@@ -21,6 +21,7 @@ import {
 import { jsonSchemaToZod } from './json-schema-to-zod.js';
 import { createApiTool } from './api-tool.js';
 import { createRequire } from 'node:module';
+import { TOOL_LIST_PICKER_SUFFIX } from '../prompts.js';
 
 interface ManifestEntry {
   name: string;
@@ -28,6 +29,8 @@ interface ManifestEntry {
   path: string;
   category: string;
   description?: string;
+  /** When true, `TOOL_LIST_PICKER_SUFFIX` is appended to the final tool description (see prompts). */
+  append_list_picker_hint?: boolean;
   readOnly?: boolean;
   destructive?: boolean;
   defaults?: Record<string, unknown>;
@@ -150,7 +153,10 @@ export function loadApiTools(client: AivenClient): ToolDefinition[] {
       continue;
     }
 
-    const description = entry.description ?? schemaEntry.description;
+    let description = entry.description ?? schemaEntry.description;
+    if (entry.append_list_picker_hint) {
+      description = `${description}\n\n${TOOL_LIST_PICKER_SUFFIX}`;
+    }
     const inputSchema = jsonSchemaToZod(schemaEntry.schema, schemaEntry.strict);
 
     const tool = createApiTool(

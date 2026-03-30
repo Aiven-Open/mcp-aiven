@@ -1,3 +1,5 @@
+import { TOOL_LIST_PICKER_SUFFIX } from '../../prompts.js';
+
 const CONNECTOR_SUFFIX = `**Kafka Connect plan gate — call \`aiven_service_get\` first.** Read \`service.plan\`. On **free** Kafka plans (e.g. \`free-0\`), Kafka Connect is usually **not** available and the API returns **403** (e.g. "Kafka Connect API disabled"). Do **not** call Kafka Connect tools when \`service.plan\` is \`free-*\` or you know the tier lacks Connect; explain upgrade instead of invoking the API.
 
 **Plans that typically include Kafka Connect:** \`startup-*\` (e.g. \`startup-2\`, \`startup-4\`), \`business-*\`, \`premium-*\`. A 403 mentioning Connect being **disabled** is typically a **plan** limitation, not token RBAC.
@@ -10,7 +12,9 @@ Supports Debezium CDC connectors (PostgreSQL, MySQL), JDBC source/sink, and any 
 
 **IMPORTANT — Kafka Connect takes time to initialize.** After enabling via \`aiven_service_update\`, call \`aiven_service_get\` once to check if \`state\` is \`RUNNING\` and \`components\` includes \`kafka_connect\` in state \`running\`. If not ready, tell the user and let them decide when to re-check. Do NOT poll in a loop or retry on 503.
 
-**IMPORTANT — topics must exist before the connector starts.** Aiven Kafka does not auto-create topics. Create all required topics using \`aiven_kafka_topic_create\` before or immediately after creating the connector. Topic naming depends on the connector type (e.g. Debezium uses \`{topic.prefix}.{schema}.{table}\`).`;
+**IMPORTANT — topics must exist before the connector starts.** Aiven Kafka does not auto-create topics. Create all required topics using \`aiven_kafka_topic_create\` before or immediately after creating the connector. Topic naming depends on the connector type (e.g. Debezium uses \`{topic.prefix}.{schema}.{table}\`).
+
+${TOOL_LIST_PICKER_SUFFIX}`;
 
 export const CREATE_CONNECTOR_DESCRIPTION = `Create a Kafka Connect connector.
 
