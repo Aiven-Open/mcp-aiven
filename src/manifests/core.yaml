@@ -41,7 +41,7 @@ tools:
     append_list_picker_hint: true
     response_filter:
       key: service_plans
-      fields: [service_plan, node_count, service_type, regions, clouds]
+      fields: [service_plan]
     description: |
       List available plans for a service type. Requires `project` — use `aiven_project_list` first if unknown.
 

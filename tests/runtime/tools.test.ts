@@ -42,6 +42,23 @@ describe('toolSuccess', () => {
 
     expect(firstTextContent(result.content)).toBe(JSON.stringify(data));
   });
+
+  it('should truncate and append trim notice when over MCP_MAX_TOOL_RESULT_CHARS', () => {
+    const prev = process.env['MCP_MAX_TOOL_RESULT_CHARS'];
+    process.env['MCP_MAX_TOOL_RESULT_CHARS'] = '600';
+    try {
+      const result = toolSuccess('a'.repeat(2000));
+      expect(result.isError).toBeUndefined();
+      const out = firstTextContent(result.content);
+      expect(out).toBeDefined();
+      expect(out!.length).toBeLessThanOrEqual(600);
+      expect(out!.toLowerCase()).toMatch(/trim(med)?|mcp-aiven/);
+      expect(out!.startsWith('aaa')).toBe(true);
+    } finally {
+      if (prev === undefined) delete process.env['MCP_MAX_TOOL_RESULT_CHARS'];
+      else process.env['MCP_MAX_TOOL_RESULT_CHARS'] = prev;
+    }
+  });
 });
 
 describe('toolError', () => {

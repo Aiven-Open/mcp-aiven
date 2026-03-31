@@ -1,5 +1,6 @@
 import type { z } from 'zod';
 import type { CallToolResult, TextContent } from '@modelcontextprotocol/sdk/types.js';
+import { applyToolResultCharCap } from './tool-result-limit.js';
 
 export enum ServiceCategory {
   Core = 'core',
@@ -87,8 +88,9 @@ function textContent(text: string): TextContent {
 
 export function toolSuccess(data: string | Record<string, unknown>): ToolResult {
   const text = typeof data === 'string' ? data : JSON.stringify(data);
+  const capped = applyToolResultCharCap(text);
   return {
-    content: [textContent(text)],
+    content: [textContent(capped)],
   };
 }
 

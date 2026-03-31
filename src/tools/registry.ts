@@ -29,7 +29,6 @@ interface ManifestEntry {
   path: string;
   category: string;
   description?: string;
-  /** When true, `TOOL_LIST_PICKER_SUFFIX` is appended to the final tool description (see prompts). */
   append_list_picker_hint?: boolean;
   readOnly?: boolean;
   destructive?: boolean;
