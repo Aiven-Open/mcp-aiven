@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import type { AivenClient } from '../../client.js';
 import type { ToolResult, ExecutePgQueryOptions } from '../../types.js';
 import { PgQueryMode, toolSuccess, toolError } from '../../types.js';
@@ -17,8 +17,12 @@ const RATE_LIMIT_MAX = 30;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const rateLimitBuckets = new Map<string, number[]>();
 
+function hashToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
+
 function checkRateLimit(token?: string): string | null {
-  const key = token ?? '__stdio__';
+  const key = token ? hashToken(token) : '__stdio__';
   const now = Date.now();
   const cutoff = now - RATE_LIMIT_WINDOW_MS;
 

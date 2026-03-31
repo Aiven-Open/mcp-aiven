@@ -13,7 +13,7 @@ export async function connectToService(
   opts?: RequestOptions
 ): Promise<pg.Client> {
   const connInfo = await getServiceConnectionInfo(client, project, serviceName, opts);
-  const caCert = await getProjectCaCert(client, project, opts);
+  const caCert = await getProjectCaCert(client, project, opts?.token);
 
   const pgClient = new pg.Client({
     host: connInfo.host,
