@@ -18,7 +18,7 @@ export const optimizeQueryInput = z
 
 export const pgQueryInput = z
   .object({
-    project: z.string().describe('Aiven project name'),
+    project: z.string().describe('Aiven project name — use aiven_project_list to get valid names'),
     service_name: z.string().describe('Aiven PostgreSQL service name'),
     query: z
       .string()
@@ -51,7 +51,7 @@ export const pgQueryInput = z
 
 export const pgExecuteQueryInput = z
   .object({
-    project: z.string().describe('Aiven project name'),
+    project: z.string().describe('Aiven project name — use aiven_project_list to get valid names'),
     service_name: z.string().describe('Aiven PostgreSQL service name'),
     query: z
       .string()

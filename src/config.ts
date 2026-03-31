@@ -19,5 +19,5 @@ export function loadConfig(transport: 'stdio' | 'http' = 'stdio'): AivenConfig {
 
   const readOnly = process.env['AIVEN_READ_ONLY'] === 'true';
 
-  return { token, readOnly };
+  return { token, readOnly, transport };
 }

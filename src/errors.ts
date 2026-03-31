@@ -1,3 +1,5 @@
+import { scrubSensitiveValues } from './security.js';
+
 const ERROR_HINTS: Record<number, string> = {
   400: 'Check the request parameters for missing or invalid values',
   401: 'Check AIVEN_TOKEN is valid. Get a new token at: https://console.aiven.io/profile/auth',
@@ -21,7 +23,7 @@ export class AivenError extends Error {
   readonly moreInfo?: string;
 
   constructor(status: number, apiMessage: string, errorCode?: string, moreInfo?: string) {
-    const lines: string[] = [`Aiven API Error (${status}): ${apiMessage}`];
+    const lines: string[] = [`Aiven API Error (${status}): ${scrubSensitiveValues(apiMessage)}`];
 
     const hint = ERROR_HINTS[status];
     if (hint) {

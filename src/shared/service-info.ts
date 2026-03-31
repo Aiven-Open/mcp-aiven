@@ -1,5 +1,5 @@
 import type { AivenClient } from '../client.js';
-import type { ServiceConnectionInfo } from '../types.js';
+import type { RequestOptions, ServiceConnectionInfo } from '../types.js';
 
 interface ServiceUriParams {
   host: string;
@@ -22,10 +22,9 @@ interface CaCertResponse {
 export async function getProjectCaCert(
   client: AivenClient,
   project: string,
-  token?: string
+  opts?: RequestOptions
 ): Promise<string | undefined> {
   try {
-    const opts = token ? { token } : undefined;
     const data = await client.get<CaCertResponse>(
       `/project/${encodeURIComponent(project)}/kms/ca`,
       opts
@@ -40,9 +39,8 @@ export async function getServiceConnectionInfo(
   client: AivenClient,
   project: string,
   serviceName: string,
-  token?: string
+  opts?: RequestOptions
 ): Promise<ServiceConnectionInfo> {
-  const opts = token ? { token } : undefined;
   const data = await client.get<ServiceResponse>(
     `/project/${encodeURIComponent(project)}/service/${encodeURIComponent(serviceName)}`,
     opts

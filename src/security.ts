@@ -12,6 +12,29 @@ export const REDACTED_FIELDS = new Set([
 const REDACTED_KEY = /(?:^|\.)(password|token|secret|api_key|access_key|access_secret|secret_key|auth_token|private_key|client_secret|connection_string|sasl_password|keystore_password|truststore_password|.*_uri|.*_url|ca_cert|client_cert|client_key|ssl_cert|ssl_key|certificate|.*_cert|.*_key|.*_ca|.*_certificate|.*_pem)$/i;
 const SENSITIVE_VALUE = /-----BEGIN [A-Z ]*(?:PRIVATE KEY|CERTIFICATE)-----|^[a-z]+:\/\/[^:]+:[^@]+@/i;
 
+const SCRUB_PATTERNS: { pattern: RegExp; replacement: string }[] = [
+  {
+    pattern: /-----BEGIN [A-Z ]*CERTIFICATE-----[\s\S]*?-----END [A-Z ]*CERTIFICATE-----/g,
+    replacement: '[REDACTED_CERTIFICATE]',
+  },
+  {
+    pattern: /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g,
+    replacement: '[REDACTED_KEY]',
+  },
+  {
+    pattern: /[a-z]+:\/\/[^:]+:[^@\s]+@[^\s'"]+/gi,
+    replacement: '[REDACTED_URI]',
+  },
+];
+
+export function scrubSensitiveValues(value: string): string {
+  let result = value;
+  for (const { pattern, replacement } of SCRUB_PATTERNS) {
+    result = result.replace(pattern, replacement);
+  }
+  return result;
+}
+
 export function redactSensitiveData<T>(data: T): T {
   if (data == null) return data;
   if (typeof data === 'string') {

@@ -7,6 +7,8 @@ tools:
     response_filter:
       key: projects
       fields: [project_name, default_cloud, organization_id, tags]
+    description: |
+      List all Aiven projects. ALWAYS call this first to get valid `project` names — never guess project names.
 
   - name: aiven_project_get
     method: GET
@@ -30,6 +32,8 @@ tools:
     response_filter:
       key: services
       fields: [service_name, service_type]
+    description: |
+      List services in a project. `project` must be a valid Aiven project name from `aiven_project_list`.
 
   - name: aiven_service_type_plans
     method: GET
@@ -79,7 +83,8 @@ tools:
     category: core
     exclude_params: [include_secrets]
     description: |
-      Get service information. If the service `state` is not `RUNNING`, return the status to the user and stop. Do NOT call this tool again in a loop — let the user decide when to re-check.
+      Get service information. `project` must be a valid Aiven project name from `aiven_project_list`.
+      If the service `state` is not `RUNNING`, return the status to the user and stop. Do NOT call this tool again in a loop — let the user decide when to re-check.
 
   - name: aiven_service_update
     method: PUT

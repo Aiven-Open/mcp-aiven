@@ -5,6 +5,7 @@ export enum ServiceCategory {
   Core = 'core',
   Pg = 'pg',
   Kafka = 'kafka',
+  Application = 'application',
 }
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -12,12 +13,15 @@ export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 export interface AivenConfig {
   readonly token: string | undefined;
   readonly readOnly: boolean;
+  readonly transport: 'stdio' | 'http';
 }
 
 export interface RequestOptions {
   query?: Record<string, string | number | boolean | undefined> | undefined;
   timeout?: number | undefined;
   token?: string | undefined;
+  toolName?: string | undefined;
+  mcpClient?: string | undefined;
 }
 
 export interface ToolAnnotations {
@@ -66,6 +70,7 @@ export type ToolResult = CallToolResult;
 
 export interface HandlerContext {
   token?: string | undefined;
+  mcpClient?: string | undefined;
 }
 
 export interface ToolDefinition<TInput extends z.ZodType = z.ZodType> {
@@ -124,6 +129,8 @@ export interface ResponseFilterConfig {
   fields: string[];
 }
 
+export type ToolSpec = ApiToolConfig;
+
 export interface ApiToolConfig {
   name: string;
   title: string;
@@ -165,7 +172,17 @@ export interface ExecutePgQueryOptions {
   limit?: number | undefined;
   offset?: number | undefined;
   token?: string | undefined;
+  mcpClient?: string | undefined;
+  toolName?: string | undefined;
 }
+
+// ---------- Application ----------
+
+export enum ApplicationToolName {
+  Deploy = 'aiven_application_deploy',
+}
+
+// ---------- Kafka ----------
 
 export enum KafkaToolName {
   ConnectCreateConnector = 'aiven_kafka_connect_create_connector',
