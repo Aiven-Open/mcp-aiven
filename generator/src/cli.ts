@@ -21,6 +21,13 @@ interface ManifestEntry {
   description?: string;
   readOnly?: boolean;
   exclude_params?: string[];
+  /**
+   * When set, skip OpenAPI lookup and use this JSON Schema for tool inputs.
+   * Use for endpoints not published in https://api.aiven.io/doc/openapi.json
+   */
+  manual_schema?: Record<string, unknown>;
+  /** Defaults to true when manual_schema is set */
+  manual_strict?: boolean;
 }
 
 const OUTPUT_FILE = path.join(process.cwd(), 'generator', 'schemas', 'api-schemas.json');
@@ -70,6 +77,20 @@ async function main(): Promise<void> {
   let matched = 0;
 
   for (const entry of manifest) {
+    if (entry.manual_schema) {
+      matched++;
+      const description =
+        entry.description?.trim() ??
+        'No description available (manual_schema entry; not from OpenAPI)';
+      schemas[entry.name] = {
+        schema: entry.manual_schema,
+        strict: entry.manual_strict ?? true,
+        title: buildTitle(entry.name),
+        description,
+      };
+      continue;
+    }
+
     const op = opMap.get(`${entry.method.toUpperCase()} ${entry.path}`);
     if (!op) {
       console.warn(`WARNING: No operation for ${entry.method} ${entry.path} (${entry.name})`);

@@ -41,9 +41,11 @@ tools:
     category: core
     response_filter:
       key: service_plans
-      fields: [service_plan, node_count, service_type]
+      fields: [service_plan, node_count, service_type, regions, clouds]
     description: |
-      List available plans for a service type. Returns plan names, node counts, and service type. Requires `project` — use `aiven_project_list` first if unknown.
+      List available plans for a service type. Requires `project` — use `aiven_project_list` first if unknown.
+
+      Each plan may include **`regions`** (and sometimes **`clouds`**) describing where that plan can run. Use those fields to show the user **which cloud names** (e.g. `do-fra`, `aws-eu-central-1`) are valid for their chosen plan before calling `aiven_service_create`.
 
       **Pricing is not included in this response.** Prices vary by cloud region. Use `aiven_service_plan_pricing` to get pricing for a specific plan and cloud.
 
@@ -67,12 +69,13 @@ tools:
       key: service
       fields: [service_name, service_type, state, plan, cloud_name]
     description: |
-      Create a new Aiven service.
-      - Call `aiven_service_type_plans` first, then present 2-4 best plans as selectable options via AskUserQuestion
-      - `cloud`: pick from the chosen plan's clouds list
-      - `user_config`: for PostgreSQL set `{"pg_version": "17"}`
-      - Read replica: set `service_to_fork_from` and `user_config.pg_read_replica: true`
-      - After creation, tell user it's provisioning. Do NOT poll `aiven_service_get` in a loop
+      Create a new Aiven service. Always call `aiven_service_type_plans` first, present plans to the user, and let them choose before creating. Do not pick a plan yourself.
+
+      **Cloud (`cloud`) — never guess or silently default.** After the user picks a plan, show valid cloud names from that plan’s **`regions` / `clouds`** in the `aiven_service_type_plans` response and **ask which cloud they want**. Do not invent a region (e.g. do not assume `do-fra`). If per-plan clouds are unclear, call `aiven_list_project_clouds` and still require an **explicit user choice** unless they told you to use a specific cloud or the project’s default.
+
+      For PostgreSQL, set `user_config: {"pg_version": "17"}`. After creation, tell the user the service is provisioning (takes a few minutes) and ask them to tell you when to check the status. Do NOT poll `aiven_service_get` in a loop.
+
+      **Read replica:** set `service_to_fork_from` to the primary and `user_config.pg_read_replica: true`.
 
   - name: aiven_service_get
     method: GET
@@ -142,12 +145,38 @@ tools:
     readOnly: true
 
     description: |
-      Fetch service metrics for the specified time period.
+      Fetch metrics for **managed data services** (PostgreSQL, Kafka, OpenSearch, etc.) — i.e. not `service_type: application`.
+
+      **Do not use** for **application** services (custom apps deployed as an Aiven “application” service). For those, use **`aiven_service_application_metrics_get`** instead (GET `…/application/metrics`). If unsure, call `aiven_service_get` first and check `service_type`.
 
       Use `period` to control the time window: `hour`, `day`, `week`, `month`, or `year`.
       For Kafka services, optionally pass `kafka_topic_name` to get topic-level metrics.
 
       **Display format:** Render ALL metrics as a single ASCII dashboard using box-drawing characters (┌─┐│└┘) and progress bars (█░). One section per metric group. Show every metric returned — do not summarize or omit. Do NOT use markdown tables or bullet points. Do NOT generate scripts. Render directly as text. Add a blank line between each metric row for readability.
+
+  # Not in public OpenAPI — schema is maintained here (see generator manual_schema).
+  - name: aiven_service_application_metrics_get
+    method: GET
+    path: /project/{project}/service/{service_name}/application/metrics
+    category: core
+    readOnly: true
+    manual_schema:
+      type: object
+      properties:
+        project:
+          type: string
+        service_name:
+          type: string
+      required:
+        - project
+        - service_name
+    manual_strict: true
+    description: |
+      **Preferred tool** when the user asks for **application** metrics, or the target is an **application** service (`service_type: application`).
+
+      Calls **`GET …/application/metrics`**. Do **not** use `aiven_service_metrics_fetch` for these — that tool targets **`POST …/metrics`** for managed data services only.
+
+      If the service type is unknown, call **`aiven_service_get`** first, then choose this tool if `service_type` is `application`.
 
   - name: aiven_project_get_event_logs
     method: GET
