@@ -23,17 +23,20 @@ export async function getProjectCaCert(
   client: AivenClient,
   project: string,
   token?: string
-): Promise<string | undefined> {
-  try {
-    const opts = token ? { token } : undefined;
-    const data = await client.get<CaCertResponse>(
-      `/project/${encodeURIComponent(project)}/kms/ca`,
-      opts
+): Promise<string> {
+  const opts = token ? { token } : undefined;
+  const data = await client.get<CaCertResponse>(
+    `/project/${encodeURIComponent(project)}/kms/ca`,
+    opts
+  );
+  if (!data.certificate) {
+    throw new Error(
+      `Failed to retrieve the CA certificate for project "${project}". ` +
+        'A valid CA certificate is required to securely connect to PostgreSQL. ' +
+        'Refusing to connect without TLS verification.'
     );
-    return data.certificate;
-  } catch {
-    return undefined;
   }
+  return data.certificate;
 }
 
 export async function getServiceConnectionInfo(
