@@ -21,7 +21,7 @@ export async function connectToService(
     user: connInfo.user,
     password: connInfo.password,
     database: database ?? connInfo.dbname,
-    ssl: caCert ? { rejectUnauthorized: true, ca: caCert } : { rejectUnauthorized: false },
+    ssl: { rejectUnauthorized: true, ca: caCert },
     connectionTimeoutMillis: CONNECTION_TIMEOUT_MS,
   });
 
