@@ -5,6 +5,7 @@ import { AivenClient } from './client.js';
 import { loadApiTools } from './tools/registry.js';
 import { createKafkaCustomTools } from './tools/kafka/index.js';
 import { createPgCustomTools } from './tools/pg/index.js';
+import { createApplicationTools } from './tools/applications/index.js';
 import { createStdioTransport, startHttpServer } from './transport.js';
 import type { ToolDefinition } from './types.js';
 import { VERSION, API_ORIGIN } from './config.js';
@@ -15,6 +16,7 @@ function loadTools(client: AivenClient, readOnly: boolean): ToolDefinition[] {
     ...loadApiTools(client),
     ...createKafkaCustomTools(client),
     ...createPgCustomTools(client),
+    ...createApplicationTools(client),
   ];
 
   if (readOnly) {
@@ -36,7 +38,10 @@ function registerTools(server: McpServer, tools: ToolDefinition[]): void {
         ...(tool.definition.outputSchema ? { outputSchema: tool.definition.outputSchema } : {}),
       },
       async (params, extra) => {
-        const context = extra.authInfo ? { token: extra.authInfo.token } : undefined;
+        const context = {
+          token: extra.authInfo?.token,
+          mcpClient: server.server.getClientVersion()?.name,
+        };
         return tool.handler(params, context);
       }
     );

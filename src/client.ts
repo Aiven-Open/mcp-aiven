@@ -7,11 +7,13 @@ import { VERSION, API_BASE_URL } from './config.js';
 export class AivenClient {
   private readonly token: string | undefined;
   private readonly defaultTimeout: number;
+  private readonly transport: 'stdio' | 'http';
   private readonly fetchClient: ReturnType<typeof createClient<paths>>;
 
   constructor(config: AivenConfig) {
     this.token = config.token;
     this.defaultTimeout = 30000;
+    this.transport = config.transport;
     this.fetchClient = createClient<paths>({
       baseUrl: API_BASE_URL,
       headers: {
@@ -40,7 +42,7 @@ export class AivenClient {
       {
         params: options?.query ? { query: options.query } : undefined,
         body: body as never,
-        headers: { Authorization: `Bearer ${token}` },
+        headers: this.buildHeaders(token, options),
         signal: AbortSignal.timeout(timeout),
       } as never,
     )) as {
@@ -63,6 +65,20 @@ export class AivenClient {
     }
 
     return result.data as T;
+  }
+
+  private buildHeaders(token: string, options?: RequestOptions): Record<string, string> {
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${token}`,
+      'X-MCP-Transport': this.transport,
+    };
+    if (options?.toolName) {
+      headers['X-MCP-Tool-Name'] = options.toolName;
+    }
+    if (options?.mcpClient) {
+      headers['X-MCP-Client'] = options.mcpClient;
+    }
+    return headers;
   }
 
   async get<T>(path: string, options?: RequestOptions): Promise<T> {

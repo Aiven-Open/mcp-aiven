@@ -1,5 +1,6 @@
 import pg from 'pg';
 import type { AivenClient } from '../../client.js';
+import type { RequestOptions } from '../../types.js';
 import { getServiceConnectionInfo, getProjectCaCert } from '../../shared/service-info.js';
 
 const CONNECTION_TIMEOUT_MS = 10000;
@@ -9,10 +10,10 @@ export async function connectToService(
   project: string,
   serviceName: string,
   database?: string,
-  token?: string
+  opts?: RequestOptions
 ): Promise<pg.Client> {
-  const connInfo = await getServiceConnectionInfo(client, project, serviceName, token);
-  const caCert = await getProjectCaCert(client, project, token);
+  const connInfo = await getServiceConnectionInfo(client, project, serviceName, opts);
+  const caCert = await getProjectCaCert(client, project, opts?.token);
 
   const pgClient = new pg.Client({
     host: connInfo.host,
@@ -20,7 +21,7 @@ export async function connectToService(
     user: connInfo.user,
     password: connInfo.password,
     database: database ?? connInfo.dbname,
-    ssl: caCert ? { rejectUnauthorized: true, ca: caCert } : { rejectUnauthorized: false },
+    ssl: { rejectUnauthorized: true, ca: caCert },
     connectionTimeoutMillis: CONNECTION_TIMEOUT_MS,
   });
 

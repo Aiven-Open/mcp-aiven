@@ -86,7 +86,11 @@ export function createApiTool(config: ApiToolConfig, client: AivenClient): ToolD
     handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
       try {
         const args = params as Record<string, unknown>;
-        const opts = context?.token ? { token: context.token } : undefined;
+        const opts: RequestOptions = {
+          token: context?.token,
+          mcpClient: context?.mcpClient,
+          toolName: config.name,
+        };
 
         const data = await executeRequest(client, config, args, pathParams, opts);
 
