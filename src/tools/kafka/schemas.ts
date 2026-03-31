@@ -6,7 +6,7 @@ const SOURCE_SERVICE_DESC =
 
 export const createConnectorInput = z
   .object({
-    project: z.string().describe('Aiven project name'),
+    project: z.string().describe('Aiven project name — use aiven_project_list to get valid names'),
     service_name: z.string().describe('Kafka Connect service name'),
     connector_class: z.string().describe('Java class for the connector'),
     name: z.string().describe('Unique name for the connector'),
@@ -16,7 +16,7 @@ export const createConnectorInput = z
 
 export const editConnectorInput = z
   .object({
-    project: z.string().describe('Aiven project name'),
+    project: z.string().describe('Aiven project name — use aiven_project_list to get valid names'),
     service_name: z.string().describe('Kafka Connect service name'),
     connector_name: z.string().describe('Name of the connector to edit'),
     connector_class: z.string().describe('Java class for the connector'),
