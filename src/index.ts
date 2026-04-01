@@ -10,6 +10,7 @@ import { createStdioTransport, startHttpServer } from './transport.js';
 import type { ToolDefinition } from './types.js';
 import { VERSION, API_ORIGIN } from './config.js';
 import { READ_ONLY_INSTRUCTIONS } from './prompts.js';
+import { httpToolContext } from './http-tool-context.js';
 
 function loadTools(client: AivenClient, readOnly: boolean): ToolDefinition[] {
   let tools: ToolDefinition[] = [
@@ -38,9 +39,10 @@ function registerTools(server: McpServer, tools: ToolDefinition[]): void {
         ...(tool.definition.outputSchema ? { outputSchema: tool.definition.outputSchema } : {}),
       },
       async (params, extra) => {
+        const fromHttp = httpToolContext.getStore()?.mcpClientName;
         const context = {
           token: extra.authInfo?.token,
-          mcpClient: server.server.getClientVersion()?.name,
+          mcpClient: fromHttp ?? server.server.getClientVersion()?.name,
         };
         return tool.handler(params, context);
       }

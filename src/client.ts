@@ -36,13 +36,22 @@ export class AivenClient {
     }
 
     const timeout = options?.timeout ?? this.defaultTimeout;
+    const perRequestHeaders = this.buildHeaders(token, options);
+    const outgoingHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'User-Agent': `mcp-aiven/${VERSION}`,
+      ...perRequestHeaders,
+    };
+    this.logOutgoingRequest(method, path, outgoingHeaders);
+
     const result = (await this.fetchClient.request(
       method.toLowerCase() as never,
       path as never,
       {
         params: options?.query ? { query: options.query } : undefined,
         body: body as never,
-        headers: this.buildHeaders(token, options),
+        headers: perRequestHeaders,
         signal: AbortSignal.timeout(timeout),
       } as never,
     )) as {
@@ -65,6 +74,28 @@ export class AivenClient {
     }
 
     return result.data as T;
+  }
+
+  /**
+   * Logs merged outbound headers (same shape as openapi-fetch merges with the client defaults).
+   * Authorization is never logged verbatim.
+   */
+  private logOutgoingRequest(
+    method: HttpMethod,
+    path: string,
+    headers: Record<string, string>
+  ): void {
+    const forLog: Record<string, string> = { ...headers };
+    if (forLog['Authorization']?.startsWith('Bearer ')) {
+      forLog['Authorization'] = 'Bearer [REDACTED]';
+    }
+    console.error(
+      'mcp-aiven: Aiven request %s %s%s headers=%s',
+      method,
+      API_BASE_URL,
+      path,
+      JSON.stringify(forLog)
+    );
   }
 
   private buildHeaders(token: string, options?: RequestOptions): Record<string, string> {
