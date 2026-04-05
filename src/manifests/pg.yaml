@@ -16,6 +16,7 @@ tools:
     method: GET
     path: /project/{project}/service/{service_name}/pg/available-extensions
     category: pg
+    append_list_picker_hint: true
 
   - name: aiven_pg_service_query_statistics
     method: POST

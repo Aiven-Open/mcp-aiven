@@ -14,6 +14,7 @@ tools:
     method: GET
     path: /project/{project}/service/{service_name}/topic
     category: kafka
+    append_list_picker_hint: true
 
   - name: aiven_kafka_topic_create
     method: POST
@@ -90,12 +91,14 @@ tools:
     method: GET
     path: /project/{project}/service/{service_name}/available-connectors
     category: kafka
+    append_list_picker_hint: true
     description: *kafka_connect_plan_gate
 
   - name: aiven_kafka_connect_list
     method: GET
     path: /project/{project}/service/{service_name}/connectors
     category: kafka
+    append_list_picker_hint: true
     description: *kafka_connect_plan_gate
 
   - name: aiven_kafka_connect_get_connector_status
@@ -132,6 +135,7 @@ tools:
     method: GET
     path: /project/{project}/service/{service_name}/kafka/schema/subjects
     category: kafka
+    append_list_picker_hint: true
 
   - name: aiven_kafka_schema_registry_subject_version_get
     method: GET

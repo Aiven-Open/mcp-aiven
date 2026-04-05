@@ -4,6 +4,7 @@ tools:
     method: GET
     path: /project
     category: core
+    append_list_picker_hint: true
     response_filter:
       key: projects
       fields: [project_name, default_cloud, organization_id, tags]
@@ -19,6 +20,7 @@ tools:
     method: GET
     path: /project/{project}/clouds
     category: core
+    append_list_picker_hint: true
 
     response_filter:
       key: clouds
@@ -28,6 +30,7 @@ tools:
     method: GET
     path: /project/{project}/service
     category: core
+    append_list_picker_hint: true
     exclude_params: [include_secrets]
     response_filter:
       key: services
@@ -39,6 +42,7 @@ tools:
     method: GET
     path: /project/{project}/service-types/{service_type}/plans
     category: core
+    append_list_picker_hint: true
     response_filter:
       key: service_plans
       fields: [service_plan]
@@ -54,6 +58,7 @@ tools:
     path: /project/{project}/pricing/service-types/{service_type}/plans/{service_plan}/clouds/{cloud}
     category: core
     readOnly: true
+    append_list_picker_hint: true
     description: |
       Get pricing for a specific service plan in a specific cloud region. Returns hourly USD price.
 
@@ -63,6 +68,7 @@ tools:
     method: POST
     path: /project/{project}/service
     category: core
+    append_list_picker_hint: true
     defaults:
       project_vpc_id: null
     response_filter:
@@ -182,3 +188,4 @@ tools:
     method: GET
     path: /project/{project}/events
     category: core
+    append_list_picker_hint: true
