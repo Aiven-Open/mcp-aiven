@@ -184,6 +184,21 @@ tools:
 
       If the service type is unknown, call **`aiven_service_get`** first, then choose this tool if `service_type` is `application`.
 
+  - name: aiven_project_vpc_list
+    method: GET
+    path: /project/{project}/vpcs
+    category: core
+    readOnly: true
+    response_filter:
+      key: vpcs
+      fields: [project_vpc_id, cloud_name, state, network_cidr]
+    description: |
+      List VPCs for a project. Returns each VPC's ID, cloud, state, and network CIDR.
+
+      Use this when deploying an application service fails with "please specify project_vpc_id" (i.e. the project has multiple active VPCs). List them, show the user the options, and let them pick which VPC to deploy into.
+
+      VPCs with state `ACTIVE` are ready to use. Pass the chosen `project_vpc_id` to `aiven_application_deploy`.
+
   - name: aiven_project_get_event_logs
     method: GET
     path: /project/{project}/events
