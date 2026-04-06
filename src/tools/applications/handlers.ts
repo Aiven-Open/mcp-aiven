@@ -6,6 +6,7 @@ import {
   ApplicationToolName,
   CREATE_ANNOTATIONS,
   UPDATE_ANNOTATIONS,
+  READ_ONLY_ANNOTATIONS,
   toolSuccess,
   toolError,
 } from '../../types.js';
@@ -15,6 +16,8 @@ import { getProjectCaCert } from '../../shared/service-info.js';
 import {
   deployApplicationInput,
   redeployApplicationInput,
+  vcsIntegrationListInput,
+  vcsIntegrationRepositoryListInput,
   type ServiceIntegrationInput,
 } from './schemas.js';
 
@@ -109,6 +112,8 @@ export function createApplicationTools(client: AivenClient): ToolDefinition[] {
 
 Inspect the local project files and confirm each applicable item. Report findings to the user. Do not call this tool until the user confirms all checks pass.
 
+- \`repository_url\` visibility → fetch repository metadata and check the \`private\` field. Do not infer from file access — being able to read files tells you nothing about visibility. If you cannot determine it, ask the user.
+- VCS credentials (private repos only) → if the repo is private, call \`aiven_vcs_integration_list\` (project), then for each integration call \`aiven_vcs_integration_repository_list\` and find the repo whose \`source_url\` matches (strip trailing \`.git\`, lowercase both sides). If matched, use the resolved \`vcs_integration_id\` and \`remote_repository_id\` — do NOT ask the user for these. If no match found, continue remaining checks but do NOT call this tool; after all checks, tell the user: "⚠️ This repository is private but is not connected to Aiven. Please connect your GitHub account via the Aiven Console and grant access to this repo, then try again."
 - \`build_path\` → verify Dockerfile exists, contains \`EXPOSE\` matching \`port\` param, has \`CMD\`/\`ENTRYPOINT\`
 - \`port\` → verify app source binds to \`0.0.0.0\`, not \`localhost\`/\`127.0.0.1\`
 - \`service_integrations\` → for each entry, verify the source service is RUNNING (\`aiven_service_get\`); verify app reads the configured env var names
@@ -149,6 +154,8 @@ CMD ["node", "dist/index.js"]
           project,
           service_name: serviceName,
           repository_url: repositoryUrl,
+          vcs_integration_id: vcsIntegrationId,
+          remote_repository_id: remoteRepositoryId,
           branch,
           build_path: buildPath,
           port,
@@ -218,12 +225,23 @@ CMD ["node", "dist/index.js"]
           ? buildPath
           : `./${buildPath}`;
 
+        // Build source config - include VCS integration IDs for private repo access
+        const sourceConfig: Record<string, unknown> = {
+          repository_url: repoUrl,
+          branch,
+          build_path: normalizedBuildPath,
+        };
+
+        // Add VCS integration IDs if provided (required for private repos)
+        if (vcsIntegrationId) {
+          sourceConfig['vcs_integration_id'] = vcsIntegrationId;
+        }
+        if (remoteRepositoryId) {
+          sourceConfig['remote_repository_id'] = remoteRepositoryId;
+        }
+
         const applicationConfig: Record<string, unknown> = {
-          source: {
-            repository_url: repoUrl,
-            branch,
-            build_path: normalizedBuildPath,
-          },
+          source: sourceConfig,
           ports: [{ name: portName, port, protocol: 'HTTP' }],
           environment_variables: allEnvVars,
         };
@@ -306,6 +324,100 @@ The rebuild pulls the latest commit from the configured branch and rebuilds the 
           return toolSuccess({
             service_name: serviceName,
             message: 'Redeploy triggered. The service will pull latest code, rebuild, and deploy.',
+          });
+        } catch (err) {
+          return toolError(errorMessage(err));
+        }
+      },
+    },
+    {
+      name: ApplicationToolName.VcsIntegrationList,
+      category: ServiceCategory.Application,
+      definition: {
+        title: 'List VCS Integrations',
+        description: `List connected VCS (GitHub) accounts for the organization that owns a project.
+
+Use this as the first step when deploying from a repository — run it silently before \`aiven_application_deploy\` to discover available VCS integrations and their IDs. The organization_id is resolved internally from the project name.
+
+Returns each integration's \`vcs_integration_id\` (needed for \`aiven_vcs_integration_repository_list\`) and \`vcs_account_name\` (the GitHub org or user name).`,
+        inputSchema: vcsIntegrationListInput,
+        annotations: READ_ONLY_ANNOTATIONS,
+      },
+      handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
+        const { project } = params as z.infer<typeof vcsIntegrationListInput>;
+        const opts = context?.token ? { token: context.token } : undefined;
+
+        let organizationId: string;
+        try {
+          const projectResult = await client.get<{ project: { organization_id: string } }>(
+            `/project/${encodeURIComponent(project)}`,
+            opts
+          );
+          organizationId = projectResult.project.organization_id;
+          if (!organizationId) {
+            return toolError(`Project '${project}' has no associated organization.`);
+          }
+        } catch (err) {
+          return toolError(`Failed to fetch project '${project}': ${errorMessage(err)}`);
+        }
+
+        try {
+          const result = await client.get<{
+            vcs_integrations: Array<{
+              vcs_integration_id: string;
+              vcs_account_name: string;
+              vcs_type: string;
+            }>;
+          }>(`/organization/${encodeURIComponent(organizationId)}/application/vcs-integrations`, opts);
+
+          return toolSuccess({
+            organization_id: organizationId,
+            vcs_integrations: result.vcs_integrations ?? [],
+          });
+        } catch (err) {
+          return toolError(errorMessage(err));
+        }
+      },
+    },
+    {
+      name: ApplicationToolName.VcsIntegrationRepositoryList,
+      category: ServiceCategory.Application,
+      definition: {
+        title: 'List VCS Integration Repositories',
+        description: `List repositories accessible via a VCS integration (connected GitHub account).
+
+Use this after \`aiven_vcs_integration_list\` to find the \`remote_repository_id\` needed for deploying a private repository. Compare each repository's \`source_url\` against the user's repository URL to find the match (normalize: strip trailing \`.git\`, lowercase both sides before comparing).
+
+Returns \`remote_repository_id\`, \`full_name\`, \`source_url\`, and \`default_branch_name\` for each repository.`,
+        inputSchema: vcsIntegrationRepositoryListInput,
+        annotations: READ_ONLY_ANNOTATIONS,
+      },
+      handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
+        const { organization_id: organizationId, vcs_integration_id: vcsIntegrationId } =
+          params as z.infer<typeof vcsIntegrationRepositoryListInput>;
+        const opts = context?.token ? { token: context.token } : undefined;
+
+        try {
+          const result = await client.get<{
+            repositories: Array<{
+              remote_repository_id: string;
+              vcs_integration_id: string;
+              vcs_type: string;
+              full_name: string;
+              name: string;
+              source_url: string;
+              default_branch_name: string | null;
+            }>;
+            next: string | null;
+            previous: string | null;
+          }>(
+            `/organization/${encodeURIComponent(organizationId)}/application/vcs-integrations/${encodeURIComponent(vcsIntegrationId)}/repositories`,
+            opts
+          );
+
+          return toolSuccess({
+            repositories: result.repositories ?? [],
+            next: result.next ?? null,
           });
         } catch (err) {
           return toolError(errorMessage(err));
