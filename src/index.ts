@@ -11,6 +11,19 @@ import type { ToolDefinition } from './types.js';
 import { VERSION, API_ORIGIN } from './config.js';
 import { READ_ONLY_INSTRUCTIONS } from './prompts.js';
 
+/** Streamable HTTP: inbound `/mcp` `User-Agent` (SDK `requestInfo.headers`). */
+function mcpClientFromRequestInfo(requestInfo: unknown): string | undefined {
+  if (!requestInfo || typeof requestInfo !== 'object' || !('headers' in requestInfo)) {
+    return undefined;
+  }
+  const headersRaw = (requestInfo as { headers: unknown }).headers;
+  if (!headersRaw || typeof headersRaw !== 'object') return undefined;
+  const h = headersRaw as Record<string, string | undefined>;
+
+  const v = h['user-agent'] ?? h['User-Agent'];
+  return typeof v === 'string' && v.length > 0 ? v : undefined;
+}
+
 function loadTools(client: AivenClient, readOnly: boolean): ToolDefinition[] {
   let tools: ToolDefinition[] = [
     ...loadApiTools(client),
@@ -40,7 +53,7 @@ function registerTools(server: McpServer, tools: ToolDefinition[]): void {
       async (params, extra) => {
         const context = {
           token: extra.authInfo?.token,
-          mcpClient: server.server.getClientVersion()?.name,
+          mcpClient: mcpClientFromRequestInfo(extra.requestInfo) ?? server.server.getClientVersion()?.name,
         };
         return tool.handler(params, context);
       }
