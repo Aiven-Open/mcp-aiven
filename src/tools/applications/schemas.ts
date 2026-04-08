@@ -124,15 +124,33 @@ export const deployApplicationInput = z
     repository_url: z
       .string()
       .describe(
-        'Public Git repository HTTPS URL (e.g. https://github.com/user/repo). ' +
-          'The repository must already exist with all code pushed to the target branch. ' +
-          'Do NOT push code on behalf of the user — ask them to push first.'
+        'Git repository HTTPS URL (e.g. https://github.com/user/repo). ' +
+          'IMPORTANT: NEVER assume the repository URL — always ask the user to confirm or provide it. ' +
+          'You may push code for the user, but ALWAYS ask for confirmation before pushing.'
+      ),
+
+    vcs_integration_id: z
+      .string()
+      .optional()
+      .describe(
+        'VCS integration ID for private repository access. ' +
+          'Auto-resolved via aiven_vcs_integration_list + aiven_vcs_integration_repository_list — do NOT ask the user for this value.'
+      ),
+
+    remote_repository_id: z
+      .string()
+      .optional()
+      .describe(
+        'Repository ID within the VCS integration. ' +
+          'Auto-resolved by matching source_url in aiven_vcs_integration_repository_list — do NOT ask the user for this value.'
       ),
 
     branch: z
       .string()
-      .default('main')
-      .describe('Git branch to deploy from. Default: main.'),
+      .describe(
+        'Git branch to deploy from (required — no default). ' +
+          'IMPORTANT: NEVER assume the branch — always ask the user to confirm which branch to deploy from.'
+      ),
 
     build_path: z
       .string()
@@ -232,5 +250,30 @@ export const redeployApplicationInput = z
   .object({
     project: z.string().describe('Aiven project name'),
     service_name: z.string().describe('Name of the existing application service to redeploy'),
+  })
+  .strict();
+
+export const vcsIntegrationListInput = z
+  .object({
+    project: z
+      .string()
+      .describe(
+        'Aiven project name. The organization_id is resolved internally from this project.'
+      ),
+  })
+  .strict();
+
+export const vcsIntegrationRepositoryListInput = z
+  .object({
+    organization_id: z
+      .string()
+      .describe(
+        'Organization ID returned by aiven_vcs_integration_list. Use that tool first to obtain this value.'
+      ),
+    vcs_integration_id: z
+      .string()
+      .describe(
+        'VCS integration ID returned by aiven_vcs_integration_list (e.g. "vcs-abc123").'
+      ),
   })
   .strict();

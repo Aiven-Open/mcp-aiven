@@ -183,6 +183,8 @@ export interface ExecutePgQueryOptions {
 export enum ApplicationToolName {
   Deploy = 'aiven_application_deploy',
   Redeploy = 'aiven_application_redeploy',
+  VcsIntegrationList = 'aiven_vcs_integration_list',
+  VcsIntegrationRepositoryList = 'aiven_vcs_integration_repository_list',
 }
 
 // ---------- Kafka ----------
