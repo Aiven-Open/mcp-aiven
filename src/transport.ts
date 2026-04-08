@@ -46,6 +46,14 @@ export function startHttpServer(
     });
   });
 
+  app.get('/mcp', (_req: Request, res: Response) => {
+    res.status(405).set('Allow', 'POST').json({ error: 'Method Not Allowed' });
+  });
+
+  app.delete('/mcp', (_req: Request, res: Response) => {
+    res.status(405).set('Allow', 'POST').json({ error: 'Method Not Allowed' });
+  });
+
   app.post('/mcp', authMiddleware, (req: Request, res: Response) => {
     void (async (): Promise<void> => {
       const token = (req as Request & { token: string }).token;
