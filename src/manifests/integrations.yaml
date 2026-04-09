@@ -1,0 +1,72 @@
+# Service integration tools: CRUD for integrations between Aiven services and external endpoints
+
+tools:
+  - name: aiven_service_integration_list
+    method: GET
+    path: /project/{project}/service/{service_name}/integration
+    category: integrations
+    readOnly: true
+    append_list_picker_hint: true
+    description: |
+      List all integrations for a specific service. Returns both integrations where this service is the source and where it is the destination.
+
+      Use this to see what metrics, logs, data pipeline, or replication integrations are active on a service.
+
+  - name: aiven_service_integration_create
+    method: POST
+    path: /project/{project}/integration
+    category: integrations
+    description: |
+      Create a service integration between two Aiven services, or between an Aiven service and an external integration endpoint.
+
+      **Before calling:** use `aiven_integration_types_list` to discover valid `integration_type` values and which source/destination service types each supports.
+
+      Provide `source_service`/`dest_service` for Aiven-to-Aiven integrations, or use `source_endpoint_id`/`dest_endpoint_id` for external endpoints.
+
+  - name: aiven_service_integration_get
+    method: GET
+    path: /project/{project}/integration/{integration_id}
+    category: integrations
+    readOnly: true
+    description: |
+      Get details for a specific service integration by ID. Returns the integration type, source and destination services, status, and configuration.
+
+  - name: aiven_service_integration_update
+    method: PUT
+    path: /project/{project}/integration/{integration_id}
+    category: integrations
+    description: |
+      Update the configuration of an existing service integration.
+
+      Only `user_config` can be updated — you cannot change the integration type, source, or destination after creation. To change those, delete and recreate the integration.
+
+  - name: aiven_service_integration_delete
+    method: DELETE
+    path: /project/{project}/integration/{integration_id}
+    category: integrations
+    description: |
+      Delete a service integration. This removes the connection between the source and destination services.
+
+      **Warning:** Deleting an integration may disrupt data flows (metrics, logs, replication). Confirm with the user before proceeding.
+
+  - name: aiven_integration_types_list
+    method: GET
+    path: /project/{project}/integration_types
+    category: integrations
+    readOnly: true
+    append_list_picker_hint: true
+    description: |
+      List all available service integration types for a project. Returns the integration type name along with the valid source and destination service types for each.
+
+      **Call this first** before creating an integration to understand which service types can be connected and in which direction.
+
+  - name: aiven_integration_endpoint_types_list
+    method: GET
+    path: /project/{project}/integration_endpoint_types
+    category: integrations
+    readOnly: true
+    append_list_picker_hint: true
+    description: |
+      List all available integration endpoint types for a project. Integration endpoints represent external services (e.g. Datadog, external Elasticsearch, Prometheus remote write, rsyslog, AWS CloudWatch, Google Cloud Logging).
+
+      Use this to discover what external endpoint types can be created, then use `aiven_service_integration_create` with the endpoint ID to wire an Aiven service to the external system.
