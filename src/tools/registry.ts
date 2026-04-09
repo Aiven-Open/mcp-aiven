@@ -53,6 +53,7 @@ const CATEGORY_MAP: Record<string, ServiceCategory> = {
   core: ServiceCategory.Core,
   pg: ServiceCategory.Pg,
   kafka: ServiceCategory.Kafka,
+  integrations: ServiceCategory.Integrations,
 };
 
 function toCategory(cat: string): ServiceCategory {
