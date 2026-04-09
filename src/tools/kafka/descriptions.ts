@@ -14,6 +14,9 @@ Supports Debezium CDC connectors (PostgreSQL, MySQL), JDBC source/sink, and any 
 
 **IMPORTANT — topics must exist before the connector starts.** Aiven Kafka does not auto-create topics. Create all required topics using \`aiven_kafka_topic_create\` before or immediately after creating the connector. Topic naming depends on the connector type (e.g. Debezium uses \`{topic.prefix}.{schema}.{table}\`).
 
+**Assistant:** If you suggest enabling public access for Kafka (e.g. \`user_config.public_access\`), include this line for the user:
+- ⚠️ WARNING: This makes the Kafka service reachable from the internet.
+
 ${TOOL_LIST_PICKER_SUFFIX}`;
 
 export const CREATE_CONNECTOR_DESCRIPTION = `Create a Kafka Connect connector.
