@@ -24,7 +24,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/Aiven-Open/mcp-aiven"
+    "url": "git+https://github.com/Aiven-Open/mcp-aiven.git"
   },
   "bugs": "https://github.com/Aiven-Open/mcp-aiven/issues",
   "homepage": "https://github.com/Aiven-Open/mcp-aiven/blob/main/README.md",
@@ -51,7 +51,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "pnpm generate && pnpm build && pnpm test --run",
+    "prepublishOnly": "pnpm generate:api-types && pnpm generate && pnpm build && pnpm test --run",
     "generate:api-types": "openapi-typescript https://api.aiven.io/doc/openapi.json -o src/generated/aiven-api.ts"
   },
   "devDependencies": {

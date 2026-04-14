@@ -2,27 +2,78 @@
 
 A [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server for the [Aiven](https://aiven.io/) cloud data platform.
 
-Manage PostgreSQL, Apache Kafka, and other Aiven services directly from AI assistants like Claude, Cursor, and VS Code Copilot.
+Manage PostgreSQL, Apache Kafka, applications, and other Aiven services directly from AI assistants like Claude, Cursor, and VS Code Copilot.
 
 > [!WARNING]
-> **Security Considerations**
+> **Use with care.** This MCP server can create, modify, and delete Aiven services and data on your behalf. AI agents may execute destructive actions (dropping databases, deleting services, producing messages) based on their interpretation of your prompts. You are fully responsible for the actions taken through this tool.
 >
-> **Self-Managed MCPs:** MCPs run in the user's environment, not hosted by Aiven. Users are responsible for their deployment, security, and compliance, following the [shared responsibility model](https://aiven.io/responsibility-matrix). Developers handle all aspects of MCP deployment, updates, and maintenance.
+> **Permissions:** Access is governed by the Aiven user permissions associated with the authenticated account. The MCP server can only perform actions that your Aiven user is allowed to do.
 >
-> **AI Agent Security:** Access is governed by the permissions of the API token used for authentication. Scope tokens carefully. AI agents may need access credentials (database connection strings, streaming tokens) to act on your behalf. Be careful when providing these. Follow your organization's security policies and do a risk assessment before giving AI agents access to sensitive resources.
->
-> **API Token Best Practices:** Use the minimum permissions needed (principle of least privilege). Rotate tokens regularly and store them securely.
+> **AI Agent Security:** AI agents may need access credentials (database connection strings, streaming tokens) to act on your behalf. Review what your agent is doing, especially in production environments. Follow your organization's security policies and do a risk assessment before giving AI agents access to sensitive resources.
+
+
 
 ## Quick Start
 
-### Option 1: stdio (local)
+### Option 1: Remote (hosted by Aiven)
 
-Add this to your MCP client config. The client starts the server as a child process:
+The MCP server is hosted at `https://mcp.aiven.live/mcp`. Your MCP client will prompt you to authorize on Aiven.
+
+**Claude Code**
+
+```bash
+claude mcp add --scope user --transport http aiven-mcp "https://mcp.aiven.live/mcp"
+```
+
+**Cursor**
+
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en-US/install-mcp?name=aiven-mcp&config=eyJ1cmwiOiJodHRwczovL21jcC5haXZlbi5saXZlL21jcCJ9)
+
+Or manually add to Cursor MCP settings:
 
 ```json
 {
   "mcpServers": {
-    "mcp-aiven": {
+    "aiven-mcp": {
+      "url": "https://mcp.aiven.live/mcp"
+    }
+  }
+}
+```
+
+**VS Code / Copilot**
+
+Add to `.vscode/mcp.json` in your workspace:
+
+```json
+{
+  "servers": {
+    "aiven-mcp": {
+      "type": "http",
+      "url": "https://mcp.aiven.live/mcp"
+    }
+  }
+}
+```
+
+### Option 2: stdio (local)
+
+Run the server locally as a child process of your MCP client. Requires Node.js 18+.
+
+You must provide your Aiven API token via the `AIVEN_TOKEN` environment variable. [Create a token here](https://console.aiven.io/profile/auth).
+
+**Claude Code**
+
+```bash
+claude mcp add --scope user aiven-mcp -e AIVEN_TOKEN=your-token-here -- npx -y mcp-aiven
+```
+
+**Cursor, VS Code** -- add to your MCP client config:
+
+```json
+{
+  "mcpServers": {
+    "aiven-mcp": {
       "command": "npx",
       "args": ["-y", "mcp-aiven"],
       "env": {
@@ -33,29 +84,18 @@ Add this to your MCP client config. The client starts the server as a child proc
 }
 ```
 
-### Option 2: Streamable HTTP (remote)
+Config file locations:
+- Cursor: Cursor Settings > MCP Servers
+- VS Code: `.vscode/mcp.json` in your workspace
 
-TBD
-
-### Config file locations
-
-| Client | Location |
-|---|---|
-| Claude Desktop (macOS) | `~/Library/Application Support/Claude/claude_desktop_config.json` |
-| Claude Desktop (Windows) | `%APPDATA%/Claude/claude_desktop_config.json` |
-| Claude Code | `claude mcp add mcp-aiven -- npx -y mcp-aiven` |
-| Cursor | Cursor Settings > MCP Servers |
-| VS Code | `.vscode/mcp.json` in your workspace |
-
-
-## Environment Variables
+### Environment Variables
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `AIVEN_TOKEN` | stdio only | -- | Aiven API token ([create one here](https://console.aiven.io/profile/auth)) |
 | `AIVEN_READ_ONLY` | No | `false` | Set to `true` to expose only read-only tools |
 
-In HTTP mode, `AIVEN_TOKEN` is not needed. The Bearer token from each request is used instead.
+In remote (HTTP) mode, `AIVEN_TOKEN` is not needed. Your MCP client sends your token as a Bearer token with each request.
 
 ## Tools
 
@@ -66,14 +106,17 @@ In HTTP mode, `AIVEN_TOKEN` is not needed. The Bearer token from each request is
 | `aiven_project_list` | List projects |
 | `aiven_project_get` | Get project details |
 | `aiven_list_project_clouds` | List cloud platforms for a project |
+| `aiven_project_vpc_list` | List VPCs for a project |
 | `aiven_service_list` | List services |
-| `aiven_service_type_plans` | List plans with pricing and cloud availability |
+| `aiven_service_type_plans` | List plans with cloud availability |
+| `aiven_service_plan_pricing` | Get pricing for a plan in a specific cloud |
 | `aiven_service_create` | Create a service |
 | `aiven_service_get` | Get service information |
 | `aiven_service_update` | Update a service (plan, config, power state) |
+| `aiven_service_metrics_fetch` | Fetch metrics for managed data services |
+| `aiven_service_application_metrics_get` | Fetch metrics for application services |
 | `aiven_project_get_service_logs` | Get service log entries |
 | `aiven_service_query_activity` | Fetch current queries for a service |
-| `aiven_service_metrics_fetch` | Fetch service metrics |
 | `aiven_project_get_event_logs` | Get project event log entries |
 
 ### Kafka
@@ -112,84 +155,18 @@ In HTTP mode, `AIVEN_TOKEN` is not needed. The Bearer token from each request is
 | `aiven_pg_write` | Run a write SQL statement (INSERT, UPDATE, DELETE, CREATE TABLE, etc.) |
 | `aiven_pg_optimize_query` | AI-powered query optimization (EverSQL) |
 
-## Development
+### Applications
 
-```bash
-git clone https://github.com/Aiven-Open/mcp-aiven.git
-cd mcp-aiven
-pnpm install
-pnpm generate   # generate tool schemas from OpenAPI spec
-pnpm build
-```
-
-### Running locally
-
-**stdio** -- point your MCP client at the built output:
-
-```json
-{
-  "mcpServers": {
-    "mcp-aiven": {
-      "command": "node",
-      "args": ["/absolute/path/to/mcp-aiven/dist/index.js"],
-      "env": {
-        "AIVEN_TOKEN": "your-token-here"
-      }
-    }
-  }
-}
-```
-
-**HTTP** -- start the server and connect your client to it:
-
-```bash
-pnpm build && node dist/index.js --transport http --port 3000
-```
-
-### Scripts
-
-| Command | Description |
+| Tool | Description |
 |---|---|
-| `pnpm generate` | Regenerate tool schemas from OpenAPI spec |
-| `pnpm build` | Compile TypeScript and copy manifests |
-| `pnpm test` | Run tests |
+| `aiven_application_deploy` | Deploy a Dockerized application to Aiven |
+| `aiven_application_redeploy` | Rebuild and redeploy an existing application |
+| `aiven_vcs_integration_list` | List connected VCS (GitHub) accounts |
+| `aiven_vcs_integration_repository_list` | List repositories for a VCS integration |
 
-### Adding a new API tool
+## Contributing
 
-Tools are defined in YAML manifests under `src/manifests/`. Each entry maps to an Aiven API endpoint.
-
-1. **Add a manifest entry** in `src/manifests/<category>.yaml`:
-
-```yaml
-- name: aiven_opensearch_index_list
-  method: GET
-  path: /project/{project}/service/{service_name}/opensearch/index
-  category: opensearch
-```
-
-Each entry needs `name`, `method`, `path`, and `category`. Optional fields:
-
-```yaml
-  description: |              # override the OpenAPI description
-    Custom description here.
-  readOnly: true              # mark as read-only (useful for POST endpoints that don't mutate)
-  destructive: true           # mark as destructive (adds destructiveHint annotation)
-  defaults:                   # inject default body fields
-    project_vpc_id: null
-  response_filter:            # trim the API response before returning to the LLM
-    key: services
-    fields: [service_name, state]
-    summarize: regions        # compact a nested object field
-```
-
-2. **Register the category** (if new) -- add it to `ServiceCategory` in `src/types.ts`
-
-3. **Regenerate and build**:
-
-```bash
-pnpm generate   # extracts JSON Schema from OpenAPI spec for each manifest entry
-pnpm build
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, running locally, and adding new tools.
 
 ## License
 

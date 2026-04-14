@@ -3,7 +3,6 @@ import {
   redactSensitiveData,
   REDACTED_PLACEHOLDER,
   REDACTED_FIELDS,
-  MASKED_FIELDS,
 } from '../../src/security.js';
 
 describe('redactSensitiveData', () => {
@@ -44,15 +43,13 @@ describe('redactSensitiveData', () => {
     expect(result.uri).toBe(REDACTED_PLACEHOLDER);
   });
 
-  it('should mask certificate fields', () => {
+  it('should redact certificate fields', () => {
     const input = {
       ca_cert: '-----BEGIN CERTIFICATE-----\nLongCertContent\n-----END CERTIFICATE-----',
     };
     const result = redactSensitiveData(input);
 
-    expect(result.ca_cert).toContain('***');
-    expect(result.ca_cert).not.toBe(REDACTED_PLACEHOLDER);
-    expect(result.ca_cert.length).toBeLessThan(input.ca_cert.length);
+    expect(result.ca_cert).toBe(REDACTED_PLACEHOLDER);
   });
 
   it('should handle nested objects', () => {
@@ -114,15 +111,15 @@ describe('sensitive field patterns', () => {
     expect(REDACTED_FIELDS.has('connection_uri')).toBe(true);
   });
 
-  it('should identify known masked field names', () => {
-    expect(MASKED_FIELDS.has('ca_cert')).toBe(true);
-    expect(MASKED_FIELDS.has('client_key')).toBe(true);
+  it('should identify certificate fields as redacted', () => {
+    expect(REDACTED_FIELDS.has('ca_cert')).toBe(true);
+    expect(REDACTED_FIELDS.has('client_key')).toBe(true);
   });
 
   it('should not include non-sensitive fields', () => {
     expect(REDACTED_FIELDS.has('username')).toBe(false);
     expect(REDACTED_FIELDS.has('service_name')).toBe(false);
-    expect(MASKED_FIELDS.has('plan')).toBe(false);
+    expect(REDACTED_FIELDS.has('plan')).toBe(false);
   });
 
   it('should redact sensitive URIs in values via redactSensitiveData', () => {

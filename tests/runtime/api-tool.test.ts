@@ -71,7 +71,7 @@ describe('createApiTool', () => {
 
     await tool.handler({});
 
-    expect(client.get).toHaveBeenCalledWith('/project', undefined);
+    expect(client.get).toHaveBeenCalledWith('/project', expect.objectContaining({ toolName: 'aiven_list_projects' }));
   });
 
   it('should replace path params in URL', async () => {
@@ -90,7 +90,7 @@ describe('createApiTool', () => {
 
     await tool.handler({ project: 'my-proj', service_name: 'my-svc' });
 
-    expect(client.get).toHaveBeenCalledWith('/project/my-proj/service/my-svc', undefined);
+    expect(client.get).toHaveBeenCalledWith('/project/my-proj/service/my-svc', expect.objectContaining({ toolName: 'aiven_list_projects' }));
   });
 
   it('should pass non-path params as query for GET', async () => {
@@ -109,9 +109,10 @@ describe('createApiTool', () => {
 
     await tool.handler({ project: 'my-proj', verbose: true });
 
-    expect(client.get).toHaveBeenCalledWith('/project/my-proj/service', {
+    expect(client.get).toHaveBeenCalledWith('/project/my-proj/service', expect.objectContaining({
       query: { verbose: true },
-    });
+      toolName: 'aiven_list_projects',
+    }));
   });
 
   it('should call client.request for POST with body', async () => {
@@ -137,7 +138,7 @@ describe('createApiTool', () => {
       'POST',
       '/project/my-proj/service',
       { service_name: 'my-svc', plan: 'startup-4' },
-      undefined
+      expect.objectContaining({ toolName: 'aiven_list_projects' })
     );
   });
 
@@ -164,7 +165,7 @@ describe('createApiTool', () => {
       'POST',
       '/project/my-proj/service',
       { service_name: 'my-svc', project_vpc_id: null },
-      undefined
+      expect.objectContaining({ toolName: 'aiven_list_projects' })
     );
   });
 
@@ -186,7 +187,7 @@ describe('createApiTool', () => {
 
     await tool.handler({ project: 'my-proj', service_name: 'my-svc' });
 
-    expect(client.delete).toHaveBeenCalledWith('/project/my-proj/service/my-svc', undefined);
+    expect(client.delete).toHaveBeenCalledWith('/project/my-proj/service/my-svc', expect.objectContaining({ toolName: 'aiven_list_projects' }));
   });
 
   it('should return error result on API error', async () => {
