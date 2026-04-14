@@ -23,15 +23,24 @@ function firstTextContent(
   return c?.type === 'text' ? c.text : undefined;
 }
 
+const MOCK_CA_CERT = '-----BEGIN CERTIFICATE-----\nMOCKCERT\n-----END CERTIFICATE-----';
+
 function createMockClient(data: unknown): AivenClient {
-  const mockFn = vi.fn().mockResolvedValue(data);
+  // Route-aware get mock: return CA cert for /kms/ca, service data for everything else
+  const getMock = vi.fn().mockImplementation((url: string) => {
+    if (url.includes('/kms/ca')) {
+      return Promise.resolve({ certificate: MOCK_CA_CERT });
+    }
+    return Promise.resolve(data);
+  });
+  const otherMock = vi.fn().mockResolvedValue(data);
   return {
-    get: mockFn,
-    post: mockFn,
-    put: mockFn,
-    delete: mockFn,
-    patch: mockFn,
-    request: mockFn,
+    get: getMock,
+    post: otherMock,
+    put: otherMock,
+    delete: otherMock,
+    patch: otherMock,
+    request: otherMock,
   } as unknown as AivenClient;
 }
 
@@ -226,7 +235,7 @@ describe('aiven_pg_read', () => {
         user: 'avnadmin',
         password: 'secret-password',
         database: 'defaultdb',
-        ssl: { rejectUnauthorized: false },
+        ssl: { rejectUnauthorized: true, ca: MOCK_CA_CERT },
         connectionTimeoutMillis: 10000,
       })
     );
@@ -262,11 +271,10 @@ describe('aiven_pg_read', () => {
     const { clientInstance } = await getMockClient();
     const calls = clientInstance.query.mock.calls;
 
-    expect(calls[0]?.[0]).toBe('BEGIN');
+    expect(calls[0]?.[0]).toBe('BEGIN READ ONLY');
     expect(calls[1]?.[0]).toBe("SET LOCAL statement_timeout = '30000'");
-    expect(calls[2]?.[0]).toBe('SET LOCAL default_transaction_read_only = on');
-    expect(calls[3]?.[0]).toBe('SELECT * FROM users');
-    expect(calls[4]?.[0]).toBe('COMMIT');
+    expect(calls[2]?.[0]).toBe('SELECT * FROM users');
+    expect(calls[3]?.[0]).toBe('COMMIT');
   });
 
   it('should return query results with metadata wrapped in UUID boundaries', async () => {
@@ -276,9 +284,8 @@ describe('aiven_pg_read', () => {
       connect: vi.fn().mockResolvedValue(undefined),
       query: vi
         .fn()
-        .mockResolvedValueOnce(undefined) // BEGIN
+        .mockResolvedValueOnce(undefined) // BEGIN READ ONLY
         .mockResolvedValueOnce(undefined) // SET LOCAL statement_timeout
-        .mockResolvedValueOnce(undefined) // SET LOCAL read_only
         .mockResolvedValueOnce({
           rows: [
             { id: 1, name: 'test' },
@@ -344,7 +351,7 @@ describe('aiven_pg_read', () => {
         .fn()
         .mockResolvedValueOnce(undefined) // BEGIN
         .mockResolvedValueOnce(undefined) // SET LOCAL timeout
-        .mockResolvedValueOnce(undefined) // SET LOCAL read_only
+
         .mockResolvedValueOnce({
           rows: manyRows,
           rowCount: 1500,
@@ -400,7 +407,7 @@ describe('aiven_pg_read', () => {
         .fn()
         .mockResolvedValueOnce(undefined) // BEGIN
         .mockResolvedValueOnce(undefined) // SET LOCAL timeout
-        .mockResolvedValueOnce(undefined) // SET LOCAL read_only
+
         .mockResolvedValueOnce({
           rows,
           rowCount: 50,
@@ -453,7 +460,7 @@ describe('aiven_pg_read', () => {
         .fn()
         .mockResolvedValueOnce(undefined) // BEGIN
         .mockResolvedValueOnce(undefined) // SET LOCAL timeout
-        .mockResolvedValueOnce(undefined) // SET LOCAL read_only
+
         .mockResolvedValueOnce({
           rows,
           rowCount: 5,
@@ -504,7 +511,7 @@ describe('aiven_pg_read', () => {
         .fn()
         .mockResolvedValueOnce(undefined) // BEGIN
         .mockResolvedValueOnce(undefined) // SET LOCAL timeout
-        .mockResolvedValueOnce(undefined) // SET LOCAL read_only
+
         .mockResolvedValueOnce({
           rows,
           rowCount: 25,
@@ -548,7 +555,7 @@ describe('aiven_pg_read', () => {
         .fn()
         .mockResolvedValueOnce(undefined) // BEGIN
         .mockResolvedValueOnce(undefined) // SET LOCAL timeout
-        .mockResolvedValueOnce(undefined) // SET LOCAL read_only
+
         .mockResolvedValueOnce({
           rows: [{ data: longValue, short: 'ok' }],
           rowCount: 1,
@@ -585,7 +592,7 @@ describe('aiven_pg_read', () => {
         .fn()
         .mockResolvedValueOnce(undefined) // BEGIN
         .mockResolvedValueOnce(undefined) // SET LOCAL timeout
-        .mockResolvedValueOnce(undefined) // SET LOCAL read_only
+
         .mockResolvedValueOnce({
           rows: [{ password: 'super-secret', name: 'test' }],
           rowCount: 1,
@@ -688,7 +695,7 @@ describe('aiven_pg_read', () => {
 
     expect(client.get).toHaveBeenCalledWith(
       '/project/my%20project/service/my%2Fservice',
-      undefined
+      expect.objectContaining({ toolName: 'aiven_pg_read' })
     );
   });
 
@@ -701,7 +708,7 @@ describe('aiven_pg_read', () => {
         .fn()
         .mockResolvedValueOnce(undefined) // BEGIN
         .mockResolvedValueOnce(undefined) // SET LOCAL timeout
-        .mockResolvedValueOnce(undefined) // SET LOCAL read_only
+
         .mockRejectedValueOnce(
           Object.assign(new Error('relation "secret_table" does not exist'), { code: '42P01' })
         )
