@@ -1,0 +1,206 @@
+# Core tools: projects, services, logs, events
+tools:
+  - name: aiven_project_list
+    method: GET
+    path: /project
+    category: core
+    append_list_picker_hint: true
+    response_filter:
+      key: projects
+      fields: [project_name, default_cloud, organization_id, tags]
+    description: |
+      List all Aiven projects. ALWAYS call this first to get valid `project` names — never guess project names.
+
+  - name: aiven_project_get
+    method: GET
+    path: /project/{project}
+    category: core
+
+  - name: aiven_list_project_clouds
+    method: GET
+    path: /project/{project}/clouds
+    category: core
+    append_list_picker_hint: true
+
+    response_filter:
+      key: clouds
+      fields: [cloud_name, cloud_description, provider, geo_region]
+
+  - name: aiven_service_list
+    method: GET
+    path: /project/{project}/service
+    category: core
+    append_list_picker_hint: true
+    exclude_params: [include_secrets]
+    response_filter:
+      key: services
+      fields: [service_name, service_type]
+    description: |
+      List services in a project. `project` must be a valid Aiven project name from `aiven_project_list`.
+
+  - name: aiven_service_type_plans
+    method: GET
+    path: /project/{project}/service-types/{service_type}/plans
+    category: core
+    append_list_picker_hint: true
+    response_filter:
+      key: service_plans
+      fields: [service_plan]
+    description: |
+      List available plans for a service type. Requires `project` — use `aiven_project_list` first if unknown.
+
+      Each plan may include **`regions`** (and sometimes **`clouds`**) describing where that plan can run. Use those fields to show the user **which cloud names** (e.g. `do-fra`, `aws-eu-central-1`) are valid for their chosen plan before calling `aiven_service_create`.
+
+      **Pricing is not included in this response.** Prices vary by cloud region. Use `aiven_service_plan_pricing` to get pricing for a specific plan and cloud.
+
+  - name: aiven_service_plan_pricing
+    method: GET
+    path: /project/{project}/pricing/service-types/{service_type}/plans/{service_plan}/clouds/{cloud}
+    category: core
+    readOnly: true
+    append_list_picker_hint: true
+    description: |
+      Get pricing for a specific service plan in a specific cloud region. Returns hourly USD price.
+
+      Use `aiven_service_type_plans` to list available plans, and `aiven_list_project_clouds` to list available clouds.
+
+  - name: aiven_service_create
+    method: POST
+    path: /project/{project}/service
+    category: core
+    append_list_picker_hint: true
+    defaults:
+      project_vpc_id: null
+    response_filter:
+      key: service
+      fields: [service_name, service_type, state, plan, cloud_name]
+    description: |
+      Create a new Aiven service. Always call `aiven_service_type_plans` first, present plans to the user, and let them choose before creating. Do not pick a plan yourself.
+
+      **Cloud (`cloud`) — never guess or silently default.** After the user picks a plan, show valid cloud names from that plan’s **`regions` / `clouds`** in the `aiven_service_type_plans` response and **ask which cloud they want**. Do not invent a region (e.g. do not assume `do-fra`). If per-plan clouds are unclear, call `aiven_list_project_clouds` and still require an **explicit user choice** unless they told you to use a specific cloud or the project’s default.
+
+      For PostgreSQL, set `user_config: {"pg_version": "17"}`. After creation, tell the user the service is provisioning (takes a few minutes) and ask them to tell you when to check the status. Do NOT poll `aiven_service_get` in a loop.
+
+      **Read replica:** set `service_to_fork_from` to the primary and `user_config.pg_read_replica: true`.
+
+  - name: aiven_service_get
+    method: GET
+    path: /project/{project}/service/{service_name}
+    category: core
+    exclude_params: [include_secrets]
+    description: |
+      Get service information. `project` must be a valid Aiven project name from `aiven_project_list`.
+      If the service `state` is not `RUNNING`, return the status to the user and stop. Do NOT call this tool again in a loop — let the user decide when to re-check.
+
+  - name: aiven_service_update
+    method: PUT
+    path: /project/{project}/service/{service_name}
+    category: core
+    destructive: true
+    defaults:
+      project_vpc_id: null
+    description: |
+      Update an existing Aiven service.
+
+      Can change: plan, cloud region, user configuration, power state.
+
+      **Warning:** Plan changes may cause brief service downtime during migration. Confirm with the user before changing plans.
+
+      **Common user_config changes:**
+
+      Enable Kafka Connect on a Kafka service:
+      ```
+      aiven_service_update(project="my-project", service_name="my-kafka",
+        user_config={"kafka_connect": true})
+      ```
+
+      Enable Schema Registry (Karapace) on a Kafka service:
+      ```
+      aiven_service_update(project="my-project", service_name="my-kafka",
+        user_config={"schema_registry": true})
+      ```
+
+      Enable tiered storage on a Kafka service:
+      ```
+      aiven_service_update(project="my-project", service_name="my-kafka",
+        user_config={"tiered_storage": {"enabled": true}})
+      ```
+
+      Set PostgreSQL version:
+      ```
+      aiven_service_update(project="my-project", service_name="my-pg",
+        user_config={"pg_version": "17"})
+      ```
+
+  - name: aiven_project_get_service_logs
+    method: POST
+    path: /project/{project}/service/{service_name}/logs
+    category: core
+    readOnly: true
+
+  - name: aiven_service_query_activity
+    method: POST
+    path: /project/{project}/service/{service_name}/query/activity
+    category: core
+    readOnly: true
+
+  - name: aiven_service_metrics_fetch
+    method: POST
+    path: /project/{project}/service/{service_name}/metrics
+    category: core
+    readOnly: true
+
+    description: |
+      Fetch metrics for **managed data services** (PostgreSQL, Kafka, OpenSearch, etc.) — i.e. not `service_type: application`.
+
+      **Do not use** for **application** services (custom apps deployed as an Aiven “application” service). For those, use **`aiven_service_application_metrics_get`** instead (GET `…/application/metrics`). If unsure, call `aiven_service_get` first and check `service_type`.
+
+      Use `period` to control the time window: `hour`, `day`, `week`, `month`, or `year`.
+      For Kafka services, optionally pass `kafka_topic_name` to get topic-level metrics.
+
+      **Display format:** Render ALL metrics as a single ASCII dashboard using box-drawing characters (┌─┐│└┘) and progress bars (█░). One section per metric group. Show every metric returned — do not summarize or omit. Do NOT use markdown tables or bullet points. Do NOT generate scripts. Render directly as text. Add a blank line between each metric row for readability.
+
+  # Not in public OpenAPI — schema is maintained here (see generator manual_schema).
+  - name: aiven_service_application_metrics_get
+    method: GET
+    path: /project/{project}/service/{service_name}/application/metrics
+    category: core
+    readOnly: true
+    manual_schema:
+      type: object
+      properties:
+        project:
+          type: string
+        service_name:
+          type: string
+      required:
+        - project
+        - service_name
+    manual_strict: true
+    description: |
+      **Preferred tool** when the user asks for **application** metrics, or the target is an **application** service (`service_type: application`).
+
+      Calls **`GET …/application/metrics`**. Do **not** use `aiven_service_metrics_fetch` for these — that tool targets **`POST …/metrics`** for managed data services only.
+
+      If the service type is unknown, call **`aiven_service_get`** first, then choose this tool if `service_type` is `application`.
+
+  - name: aiven_project_vpc_list
+    method: GET
+    path: /project/{project}/vpcs
+    category: core
+    readOnly: true
+    response_filter:
+      key: vpcs
+      fields: [project_vpc_id, cloud_name, state, network_cidr]
+    description: |
+      List VPCs for a project. Returns each VPC's ID, cloud, state, and network CIDR.
+
+      Use this when deploying an application service fails with "please specify project_vpc_id" (i.e. the project has multiple active VPCs). List them, show the user the options, and let them pick which VPC to deploy into.
+
+      VPCs with state `ACTIVE` are ready to use. Pass the chosen `project_vpc_id` to `aiven_application_deploy`.
+
+  - name: aiven_project_get_event_logs
+    method: GET
+    path: /project/{project}/events
+    category: core
+    append_list_picker_hint: true

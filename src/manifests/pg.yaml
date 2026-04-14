@@ -1,0 +1,43 @@
+# PostgreSQL tools: extensions, query stats, connection pools
+
+pg_connection_pool_plan_gate: &pg_connection_pool_plan_gate |
+  **PgBouncer connection pools** — `aiven_pg_bouncer_create`, `aiven_pg_bouncer_update`, and `aiven_pg_bouncer_delete` call Aiven’s `connection_pool` API.
+
+  **Plan gate — call `aiven_service_get` first.** Read `service.plan` (string). Do **not** call these tools if the plan does not support connection pooling; tell the user they need a higher tier instead of attempting the API.
+
+  **Plans that do _not_ include connection pooling:** `free-1-1gb`, `free-1-5gb`, any `free-*` plan, and **`hobbyist`**.
+
+  **Plans that support connection pooling:** `startup-*`, `business-*`, and `premium-*` (e.g. `startup-4`, `business-8`).
+
+  If the API returns **403** with a message about the service plan not including connection pooling, interpret that as a **plan limitation**, not necessarily a missing token permission.
+
+tools:
+  - name: aiven_pg_service_available_extensions
+    method: GET
+    path: /project/{project}/service/{service_name}/pg/available-extensions
+    category: pg
+    append_list_picker_hint: true
+
+  - name: aiven_pg_service_query_statistics
+    method: POST
+    path: /project/{project}/service/{service_name}/pg/query/stats
+    category: pg
+    readOnly: true
+
+  - name: aiven_pg_bouncer_create
+    method: POST
+    path: /project/{project}/service/{service_name}/connection_pool
+    category: pg
+    description: *pg_connection_pool_plan_gate
+
+  - name: aiven_pg_bouncer_update
+    method: PUT
+    path: /project/{project}/service/{service_name}/connection_pool/{pool_name}
+    category: pg
+    description: *pg_connection_pool_plan_gate
+
+  - name: aiven_pg_bouncer_delete
+    method: DELETE
+    path: /project/{project}/service/{service_name}/connection_pool/{pool_name}
+    category: pg
+    description: *pg_connection_pool_plan_gate
