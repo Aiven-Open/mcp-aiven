@@ -53,6 +53,7 @@ const CATEGORY_MAP: Record<string, ServiceCategory> = {
   core: ServiceCategory.Core,
   pg: ServiceCategory.Pg,
   kafka: ServiceCategory.Kafka,
+  clickhouse: ServiceCategory.ClickHouse,
   integrations: ServiceCategory.Integrations,
 };
 

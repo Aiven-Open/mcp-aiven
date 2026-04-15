@@ -1,0 +1,73 @@
+# ClickHouse tools: databases, users, queries, tiered storage
+
+tools:
+  - name: aiven_clickhouse_database_list
+    method: GET
+    path: /project/{project}/service/{service_name}/clickhouse/db
+    category: clickhouse
+    readOnly: true
+    append_list_picker_hint: true
+
+  - name: aiven_clickhouse_database_create
+    method: POST
+    path: /project/{project}/service/{service_name}/clickhouse/db
+    category: clickhouse
+
+  - name: aiven_clickhouse_database_delete
+    method: DELETE
+    path: /project/{project}/service/{service_name}/clickhouse/db/{database}
+    category: clickhouse
+    description: |
+      Delete a ClickHouse database.
+
+      **Warning:** Reserved and required databases (e.g. `default`, `system`, `information_schema`, `INFORMATION_SCHEMA`) cannot be deleted. The API will return 403 for those.
+
+  - name: aiven_clickhouse_user_list
+    method: GET
+    path: /project/{project}/service/{service_name}/clickhouse/user
+    category: clickhouse
+    readOnly: true
+    append_list_picker_hint: true
+
+  - name: aiven_clickhouse_user_create
+    method: POST
+    path: /project/{project}/service/{service_name}/clickhouse/user
+    category: clickhouse
+
+  - name: aiven_clickhouse_user_delete
+    method: DELETE
+    path: /project/{project}/service/{service_name}/clickhouse/user/{user_uuid}
+    category: clickhouse
+
+  - name: aiven_clickhouse_user_password_reset
+    method: PUT
+    path: /project/{project}/service/{service_name}/clickhouse/user/{user_uuid}/password
+    category: clickhouse
+
+  - name: aiven_clickhouse_current_queries
+    method: GET
+    path: /project/{project}/service/{service_name}/clickhouse/query
+    category: clickhouse
+    readOnly: true
+    description: |
+      List currently running queries on the ClickHouse cluster.
+
+      Returns active queries across all nodes, excluding internal system queries.
+
+  - name: aiven_clickhouse_query_stats
+    method: GET
+    path: /project/{project}/service/{service_name}/clickhouse/query/stats
+    category: clickhouse
+    readOnly: true
+    append_list_picker_hint: true
+    description: |
+      Get statistics on recent ClickHouse queries.
+
+      Supports pagination via `limit` (default 100, max 1000) and `offset` (default 0).
+      Results can be sorted with `order_by` (e.g. `total_time:desc`, `calls:desc`).
+
+  - name: aiven_clickhouse_tiered_storage_summary
+    method: GET
+    path: /project/{project}/service/{service_name}/clickhouse/tiered-storage/summary
+    category: clickhouse
+    readOnly: true

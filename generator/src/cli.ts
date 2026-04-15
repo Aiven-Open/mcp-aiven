@@ -47,7 +47,7 @@ function stripHtml(html: string): string {
 function buildTitle(name: string): string {
   return name
     .replace(/^aiven_/, '')
-    .replace(/^(core|pg|kafka)_/, '')
+    .replace(/^(core|pg|kafka|clickhouse)_/, '')
     .split('_')
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ');

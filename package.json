@@ -1,7 +1,7 @@
 {
   "name": "mcp-aiven",
   "version": "0.1.5",
-  "description": "MCP server for Aiven cloud data platform - manage PostgreSQL, Kafka, and other services",
+  "description": "MCP server for Aiven cloud data platform - manage PostgreSQL, Kafka, ClickHouse, and other services",
   "type": "module",
   "main": "dist/index.js",
   "keywords": [
@@ -9,6 +9,7 @@
     "aiven",
     "postgresql",
     "kafka",
+    "clickhouse",
     "cloud",
     "database",
     "model-context-protocol"

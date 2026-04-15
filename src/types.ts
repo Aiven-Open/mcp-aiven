@@ -6,6 +6,7 @@ export enum ServiceCategory {
   Core = 'core',
   Pg = 'pg',
   Kafka = 'kafka',
+  ClickHouse = 'clickhouse',
   Application = 'application',
   Integrations = 'integrations',
 }
@@ -193,5 +194,30 @@ export enum ApplicationToolName {
 export enum KafkaToolName {
   ConnectCreateConnector = 'aiven_kafka_connect_create_connector',
   ConnectEditConnector = 'aiven_kafka_connect_edit_connector',
+}
+
+// ---------- ClickHouse ----------
+
+export enum ClickHouseToolName {
+  Read = 'aiven_clickhouse_read',
+  Write = 'aiven_clickhouse_write',
+}
+
+export enum ClickHouseQueryMode {
+  ReadOnly = 'read-only',
+  ReadWrite = 'read-write',
+}
+
+export interface ExecuteClickHouseQueryOptions {
+  project: string;
+  service_name: string;
+  query: string;
+  database?: string | undefined;
+  mode: ClickHouseQueryMode;
+  limit?: number | undefined;
+  offset?: number | undefined;
+  token?: string | undefined;
+  mcpClient?: string | undefined;
+  toolName?: string | undefined;
 }
 
