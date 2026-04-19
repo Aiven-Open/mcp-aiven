@@ -154,7 +154,7 @@ export const deployApplicationInput = z
 
     build_path: z
       .string()
-      .default('.')
+      .default('')
       .describe(
         'Path within the repository where the Dockerfile is located. ' +
           'Default: "." (repository root). Use a subdirectory if the Dockerfile is not at the root (e.g. "./backend").'
