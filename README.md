@@ -60,7 +60,7 @@ Add to `.vscode/mcp.json` in your workspace:
 
 Run the server locally as a child process of your MCP client. Requires Node.js 18+.
 
-You must provide your Aiven API token via the `AIVEN_TOKEN` environment variable. [Create a token here](https://console.aiven.io/profile/auth).
+You must provide your Aiven API token via the `AIVEN_TOKEN` environment variable. [Create a token here](https://console.aiven.io/profile/tokens).
 
 **Claude Code**
 
@@ -92,7 +92,7 @@ Config file locations:
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `AIVEN_TOKEN` | stdio only | -- | Aiven API token ([create one here](https://console.aiven.io/profile/auth)) |
+| `AIVEN_TOKEN` | stdio only | -- | Aiven API token ([create one here](https://console.aiven.io/profile/tokens)) |
 | `AIVEN_READ_ONLY` | No | `false` | Set to `true` to expose only read-only tools |
 
 In remote (HTTP) mode, `AIVEN_TOKEN` is not needed. Your MCP client sends your token as a Bearer token with each request.
