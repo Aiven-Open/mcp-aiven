@@ -24,6 +24,7 @@ interface Session {
 }
 
 const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const MAX_SESSIONS = 1000;
 
 function authMiddleware(req: Request, res: Response, next: NextFunction): void {
   const [scheme, token] = (req.headers.authorization ?? '').split(' ', 2);
@@ -109,6 +110,12 @@ export function startHttpServer(
         return;
       } else if (isInitializeRequest(req.body)) {
         // First request — create new session
+        if (sessions.size >= MAX_SESSIONS) {
+          res.status(503).set('Retry-After', '30').json({ error: 'Too many active sessions' });
+          return;
+        }
+
+        const mcpServer = createServer();
         transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => randomUUID(),
           enableJsonResponse: true,
@@ -117,7 +124,6 @@ export function startHttpServer(
           },
         });
 
-        const mcpServer = createServer();
         await mcpServer.connect(transport as unknown as Transport);
 
         transport.onclose = () => {
