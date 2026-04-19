@@ -21,6 +21,11 @@ import {
   type ServiceIntegrationInput,
 } from './schemas.js';
 
+/** Max repositories returned in one call — stops pagination early (avoids huge payloads). */
+const MAX_VCS_REPOSITORY_LIST_ITEMS = 1000;
+/** Safety cap on HTTP pages if the API keeps returning data. */
+const MAX_VCS_REPOSITORY_LIST_PAGES = 100;
+
 interface ServiceResponse {
   service: {
     service_uri?: string;
@@ -372,7 +377,7 @@ Returns each integration's \`vcs_integration_id\` (needed for \`aiven_vcs_integr
 
           return toolSuccess({
             organization_id: organizationId,
-            vcs_integrations: result.vcs_integrations ?? [],
+            vcs_integrations: result.vcs_integrations,
           });
         } catch (err) {
           return toolError(errorMessage(err));
@@ -388,6 +393,8 @@ Returns each integration's \`vcs_integration_id\` (needed for \`aiven_vcs_integr
 
 Use this after \`aiven_vcs_integration_list\` to find the \`remote_repository_id\` needed for deploying a private repository. Compare each repository's \`source_url\` against the user's repository URL to find the match (normalize: strip trailing \`.git\`, lowercase both sides before comparing).
 
+The tool follows pagination until there are no more pages, or until ${MAX_VCS_REPOSITORY_LIST_ITEMS} repositories have been collected (whichever comes first). If truncated, \`truncated\` is true and \`next\` may still be set when more pages exist.
+
 Returns \`remote_repository_id\`, \`full_name\`, \`source_url\`, and \`default_branch_name\` for each repository.`,
         inputSchema: vcsIntegrationRepositoryListInput,
         annotations: READ_ONLY_ANNOTATIONS,
@@ -398,26 +405,58 @@ Returns \`remote_repository_id\`, \`full_name\`, \`source_url\`, and \`default_b
         const opts = context?.token ? { token: context.token } : undefined;
 
         try {
-          const result = await client.get<{
-            repositories: Array<{
-              remote_repository_id: string;
-              vcs_integration_id: string;
-              vcs_type: string;
-              full_name: string;
-              name: string;
-              source_url: string;
-              default_branch_name: string | null;
-            }>;
-            next: string | null;
-            previous: string | null;
-          }>(
-            `/organization/${encodeURIComponent(organizationId)}/application/vcs-integrations/${encodeURIComponent(vcsIntegrationId)}/repositories`,
-            opts
-          );
+          type RepoRow = {
+            remote_repository_id: string;
+            vcs_integration_id: string;
+            vcs_type: string;
+            full_name: string;
+            name: string;
+            source_url: string;
+            default_branch_name: string | null;
+          };
+          type Page = { repositories: RepoRow[]; next: string | null };
+
+          const path = `/organization/${encodeURIComponent(organizationId)}/application/vcs-integrations/${encodeURIComponent(vcsIntegrationId)}/repositories`;
+          const repositories: RepoRow[] = [];
+          let cursor: string | undefined;
+
+          for (let page = 0; page < MAX_VCS_REPOSITORY_LIST_PAGES; page++) {
+            const result = await client.get<Page>(path, {
+              ...opts,
+              query: cursor ? { cursor } : undefined,
+            });
+            const batch = result.repositories;
+            const next = result.next ?? null;
+            const room = MAX_VCS_REPOSITORY_LIST_ITEMS - repositories.length;
+            if (room > 0) {
+              repositories.push(...batch.slice(0, room));
+            }
+
+            const hitItemCap = repositories.length >= MAX_VCS_REPOSITORY_LIST_ITEMS;
+            const hitEnd = !next;
+
+            if (hitEnd) {
+              return toolSuccess({
+                repositories,
+                next: null,
+                truncated: false,
+              });
+            }
+            if (hitItemCap) {
+              return toolSuccess({
+                repositories,
+                next,
+                truncated: true,
+              });
+            }
+            cursor = next;
+          }
 
           return toolSuccess({
-            repositories: result.repositories ?? [],
-            next: result.next ?? null,
+            repositories,
+            next: cursor ?? null,
+            truncated: true,
+            note: `Pagination stopped after ${MAX_VCS_REPOSITORY_LIST_PAGES} pages (safety limit).`,
           });
         } catch (err) {
           return toolError(errorMessage(err));
