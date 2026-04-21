@@ -761,13 +761,13 @@ describe('aiven_pg_read', () => {
     const tools = createPgCustomTools(client);
     const tool = getPgQueryTool(tools);
 
-    // Fire 30 queries (the limit)
-    for (let i = 0; i < 30; i++) {
+    // Fire 100 queries (the limit; see RATE_LIMIT_MAX in query.ts)
+    for (let i = 0; i < 100; i++) {
       const r = await tool.handler({ project: 'proj', service_name: 'svc', query: 'SELECT 1' });
       expect(r.isError).toBeUndefined();
     }
 
-    // The 31st should be rejected
+    // The 101st should be rejected
     const result = await tool.handler({ project: 'proj', service_name: 'svc', query: 'SELECT 1' });
     expect(result.isError).toBe(true);
     expect(firstTextContent(result.content)).toContain('Rate limit exceeded');
@@ -781,7 +781,7 @@ describe('aiven_pg_read', () => {
     const tool = getPgQueryTool(tools);
 
     // Exhaust the limit
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 100; i++) {
       await tool.handler({ project: 'proj', service_name: 'svc', query: 'SELECT 1' });
     }
 
@@ -1377,28 +1377,28 @@ describe('aiven_pg_write', () => {
     const readTool = getPgQueryTool(tools);
     const writeTool = getPgExecuteQueryTool(tools);
 
-    // Fire 29 read queries
-    for (let i = 0; i < 29; i++) {
+    // Fire 99 read queries
+    for (let i = 0; i < 99; i++) {
       const r = await readTool.handler({ project: 'proj', service_name: 'svc', query: 'SELECT 1' });
       expect(r.isError).toBeUndefined();
     }
 
-    // 1 write query (30th total)
-    const r30 = await writeTool.handler({
+    // 1 write query (100th total)
+    const r100 = await writeTool.handler({
       project: 'proj',
       service_name: 'svc',
       query: "INSERT INTO users (name) VALUES ('test')",
     });
-    expect(r30.isError).toBeUndefined();
+    expect(r100.isError).toBeUndefined();
 
-    // 31st query (write) should be rate-limited
-    const r31 = await writeTool.handler({
+    // 101st query (write) should be rate-limited
+    const r101 = await writeTool.handler({
       project: 'proj',
       service_name: 'svc',
       query: "INSERT INTO users (name) VALUES ('test2')",
     });
-    expect(r31.isError).toBe(true);
-    expect(firstTextContent(r31.content)).toContain('Rate limit exceeded');
+    expect(r101.isError).toBe(true);
+    expect(firstTextContent(r101.content)).toContain('Rate limit exceeded');
   });
 
   it('should handle errors and rollback', async () => {

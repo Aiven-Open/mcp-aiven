@@ -8,7 +8,7 @@ import { createPgCustomTools } from './tools/pg/index.js';
 import { createApplicationTools } from './tools/applications/index.js';
 import { createStdioTransport, startHttpServer } from './transport.js';
 import type { ToolDefinition } from './types.js';
-import { VERSION, API_ORIGIN } from './config.js';
+import { VERSION, API_ORIGIN, loadHttpMcpRateLimit, httpTrustProxyEnabled } from './config.js';
 import { READ_ONLY_INSTRUCTIONS } from './prompts.js';
 
 /** Streamable HTTP: inbound `/mcp` `User-Agent` (SDK `requestInfo.headers`). */
@@ -82,6 +82,8 @@ async function main(): Promise<void> {
       port: parseInt(process.env['PORT'] ?? '3000', 10),
       apiOrigin: API_ORIGIN,
       scopes: ['projects', 'services', 'accounts:read'],
+      rateLimit: loadHttpMcpRateLimit(),
+      trustProxy: httpTrustProxyEnabled(),
     });
   } else {
     const server = createMcpServer();
