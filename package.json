@@ -31,6 +31,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.6.1",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.3.2",
     "libpg-query": "^17.7.3",
     "openapi-fetch": "^0.17.0",
     "pg": "^8.18.0",
