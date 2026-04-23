@@ -2,7 +2,7 @@ import { scrubSensitiveValues } from './security.js';
 
 const ERROR_HINTS: Record<number, string> = {
   400: 'Check the request parameters for missing or invalid values',
-  401: 'Check AIVEN_TOKEN is valid. Get a new token at: https://console.aiven.io/profile/auth',
+  401: 'Authentication expired or invalid. Reauthenticate via /mcp → aiven-mcp → re-authenticate.',
   403: 'Your token lacks permission for this operation. Check your user role and permissions.',
   404: 'Verify the project, service, or resource name exists and is spelled correctly',
   409: 'Resource may already exist or be in a conflicting state. Try listing existing resources first.',
