@@ -12,8 +12,7 @@ describe('AivenError', () => {
   it('should include hint for 401 errors', () => {
     const error = new AivenError(401, 'Unauthorized');
 
-    expect(error.message).toContain('AIVEN_TOKEN');
-    expect(error.message).toContain('console.aiven.io');
+    expect(error.message).toContain('Reauthenticate via /mcp');
   });
 
   it('should include hint for 403 errors', () => {
