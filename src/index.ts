@@ -10,6 +10,8 @@ import { createDocsTools } from './tools/docs/index.js';
 import { createStdioTransport, startHttpServer } from './transport.js';
 import type { ToolDefinition, McpRequestOptions } from './types.js';
 import { VERSION, API_ORIGIN, loadHttpMcpRateLimit, httpTrustProxyEnabled } from './config.js';
+import { READ_ONLY_INSTRUCTIONS } from './prompts.js';
+import { createObservabilityContext } from './observability.js';
 import { readOnlyInstructions } from './prompts.js';
 
 /** Streamable HTTP: inbound `/mcp` `User-Agent` (SDK `requestInfo.headers`). */
@@ -47,10 +49,17 @@ function registerTools(server: McpServer, tools: readonly ToolDefinition[]): voi
         ...(tool.definition.outputSchema ? { outputSchema: tool.definition.outputSchema } : {}),
       },
       async (params, extra) => {
+        const paramsObj = params as Record<string, unknown>;
+        const reasoning = paramsObj['reasoning'] as string | undefined;
+        const obsContext = createObservabilityContext(reasoning);
+
         const context = {
           token: extra.authInfo?.token,
           mcpClient: mcpClientFromRequestInfo(extra.requestInfo) ?? server.server.getClientVersion()?.name,
+          requestId: obsContext.requestId,
+          toolReasoning: obsContext.toolReasoning,
         };
+
         return tool.handler(params, context);
       }
     );

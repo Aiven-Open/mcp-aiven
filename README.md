@@ -102,13 +102,30 @@ Config file locations:
 - Cursor: Cursor Settings > MCP Servers
 - VS Code: `.vscode/mcp.json` in your workspace
 
+### Option 3: Local development
+
+Run a local build of the server (useful for development and testing):
+
+```bash
+pnpm install && pnpm generate:api-types && pnpm generate && pnpm build && AIVEN_TOKEN="<YOUR_TOKEN>" MCP_TRANSPORT="http" PORT=3000 node dist/index.js
+```
+
+The server listens on port 3000 by default. Connect your MCP client to `http://localhost:3000/mcp`.
+
+To point a remote deployment at a custom host (e.g. your local build), set `MCP_HOST`:
+
+```bash
+MCP_HOST=http://localhost:3000 node dist/index.js
+```
+
 ### Environment Variables
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `AIVEN_TOKEN` | stdio only | -- | Aiven API token ([create one here](https://console.aiven.io/profile/tokens)) |
 | `AIVEN_READ_ONLY` | No | `false` | Set to `true` to expose only read-only tools |
-| `MCP_HOST` | No | `https://mcp.aiven.live` | Public base URL of this server, advertised in OAuth protected resource metadata. Override when deploying behind a custom domain. |
+| `MCP_HOST` | No | `https://mcp.aiven.live` | Override the OAuth protected resource host |
+| `MCP_TRANSPORT` | No | `stdio` | Set to `http` to start an HTTP server instead of stdio |
 
 In remote (HTTP) mode, `AIVEN_TOKEN` is not needed. Your MCP client sends your token as a Bearer token with each request.
 

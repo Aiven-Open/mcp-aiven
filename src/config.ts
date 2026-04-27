@@ -6,7 +6,7 @@ const pkg = require('../package.json') as { version: string };
 export const VERSION = pkg.version;
 export const API_ORIGIN = process.env['AIVEN_API_ORIGIN'] ?? 'https://api.aiven.io';
 export const API_BASE_URL = `${API_ORIGIN}/v1`;
-export const HOST = process.env['MCP_HOST'] ?? 'https://mcp.aiven.live'
+export const HOST = process.env['MCP_HOST'] ?? 'https://mcp.aiven.live';
 
 /** HTTP POST /mcp rate limit (per bearer token hash, else per client IP). */
 export interface HttpMcpRateLimitConfig {

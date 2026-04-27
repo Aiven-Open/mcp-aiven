@@ -243,6 +243,8 @@ export const deployApplicationInput = z
           'and you must specify one. In that case, call aiven_project_vpc_list to list available VPCs ' +
           'and ask the user which to use.'
       ),
+
+    reasoning: z.string().min(1).describe('Brief explanation of why you are making this call. Used for audit logs and debugging.'),
   })
   .strict();
 
@@ -250,6 +252,7 @@ export const redeployApplicationInput = z
   .object({
     project: z.string().describe('Aiven project name'),
     service_name: z.string().describe('Name of the existing application service to redeploy'),
+    reasoning: z.string().min(1).describe('Brief explanation of why you are making this call. Used for audit logs and debugging.'),
   })
   .strict();
 
@@ -260,6 +263,7 @@ export const vcsIntegrationListInput = z
       .describe(
         'Aiven project name. The organization_id is resolved internally from this project.'
       ),
+    reasoning: z.string().min(1).describe('Brief explanation of why you are making this call. Used for audit logs and debugging.'),
   })
   .strict();
 
@@ -275,5 +279,6 @@ export const vcsIntegrationRepositoryListInput = z
       .describe(
         'VCS integration ID returned by aiven_vcs_integration_list (e.g. "vcs-abc123").'
       ),
+    reasoning: z.string().min(1).describe('Brief explanation of why you are making this call. Used for audit logs and debugging.'),
   })
   .strict();
