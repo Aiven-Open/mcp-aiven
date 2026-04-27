@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { AivenClient } from '../../client.js';
-import type { ToolDefinition, ToolResult, HandlerContext } from '../../types.js';
+import type { ToolDefinition, ToolResult, HandlerContext, RequestOptions } from '../../types.js';
 import {
   ServiceCategory,
   ApplicationToolName,
@@ -9,6 +9,7 @@ import {
   READ_ONLY_ANNOTATIONS,
   toolSuccess,
   toolError,
+  toolErrorWithRequestId,
 } from '../../types.js';
 import { errorMessage } from '../../errors.js';
 import { redactSensitiveData } from '../../security.js';
@@ -264,7 +265,11 @@ CMD ["node", "dist/index.js"]
         };
 
         try {
-          const opts = context?.token ? { token: context.token } : undefined;
+          const opts: RequestOptions = {
+            token: context?.token,
+            requestId: context?.requestId,
+            toolReasoning: context?.toolReasoning,
+          };
           const result = await client.post<Record<string, unknown>>(
             `/project/${encodeURIComponent(project)}/service`,
             data,
@@ -285,7 +290,7 @@ CMD ["node", "dist/index.js"]
 
           return toolSuccess(redactSensitiveData(result));
         } catch (err) {
-          return toolError(errorMessage(err));
+          return toolErrorWithRequestId(errorMessage(err), context?.requestId);
         }
       },
     },
@@ -312,14 +317,19 @@ The rebuild pulls the latest commit from the configured branch and rebuilds the 
         annotations: UPDATE_ANNOTATIONS,
       },
       handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
-        const { project, service_name: serviceName } = params as z.infer<typeof redeployApplicationInput>;
+        const { project, service_name: serviceName } = params as z.infer<
+          typeof redeployApplicationInput
+        >;
 
         try {
-          const opts = context?.token ? { token: context.token } : undefined;
+          const opts: RequestOptions = {
+            token: context?.token,
+            requestId: context?.requestId,
+            toolReasoning: context?.toolReasoning,
+          };
 
-          // No dedicated redeploy endpoint exists yet. A no-op service update (empty PUT body)
-          // triggers Meta Core's Executor to pick up the change and redeploy — same mechanism
-          // used by the Aiven Console redeploy button.
+          // A no-op service update (empty PUT body) triggers a redeploy — same
+          // mechanism used by the Aiven Console redeploy button.
           await client.put<Record<string, unknown>>(
             `/project/${encodeURIComponent(project)}/service/${encodeURIComponent(serviceName)}`,
             {},
@@ -331,7 +341,7 @@ The rebuild pulls the latest commit from the configured branch and rebuilds the 
             message: 'Redeploy triggered. The service will pull latest code, rebuild, and deploy.',
           });
         } catch (err) {
-          return toolError(errorMessage(err));
+          return toolErrorWithRequestId(errorMessage(err), context?.requestId);
         }
       },
     },
@@ -350,7 +360,7 @@ Returns each integration's \`vcs_integration_id\` (needed for \`aiven_vcs_integr
       },
       handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
         const { project } = params as z.infer<typeof vcsIntegrationListInput>;
-        const opts = context?.token ? { token: context.token } : undefined;
+        const opts = { token: context?.token, requestId: context?.requestId, toolReasoning: context?.toolReasoning };
 
         let organizationId: string;
         try {
@@ -402,7 +412,7 @@ Returns \`remote_repository_id\`, \`full_name\`, \`source_url\`, and \`default_b
       handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
         const { organization_id: organizationId, vcs_integration_id: vcsIntegrationId } =
           params as z.infer<typeof vcsIntegrationRepositoryListInput>;
-        const opts = context?.token ? { token: context.token } : undefined;
+        const opts = { token: context?.token, requestId: context?.requestId, toolReasoning: context?.toolReasoning };
 
         try {
           type RepoRow = {

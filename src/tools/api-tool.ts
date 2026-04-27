@@ -1,6 +1,6 @@
 import type { AivenClient } from '../client.js';
 import type { ToolDefinition, ToolResult, HandlerContext, ApiToolConfig, RequestOptions } from '../types.js';
-import { toolSuccess, toolError } from '../types.js';
+import { toolSuccess, toolErrorWithRequestId } from '../types.js';
 import { errorMessage } from '../errors.js';
 import { redactSensitiveData } from '../security.js';
 import { applyResponseFilter } from './response-filter.js';
@@ -86,13 +86,17 @@ export function createApiTool(config: ApiToolConfig, client: AivenClient): ToolD
     handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
       try {
         const args = params as Record<string, unknown>;
+        const { reasoning, ...argsWithoutReasoning } = args;
+
         const opts: RequestOptions = {
           token: context?.token,
           mcpClient: context?.mcpClient,
           toolName: config.name,
+          requestId: context?.requestId,
+          toolReasoning: context?.toolReasoning,
         };
 
-        const data = await executeRequest(client, config, args, pathParams, opts);
+        const data = await executeRequest(client, config, argsWithoutReasoning, pathParams, opts);
 
         const filtered = config.responseFilter
           ? applyResponseFilter(data, config.responseFilter)
@@ -100,7 +104,7 @@ export function createApiTool(config: ApiToolConfig, client: AivenClient): ToolD
 
         return toolSuccess(redactSensitiveData(filtered));
       } catch (err) {
-        return toolError(errorMessage(err));
+        return toolErrorWithRequestId(errorMessage(err), context?.requestId);
       }
     },
   };
