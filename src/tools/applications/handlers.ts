@@ -12,6 +12,7 @@ import {
 } from '../../types.js';
 import { errorMessage } from '../../errors.js';
 import { redactSensitiveData } from '../../security.js';
+import { wrapUntrustedResponse } from '../../untrusted.js';
 import { getProjectCaCert } from '../../shared/service-info.js';
 import {
   deployApplicationInput,
@@ -280,10 +281,10 @@ CMD ["node", "dist/index.js"]
               plan: service['plan'],
               cloud_name: service['cloud_name'],
             };
-            return toolSuccess(redactSensitiveData(summary));
+            return toolSuccess(wrapUntrustedResponse(redactSensitiveData(summary)));
           }
 
-          return toolSuccess(redactSensitiveData(result));
+          return toolSuccess(wrapUntrustedResponse(redactSensitiveData(result)));
         } catch (err) {
           return toolError(errorMessage(err));
         }

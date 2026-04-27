@@ -11,6 +11,7 @@ import {
 } from '../../types.js';
 import { errorMessage } from '../../errors.js';
 import { redactSensitiveData } from '../../security.js';
+import { wrapUntrustedResponse } from '../../untrusted.js';
 import { buildConnectorConfig } from './helpers.js';
 import { createConnectorInput, editConnectorInput } from './schemas.js';
 import { CREATE_CONNECTOR_DESCRIPTION, EDIT_CONNECTOR_DESCRIPTION } from './descriptions.js';
@@ -45,7 +46,7 @@ export function createKafkaCustomTools(client: AivenClient): ToolDefinition[] {
             opts
           );
 
-          return toolSuccess(redactSensitiveData(data));
+          return toolSuccess(wrapUntrustedResponse(redactSensitiveData(data)));
         } catch (err) {
           return toolError(errorMessage(err));
         }
@@ -79,7 +80,7 @@ export function createKafkaCustomTools(client: AivenClient): ToolDefinition[] {
             opts
           );
 
-          return toolSuccess(redactSensitiveData(data));
+          return toolSuccess(wrapUntrustedResponse(redactSensitiveData(data)));
         } catch (err) {
           return toolError(errorMessage(err));
         }

@@ -1,10 +1,10 @@
-import { randomUUID, createHash } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import type { AivenClient } from '../../client.js';
 import type { ToolResult, ExecutePgQueryOptions } from '../../types.js';
 import { PgQueryMode, toolSuccess, toolError } from '../../types.js';
 import { errorMessage } from '../../errors.js';
 import { redactSensitiveData } from '../../security.js';
-import { UNTRUSTED_DATA_WARNING } from '../../prompts.js';
+import { wrapUntrustedResponse } from '../../untrusted.js';
 import { connectToService } from './connection.js';
 import { validateReadQuery, validateWriteQuery } from './validation.js';
 
@@ -68,14 +68,7 @@ function sanitizePgError(err: unknown): string {
 }
 
 function wrapInBoundary(data: unknown): string {
-  const uuid = randomUUID();
-  const redacted = redactSensitiveData(data);
-  return [
-    UNTRUSTED_DATA_WARNING,
-    `<untrusted-query-result-${uuid}>`,
-    JSON.stringify(redacted, null, 2),
-    `</untrusted-query-result-${uuid}>`,
-  ].join('\n');
+  return wrapUntrustedResponse(redactSensitiveData(data));
 }
 
 export async function executePgQuery(
