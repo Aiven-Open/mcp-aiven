@@ -22,6 +22,7 @@ import { jsonSchemaToZod } from './json-schema-to-zod.js';
 import { createApiTool } from './api-tool.js';
 import { createRequire } from 'node:module';
 import { TOOL_LIST_PICKER_SUFFIX } from '../prompts.js';
+import { withOriginTag } from '../shared/ai-tags.js';
 
 interface ManifestEntry {
   name: string;
@@ -175,12 +176,13 @@ export function loadApiTools(client: AivenClient): ToolDefinition[] {
       client
     );
 
-    // Resolve free plan cloud for aiven_service_create
+    // Resolve free plan cloud and stamp the AI origin tag for aiven_service_create.
     if (entry.name === 'aiven_service_create') {
       const originalHandler = tool.handler;
       tool.handler = async (params, context?: HandlerContext): Promise<ToolResult> => {
         const args = params as Record<string, unknown>;
         await resolveFreePlanCloud(args, client, context?.token);
+        args['tags'] = withOriginTag(args)['tags'];
         return originalHandler(params, context);
       };
     }

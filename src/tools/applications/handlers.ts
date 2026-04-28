@@ -13,6 +13,7 @@ import {
 import { errorMessage } from '../../errors.js';
 import { redactSensitiveData } from '../../security.js';
 import { getProjectCaCert } from '../../shared/service-info.js';
+import { withOriginTag } from '../../shared/ai-tags.js';
 import {
   deployApplicationInput,
   redeployApplicationInput,
@@ -251,7 +252,7 @@ CMD ["node", "dist/index.js"]
           environment_variables: allEnvVars,
         };
 
-        const data = {
+        const data = withOriginTag({
           service_name: serviceName,
           service_type: 'application',
           plan,
@@ -261,7 +262,7 @@ CMD ["node", "dist/index.js"]
           user_config: {
             application: applicationConfig,
           },
-        };
+        });
 
         try {
           const opts = context?.token ? { token: context.token } : undefined;

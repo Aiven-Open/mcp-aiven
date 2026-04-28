@@ -97,6 +97,13 @@ Config file locations:
 
 In remote (HTTP) mode, `AIVEN_TOKEN` is not needed. Your MCP client sends your token as a Bearer token with each request.
 
+## AI origin tagging
+
+Services created by `aiven_service_create` and `aiven_application_deploy` are stamped with an `origin: mcp-aiven` tag so you can filter resources that came from this MCP server.
+
+- User-supplied tags are preserved; a caller-set `origin` value is never overwritten.
+- The `origin` key is meant to be shared with other AI-driven Aiven tooling (skills bundle, future MCPs) using different values (e.g. `skill-cli`, `skill-mcp`).
+
 ## Tools
 
 ### Core
