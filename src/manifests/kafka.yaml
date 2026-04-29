@@ -15,12 +15,24 @@ tools:
     path: /project/{project}/service/{service_name}/topic
     category: kafka
     append_list_picker_hint: true
+    description: |
+      This tool returns `topics`: an array of topic objects with:
+      - topic_name: Topic name
+      - state: Topic state (e.g. `ACTIVE`)
+      - partitions: Partition count
+      - replication: Replication factor (brokers/in-sync copies)
+      - retention_hours / retention_bytes: Message retention limits (`retention_bytes` may be `-1` for unset / broker default)
+      - cleanup_policy: e.g. `delete` or `compact`
+      - min_insync_replicas: ISR minimum writes require
+      - remote_storage_enable: Tiered remote storage enabled
+      - topic_description: Optional human-readable description (may be null)
+      - owner_user_group_id: ACL owner group id if applicable (often null)
+      - tags: Project tags attached to the topic
 
   - name: aiven_kafka_topic_create
     method: POST
     path: /project/{project}/service/{service_name}/topic
     category: kafka
-
     description: |
       Create a Kafka topic.
 
@@ -36,6 +48,16 @@ tools:
     method: GET
     path: /project/{project}/service/{service_name}/topic/{topic_name}
     category: kafka
+
+    description: |
+      This tool returns `topic` with:
+      - topic_name: Topic identifier
+      - state: Lifecycle state (e.g. `ACTIVE`)
+      - replication: Replication factor
+      - retention_hours / retention_bytes: Retention bounds (`retention_bytes` may be `-1`)
+      - cleanup_policy / min_insync_replicas / owner_user_group_id / topic_description / tags: Same meanings as topic list (`owner_user_group_id` and topic_description may be null)
+      - config: Resolved Kafka configs for this topic (`cleanup_policy`, `retention_*`, compression, ISR, tiers/remote_storage, segment tuning, etc.); each setting may include `source`, `value`, and `synonyms` from the broker/cluster
+      - partitions: Per-partition array; each partition includes `partition` id, ISR count (`isr`), `earliest_offset`/`latest_offset`, log `size`/tier `remote_size`, and **`consumer_groups`**: subscribed groups with **`group_name`** and current **`offset`**
 
   - name: aiven_kafka_topic_update
     method: PUT
@@ -86,6 +108,8 @@ tools:
       **REQUIRED BEFORE CALLING THIS TOOL — follow these steps in order:**
       1. Kafka REST API must be enabled. Call `aiven_service_update` with `user_config: {"kafka_rest": true}` if not already enabled.
       2. Call `aiven_service_get` once to check if `components` contains `kafka_rest` with `state: "running"`. If not ready, tell the user to wait and ask them when to re-check. Do NOT poll in a loop.
+
+      **Batch limit:** A single produce request accepts **at most 32** messages; split larger batches across multiple calls.
 
   - name: aiven_kafka_connect_available_connectors
     method: GET

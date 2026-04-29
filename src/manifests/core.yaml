@@ -10,6 +10,11 @@ tools:
       fields: [project_name, default_cloud, organization_id, tags]
     description: |
       List all Aiven projects. ALWAYS call this first to get valid `project` names — never guess project names.
+      This tool returns a list of projects with the following fields:
+      - project_name: The name of the project
+      - default_cloud: The default cloud for the project
+      - organization_id: The ID of the organization the project belongs to
+      - tags: The tags associated with the project
 
   - name: aiven_project_get
     method: GET
@@ -21,10 +26,17 @@ tools:
     path: /project/{project}/clouds
     category: core
     append_list_picker_hint: true
-
     response_filter:
       key: clouds
       fields: [cloud_name, cloud_description, provider, geo_region]
+    description: |
+      List clouds available for a project (regions/providers Aiven supports for deployment). Requires a valid `project` from `aiven_project_list`.
+
+      Each cloud entry contains:
+      - cloud_name: Region identifier used in APIs (e.g. `aws-eu-west-1`, `google-europe-west1`)
+      - cloud_description: Human-readable region label
+      - provider: Cloud vendor (e.g. `aws-eu-central-2`, `google-europe-north2`)
+      - geo_region: Broad geography (e.g. `europe`, `north america`)
 
   - name: aiven_service_list
     method: GET
@@ -37,6 +49,9 @@ tools:
       fields: [service_name, service_type]
     description: |
       List services in a project. `project` must be a valid Aiven project name from `aiven_project_list`.
+      This tool returns a list of services with the following fields:
+      - service_name: The name of the service
+      - service_type: The type of the service
 
   - name: aiven_service_type_plans
     method: GET
@@ -52,6 +67,9 @@ tools:
       Each plan may include **`regions`** (and sometimes **`clouds`**) describing where that plan can run. Use those fields to show the user **which cloud names** (e.g. `do-fra`, `aws-eu-central-1`) are valid for their chosen plan before calling `aiven_service_create`.
 
       **Pricing is not included in this response.** Prices vary by cloud region. Use `aiven_service_plan_pricing` to get pricing for a specific plan and cloud.
+      
+      This tool returns a list of service plans with the following fields:
+      - service_plan: The name of the service plan
 
   - name: aiven_service_plan_pricing
     method: GET
@@ -83,6 +101,13 @@ tools:
 
       **Read replica:** set `service_to_fork_from` to the primary and `user_config.pg_read_replica: true`.
 
+      This tool returns a `service` object with the following fields:
+      - service_name: Name of the service
+      - service_type: Service type (e.g. `pg`, `kafka`)
+      - state: Provisioning lifecycle (e.g. `BUILDING`, `REBUILDING`, `RUNNING`; not always `RUNNING` immediately after create)
+      - plan: Selected plan identifier
+      - cloud_name: Cloud region identifier where the service runs
+
   - name: aiven_service_get
     method: GET
     path: /project/{project}/service/{service_name}
@@ -91,6 +116,16 @@ tools:
     description: |
       Get service information. `project` must be a valid Aiven project name from `aiven_project_list`.
       If the service `state` is not `RUNNING`, return the status to the user and stop. Do NOT call this tool again in a loop — let the user decide when to re-check.
+
+      **Returns:** A `service` object; exact keys depend on `service_type` (Postgres example below). Not an exhaustive listing.
+
+      **Core:** `service_name`, `service_type`, `service_type_description`, `state`, `plan`, optional `plan_price_usd`, `cloud_name`, `cloud_description`, `tags`, `create_time`, `update_time`, `termination_protection`, sizing (`disk_space_mb`, `node_count`, node CPU/memory, `metadata` such as `pg_version`), `features`, `maintenance`, `service_notifications`, `tech_emails`, `project_vpc_id`, **`service_integrations`**, **`server_group`**, `cmk_id`, `group_list`, `is_cluster_plan`.
+
+      **Connectivity:** **`components`** (hosts, ports, roles such as primary/replica), **`connection_info`**, **`service_uri`**, **`service_uri_params`**. Sensitive values appear as **`[REDACTED]`** through this MCP.
+
+      **PostgreSQL / engine-specific:** `databases`, **`backups`**, **`connection_pools`**, replica/standby entries in `connection_info`, **`users`**, **`user_config`** (e.g. backups, `ip_filter`, engine tuning).
+
+      **Infrastructure:** **`node_states`** (per-node AZ, role, lifecycle).
 
   - name: aiven_service_update
     method: PUT
@@ -198,6 +233,12 @@ tools:
       Use this when deploying an application service fails with "please specify project_vpc_id" (i.e. the project has multiple active VPCs). List them, show the user the options, and let them pick which VPC to deploy into.
 
       VPCs with state `ACTIVE` are ready to use. Pass the chosen `project_vpc_id` to `aiven_application_deploy`.
+
+      This tool returns a list of VPCs with the following fields:
+      - project_vpc_id: The ID of the VPC
+      - cloud_name: The cloud region identifier where the VPC runs (e.g. `aws-eu-central-2`, `google-europe-north2`)
+      - state: The state of the VPC (e.g. `ACTIVE`, `APPROVED`)
+      - network_cidr: The network CIDR of the VPC
 
   - name: aiven_project_get_event_logs
     method: GET
