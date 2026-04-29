@@ -24,6 +24,14 @@ tools:
     category: pg
     readOnly: true
 
+    description: |
+      This tool returns **`queries`**: an array of one row per normalized query with:
+      - **Query identity:** `query` (SQL text, may use `$1` placeholders), `queryid` (internal id), `database_name`, `user_name`
+      - **Execution counts:** `calls`, `rows` (total rows returned/fetched)
+      - **Time (ms):** `total_time`, `min_time`, `max_time`, `mean_time`, `stddev_time`; plan timing: `total_plan_time`, `min_plan_time`, `max_plan_time`, `mean_plan_time`, `stddev_plan_time` (often `0` when planning is not tracked separately)
+      - **Buffer I/O:** `shared_blks_hit` / `read` / `dirtied` / `written`, `local_blks_*`, `temp_blks_read` / `temp_blks_written`; `blk_read_time`, `blk_write_time` (block I/O time)
+      - **WAL:** `wal_records`, `wal_fpi`, `wal_bytes` (may be string or numeric)
+
   - name: aiven_pg_bouncer_create
     method: POST
     path: /project/{project}/service/{service_name}/connection_pool
