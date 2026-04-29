@@ -3,6 +3,7 @@ import type { ToolDefinition, ToolResult, HandlerContext, ApiToolConfig, Request
 import { toolSuccess, toolError } from '../types.js';
 import { errorMessage } from '../errors.js';
 import { redactSensitiveData } from '../security.js';
+import { wrapUntrustedResponse } from '../untrusted.js';
 import { applyResponseFilter } from './response-filter.js';
 
 function extractPathParams(path: string): Set<string> {
@@ -98,7 +99,7 @@ export function createApiTool(config: ApiToolConfig, client: AivenClient): ToolD
           ? applyResponseFilter(data, config.responseFilter)
           : data;
 
-        return toolSuccess(redactSensitiveData(filtered));
+        return toolSuccess(wrapUntrustedResponse(redactSensitiveData(filtered)));
       } catch (err) {
         return toolError(errorMessage(err));
       }
