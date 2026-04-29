@@ -7,7 +7,7 @@ import {
   CREATE_ANNOTATIONS,
   UPDATE_ANNOTATIONS,
   toolSuccess,
-  toolError,
+  toolErrorWithRequestId,
 } from '../../types.js';
 import { errorMessage } from '../../errors.js';
 import { redactSensitiveData } from '../../security.js';
@@ -15,6 +15,7 @@ import { wrapUntrustedResponse } from '../../untrusted.js';
 import { buildConnectorConfig } from './helpers.js';
 import { createConnectorInput, editConnectorInput } from './schemas.js';
 import { CREATE_CONNECTOR_DESCRIPTION, EDIT_CONNECTOR_DESCRIPTION } from './descriptions.js';
+import type { RequestOptions } from '../../types.js';
 
 export function createKafkaCustomTools(client: AivenClient): ToolDefinition[] {
   return [
@@ -33,10 +34,12 @@ export function createKafkaCustomTools(client: AivenClient): ToolDefinition[] {
             Record<string, unknown>;
           const { project, service_name: serviceName } = typedParams;
 
-          const opts = {
+          const opts: RequestOptions = {
             token: context?.token,
             mcpClient: context?.mcpClient,
             toolName: KafkaToolName.ConnectCreateConnector,
+            requestId: context?.requestId,
+            toolReasoning: context?.toolReasoning,
           };
           const config = await buildConnectorConfig(client, typedParams, opts);
 
@@ -48,7 +51,7 @@ export function createKafkaCustomTools(client: AivenClient): ToolDefinition[] {
 
           return toolSuccess(wrapUntrustedResponse(redactSensitiveData(data)));
         } catch (err) {
-          return toolError(errorMessage(err));
+          return toolErrorWithRequestId(errorMessage(err), context?.requestId);
         }
       },
     },
@@ -67,10 +70,12 @@ export function createKafkaCustomTools(client: AivenClient): ToolDefinition[] {
           const typedParams = params as z.infer<typeof editConnectorInput> & Record<string, unknown>;
           const { project, service_name: serviceName, connector_name: connectorName } = typedParams;
 
-          const opts = {
+          const opts: RequestOptions = {
             token: context?.token,
             mcpClient: context?.mcpClient,
             toolName: KafkaToolName.ConnectEditConnector,
+            requestId: context?.requestId,
+            toolReasoning: context?.toolReasoning,
           };
           const config = await buildConnectorConfig(client, typedParams, opts);
 
@@ -82,7 +87,7 @@ export function createKafkaCustomTools(client: AivenClient): ToolDefinition[] {
 
           return toolSuccess(wrapUntrustedResponse(redactSensitiveData(data)));
         } catch (err) {
-          return toolError(errorMessage(err));
+          return toolErrorWithRequestId(errorMessage(err), context?.requestId);
         }
       },
     },

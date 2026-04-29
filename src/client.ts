@@ -96,6 +96,12 @@ export class AivenClient {
     if (options?.mcpClient) {
       headers['X-MCP-Client'] = options.mcpClient;
     }
+    if (options?.requestId) {
+      headers['X-MCP-Request-ID'] = options.requestId;
+    }
+    if (options?.toolReasoning) {
+      headers['X-MCP-Tool-Reasoning'] = options.toolReasoning;
+    }
     return headers;
   }
 

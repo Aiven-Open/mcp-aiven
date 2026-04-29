@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { AivenClient } from '../../client.js';
 import type { ToolResult, ExecutePgQueryOptions } from '../../types.js';
-import { PgQueryMode, toolSuccess, toolError } from '../../types.js';
+import { PgQueryMode, toolSuccess, toolError, toolErrorWithRequestId } from '../../types.js';
 import { errorMessage } from '../../errors.js';
 import { redactSensitiveData } from '../../security.js';
 import { wrapUntrustedResponse } from '../../untrusted.js';
@@ -97,13 +97,19 @@ export async function executePgQuery(
   const rateLimitError = checkRateLimit(token);
   if (rateLimitError) return toolError(rateLimitError);
 
-  const apiOpts = { token, mcpClient: options.mcpClient, toolName: options.toolName };
+  const apiOpts = {
+    token,
+    mcpClient: options.mcpClient,
+    toolName: options.toolName,
+    requestId: options.requestId,
+    toolReasoning: options.toolReasoning,
+  };
 
   let pgClient;
   try {
     pgClient = await connectToService(client, project, service_name, database, apiOpts);
   } catch (err) {
-    return toolError(errorMessage(err));
+    return toolErrorWithRequestId(errorMessage(err), options.requestId);
   }
 
   try {
@@ -135,7 +141,7 @@ export async function executePgQuery(
     return toolSuccess(wrapInBoundary({ meta, rows: truncatedRows }));
   } catch (err: unknown) {
     await pgClient.query('ROLLBACK').catch(() => {});
-    return toolError(sanitizePgError(err));
+    return toolErrorWithRequestId(sanitizePgError(err), options.requestId);
   } finally {
     await pgClient.end();
   }
