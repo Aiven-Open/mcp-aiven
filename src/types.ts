@@ -18,6 +18,12 @@ export interface AivenConfig {
   readonly transport: 'stdio' | 'http';
 }
 
+export interface McpRequestOptions {
+  readonly readOnly: boolean;
+}
+
+export type McpServerFactory = (options: McpRequestOptions) => import('@modelcontextprotocol/sdk/server/mcp.js').McpServer;
+
 export interface RequestOptions {
   query?: Record<string, string | number | boolean | undefined> | undefined;
   timeout?: number | undefined;

@@ -7,9 +7,9 @@ import { createKafkaCustomTools } from './tools/kafka/index.js';
 import { createPgCustomTools } from './tools/pg/index.js';
 import { createApplicationTools } from './tools/applications/index.js';
 import { createStdioTransport, startHttpServer } from './transport.js';
-import type { ToolDefinition } from './types.js';
+import type { ToolDefinition, McpRequestOptions } from './types.js';
 import { VERSION, API_ORIGIN, loadHttpMcpRateLimit, httpTrustProxyEnabled } from './config.js';
-import { READ_ONLY_INSTRUCTIONS } from './prompts.js';
+import { readOnlyInstructions } from './prompts.js';
 
 /** Streamable HTTP: inbound `/mcp` `User-Agent` (SDK `requestInfo.headers`). */
 function mcpClientFromRequestInfo(requestInfo: unknown): string | undefined {
@@ -24,22 +24,16 @@ function mcpClientFromRequestInfo(requestInfo: unknown): string | undefined {
   return typeof v === 'string' && v.length > 0 ? v : undefined;
 }
 
-function loadTools(client: AivenClient, readOnly: boolean): ToolDefinition[] {
-  let tools: ToolDefinition[] = [
+function loadAllTools(client: AivenClient): ToolDefinition[] {
+  return [
     ...loadApiTools(client),
     ...createKafkaCustomTools(client),
     ...createPgCustomTools(client),
     ...createApplicationTools(client),
   ];
-
-  if (readOnly) {
-    tools = tools.filter((t) => t.definition.annotations.readOnlyHint);
-  }
-
-  return tools;
 }
 
-function registerTools(server: McpServer, tools: ToolDefinition[]): void {
+function registerTools(server: McpServer, tools: readonly ToolDefinition[]): void {
   for (const tool of tools) {
     server.registerTool(
       tool.name,
@@ -65,13 +59,18 @@ async function main(): Promise<void> {
   const transport = process.env['MCP_TRANSPORT'] === 'http' ? 'http' : 'stdio';
   const config = loadConfig(transport);
   const client = new AivenClient(config);
-  const tools = loadTools(client, config.readOnly);
 
-  const serverOptions = config.readOnly
-    ? ([{ instructions: READ_ONLY_INSTRUCTIONS }] as const)
-    : ([] as const);
+  const allTools: readonly ToolDefinition[] = loadAllTools(client);
 
-  function createMcpServer(): McpServer {
+  function createMcpServer(options: McpRequestOptions): McpServer {
+    const tools = options.readOnly
+      ? allTools.filter((t) => t.definition.annotations.readOnlyHint)
+      : allTools;
+
+    const serverOptions = options.readOnly
+      ? ([{ instructions: readOnlyInstructions(transport) }] as const)
+      : ([] as const);
+
     const server = new McpServer({ name: 'mcp-aiven', version: VERSION }, ...serverOptions);
     registerTools(server, tools);
     return server;
@@ -84,9 +83,10 @@ async function main(): Promise<void> {
       scopes: ['projects', 'services', 'accounts:read'],
       rateLimit: loadHttpMcpRateLimit(),
       trustProxy: httpTrustProxyEnabled(),
+      readOnly: config.readOnly,
     });
   } else {
-    const server = createMcpServer();
+    const server = createMcpServer({ readOnly: config.readOnly });
     await server.connect(createStdioTransport());
     console.error('mcp-aiven: Server connected and ready');
   }
