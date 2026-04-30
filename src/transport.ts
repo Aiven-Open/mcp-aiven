@@ -3,22 +3,23 @@ import express from 'express';
 import rateLimit, { ipKeyGenerator, type Options } from 'express-rate-limit';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import type { Request, Response, NextFunction } from 'express';
 import { HOST } from './config.js';
 import type { HttpMcpRateLimitConfig } from './config.js';
+import type { McpServerFactory, McpRequestOptions } from './types.js';
 
 export function createStdioTransport(): StdioServerTransport {
   return new StdioServerTransport();
 }
 
-interface HttpServerConfig {
+export interface HttpServerConfig {
   port: number;
   apiOrigin: string;
   scopes: string[];
   rateLimit: HttpMcpRateLimitConfig;
   trustProxy: boolean;
+  readOnly: boolean;
 }
 
 const RATE_LIMIT_PROPERTY = 'rateLimit' as const;
@@ -83,8 +84,34 @@ function mcpRequestKey(req: Request): string {
   return ipKeyGenerator(req.ip ?? '0.0.0.0');
 }
 
+const ALLOWED_MCP_QUERY_PARAMS = new Set(['read_only']);
+
+export function parseMcpQueryParams(
+  query: Record<string, unknown>,
+  serverReadOnly: boolean
+): { options: McpRequestOptions } | { error: string } {
+  const unknownParams = Object.keys(query).filter((k) => !ALLOWED_MCP_QUERY_PARAMS.has(k));
+  if (unknownParams.length > 0) {
+    return { error: `Unknown query parameter(s): ${unknownParams.join(', ')}` };
+  }
+
+  const rawReadOnly = query['read_only'];
+
+  if (Array.isArray(rawReadOnly)) {
+    return { error: 'Duplicate query parameter: read_only' };
+  }
+
+  if (rawReadOnly !== undefined && rawReadOnly !== 'true' && rawReadOnly !== 'false') {
+    return { error: `Invalid value for read_only: must be "true" or "false"` };
+  }
+
+  const readOnly = serverReadOnly || rawReadOnly === 'true';
+
+  return { options: { readOnly } };
+}
+
 export function startHttpServer(
-  createServer: () => McpServer,
+  createServer: McpServerFactory,
   config: HttpServerConfig
 ): void {
   const app = express();
@@ -120,9 +147,15 @@ export function startHttpServer(
 
   app.post('/mcp', mcpPostRateLimit, authMiddleware, (req: Request, res: Response) => {
     void (async (): Promise<void> => {
+      const parsed = parseMcpQueryParams(req.query as Record<string, unknown>, config.readOnly);
+      if ('error' in parsed) {
+        res.status(400).json({ error: parsed.error });
+        return;
+      }
+
       const token = (req as Request & { token: string }).token;
       const transport = new StreamableHTTPServerTransport({ enableJsonResponse: true });
-      const mcpServer = createServer();
+      const mcpServer = createServer(parsed.options);
       await mcpServer.connect(transport as unknown as Transport);
       (req as Request & { auth: { token: string; clientId: string; scopes: string[] } }).auth = {
         token,

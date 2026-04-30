@@ -56,6 +56,20 @@ Add to `.vscode/mcp.json` in your workspace:
 }
 ```
 
+#### Read-Only Mode (Remote)
+
+Enable read-only mode by adding `?read_only=true` to the URL. All write operations will be excluded from the MCP:
+
+```json
+{
+  "mcpServers": {
+    "aiven-mcp": {
+      "url": "https://mcp.aiven.live/mcp?read_only=true"
+    }
+  }
+}
+```
+
 ### Option 2: stdio (local)
 
 Run the server locally as a child process of your MCP client. Requires Node.js 18+.
