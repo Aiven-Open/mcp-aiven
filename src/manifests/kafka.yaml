@@ -123,13 +123,42 @@ tools:
     path: /project/{project}/service/{service_name}/connectors
     category: kafka
     append_list_picker_hint: true
-    description: *kafka_connect_plan_gate
+    description: |
+      List Kafka Connect connectors with their configuration and task assignments.
+
+      **Kafka Connect plan gate — call `aiven_service_get` first.** Read `service.plan`. On **free** Kafka plans (e.g. `free-0`), Kafka Connect is usually **not** included: Connect REST calls may return **403** (e.g. "Kafka Connect API disabled"). Do **not** call this tool when `service.plan` is `free-*` or the tier is known not to include Connect; tell the user to upgrade instead of hitting the API.
+
+      **Typically no Kafka Connect:** `free-*` (e.g. `free-0`).
+
+      **Typically includes Kafka Connect:** `startup-*` (e.g. `startup-2`, `startup-4`), `business-*`, `premium-*`.
+
+      This tool returns `connectors`: an array with:
+      - name: Connector name
+      - config: Connector configuration (connector.class, topics, connection settings, etc.)
+      - tasks: Task assignments only — each entry has `connector` (name) and `task` (ID number)
+      - plugin: Plugin metadata (class, version, author, type)
+
+      **This tool does NOT return connector or task runtime state (RUNNING/FAILED/PAUSED).** To check connector health, use `aiven_kafka_connect_get_connector_status` for each connector.
 
   - name: aiven_kafka_connect_get_connector_status
     method: GET
     path: /project/{project}/service/{service_name}/connectors/{connector_name}/status
     category: kafka
-    description: *kafka_connect_plan_gate
+    description: |
+      Get the runtime status of a Kafka Connect connector. Use this tool to check connector health.
+
+      **Kafka Connect plan gate — call `aiven_service_get` first.** Read `service.plan`. On **free** Kafka plans (e.g. `free-0`), Kafka Connect is usually **not** included: Connect REST calls may return **403** (e.g. "Kafka Connect API disabled"). Do **not** call this tool when `service.plan` is `free-*` or the tier is known not to include Connect; tell the user to upgrade instead of hitting the API.
+
+      **Typically no Kafka Connect:** `free-*` (e.g. `free-0`).
+
+      **Typically includes Kafka Connect:** `startup-*` (e.g. `startup-2`, `startup-4`), `business-*`, `premium-*`.
+
+      This tool returns `status` with:
+      - state: Connector-level state (RUNNING, PAUSED, STOPPED, FAILED, UNASSIGNED)
+      - tasks: Array of task statuses, each with:
+        - id: Task ID
+        - state: Task runtime state (RUNNING, PAUSED, STOPPED, FAILED, UNASSIGNED)
+        - trace: Error stack trace (empty string if healthy)
 
   - name: aiven_kafka_connect_pause_connector
     method: POST
