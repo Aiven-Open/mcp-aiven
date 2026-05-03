@@ -179,6 +179,12 @@ In remote (HTTP) mode, `AIVEN_TOKEN` is not needed. Your MCP client sends your t
 | `aiven_vcs_integration_list` | List connected VCS (GitHub) accounts |
 | `aiven_vcs_integration_repository_list` | List repositories for a VCS integration |
 
+### Documentation
+
+| Tool | Description |
+|---|---|
+| `aiven_docs_search` | Search the official Aiven documentation in natural language. Only available on the hosted server (`https://mcp.aiven.live/mcp`) — not exposed in self-hosted deployments. |
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, running locally, and adding new tools.

@@ -201,3 +201,9 @@ export enum KafkaToolName {
   ConnectEditConnector = 'aiven_kafka_connect_edit_connector',
 }
 
+// ---------- Docs ----------
+
+export enum DocsToolName {
+  Search = 'aiven_docs_search',
+}
+
