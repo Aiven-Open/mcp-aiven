@@ -108,6 +108,7 @@ Config file locations:
 |---|---|---|---|
 | `AIVEN_TOKEN` | stdio only | -- | Aiven API token ([create one here](https://console.aiven.io/profile/tokens)) |
 | `AIVEN_READ_ONLY` | No | `false` | Set to `true` to expose only read-only tools |
+| `MCP_HOST` | No | `https://mcp.aiven.live` | Public base URL of this server, advertised in OAuth protected resource metadata. Override when deploying behind a custom domain. |
 
 In remote (HTTP) mode, `AIVEN_TOKEN` is not needed. Your MCP client sends your token as a Bearer token with each request.
 
