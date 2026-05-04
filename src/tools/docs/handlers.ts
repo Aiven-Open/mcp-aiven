@@ -23,15 +23,25 @@ interface DocsResponse {
 
 const DOCS_REQUEST_TIMEOUT_MS = 30_000;
 
-async function askDocs(origin: string, apiKey: string, projectId: string, query: string): Promise<DocsResponse> {
-  const url = `${origin}/query/v1/projects/${encodeURIComponent(projectId)}/chat/`;
+interface AskDocsOptions {
+  origin: string;
+  apiKey: string;
+  projectId: string;
+  integrationId?: string | undefined;
+  query: string;
+}
+
+async function askDocs(opts: AskDocsOptions): Promise<DocsResponse> {
+  const url = `${opts.origin}/query/v1/projects/${encodeURIComponent(opts.projectId)}/chat/`;
+  const body: Record<string, unknown> = { query: opts.query };
+  if (opts.integrationId) body['integration_id'] = opts.integrationId;
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-API-KEY': apiKey,
+      'X-API-KEY': opts.apiKey,
     },
-    body: JSON.stringify({ query }),
+    body: JSON.stringify(body),
     signal: AbortSignal.timeout(DOCS_REQUEST_TIMEOUT_MS),
   });
 
@@ -47,6 +57,7 @@ export function createDocsTools(): ToolDefinition[] {
   const apiKey = process.env['AIVEN_DOCS_API_KEY'];
   const projectId = process.env['AIVEN_DOCS_PROJECT_ID'];
   const origin = process.env['AIVEN_DOCS_API_ORIGIN'];
+  const integrationId = process.env['AIVEN_DOCS_INTEGRATION_ID'];
   if (!apiKey || !projectId || !origin) return [];
 
   return [
@@ -63,7 +74,7 @@ export function createDocsTools(): ToolDefinition[] {
       handler: async (params): Promise<ToolResult> => {
         const { query } = params as z.infer<typeof searchInput>;
         try {
-          const result = await askDocs(origin, apiKey, projectId, query);
+          const result = await askDocs({ origin, apiKey, projectId, integrationId, query });
           return toolSuccess(
             wrapUntrustedResponse({
               answer: result.answer,
