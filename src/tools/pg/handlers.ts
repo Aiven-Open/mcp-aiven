@@ -12,6 +12,7 @@ import {
 } from '../../types.js';
 import { errorMessage } from '../../errors.js';
 import { redactSensitiveData } from '../../security.js';
+import { wrapUntrustedResponse } from '../../untrusted.js';
 import { executePgQuery } from './query.js';
 import { optimizeQueryInput, pgQueryInput, pgExecuteQueryInput } from './schemas.js';
 import {
@@ -51,7 +52,7 @@ export function createPgCustomTools(client: AivenClient): ToolDefinition[] {
             opts
           );
 
-          return toolSuccess(redactSensitiveData(data));
+          return toolSuccess(wrapUntrustedResponse(redactSensitiveData(data)));
         } catch (err) {
           return toolError(errorMessage(err));
         }

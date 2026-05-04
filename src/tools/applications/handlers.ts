@@ -327,10 +327,12 @@ The rebuild pulls the latest commit from the configured branch and rebuilds the 
             opts
           );
 
-          return toolSuccess({
-            service_name: serviceName,
-            message: 'Redeploy triggered. The service will pull latest code, rebuild, and deploy.',
-          });
+          return toolSuccess(
+            wrapUntrustedResponse({
+              service_name: serviceName,
+              message: 'Redeploy triggered. The service will pull latest code, rebuild, and deploy.',
+            })
+          );
         } catch (err) {
           return toolError(errorMessage(err));
         }
@@ -376,10 +378,12 @@ Returns each integration's \`vcs_integration_id\` (needed for \`aiven_vcs_integr
             }>;
           }>(`/organization/${encodeURIComponent(organizationId)}/application/vcs-integrations`, opts);
 
-          return toolSuccess({
-            organization_id: organizationId,
-            vcs_integrations: result.vcs_integrations,
-          });
+          return toolSuccess(
+            wrapUntrustedResponse({
+              organization_id: organizationId,
+              vcs_integrations: result.vcs_integrations,
+            })
+          );
         } catch (err) {
           return toolError(errorMessage(err));
         }
@@ -437,28 +441,34 @@ Returns \`remote_repository_id\`, \`full_name\`, \`source_url\`, and \`default_b
             const hitEnd = !next;
 
             if (hitEnd) {
-              return toolSuccess({
-                repositories,
-                next: null,
-                truncated: false,
-              });
+              return toolSuccess(
+                wrapUntrustedResponse({
+                  repositories,
+                  next: null,
+                  truncated: false,
+                })
+              );
             }
             if (hitItemCap) {
-              return toolSuccess({
-                repositories,
-                next,
-                truncated: true,
-              });
+              return toolSuccess(
+                wrapUntrustedResponse({
+                  repositories,
+                  next,
+                  truncated: true,
+                })
+              );
             }
             cursor = next;
           }
 
-          return toolSuccess({
-            repositories,
-            next: cursor ?? null,
-            truncated: true,
-            note: `Pagination stopped after ${MAX_VCS_REPOSITORY_LIST_PAGES} pages (safety limit).`,
-          });
+          return toolSuccess(
+            wrapUntrustedResponse({
+              repositories,
+              next: cursor ?? null,
+              truncated: true,
+              note: `Pagination stopped after ${MAX_VCS_REPOSITORY_LIST_PAGES} pages (safety limit).`,
+            })
+          );
         } catch (err) {
           return toolError(errorMessage(err));
         }
