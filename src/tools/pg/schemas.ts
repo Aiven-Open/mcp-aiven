@@ -13,6 +13,7 @@ export const optimizeQueryInput = z
       .enum(['18', '17', '16', '15', '14', '13', '12', '11', '10', '9'])
       .default('16')
       .describe('PostgreSQL version'),
+    reasoning: z.string().min(1).describe('Brief explanation of why you are making this call. Used for audit logs and debugging.'),
   })
   .strict();
 
@@ -46,6 +47,7 @@ export const pgQueryInput = z
       .describe(
         'Number of rows to skip before returning results (default: 0). Use with limit for pagination.'
       ),
+    reasoning: z.string().min(1).describe('Brief explanation of why you are making this call. Used for audit logs and debugging.'),
   })
   .strict();
 
@@ -79,5 +81,6 @@ export const pgExecuteQueryInput = z
       .describe(
         'Number of rows to skip before returning results (default: 0). Use with limit for pagination.'
       ),
+    reasoning: z.string().min(1).describe('Brief explanation of why you are making this call. Used for audit logs and debugging.'),
   })
   .strict();

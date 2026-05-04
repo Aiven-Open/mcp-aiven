@@ -38,3 +38,5 @@ OAUTH_PLAN.md
 .cache/
 generator/schemas/
 src/generated/
+.claude/settings.local.json
+.mcp.json

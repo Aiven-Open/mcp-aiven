@@ -11,6 +11,7 @@ export const createConnectorInput = z
     connector_class: z.string().describe('Java class for the connector'),
     name: z.string().describe('Unique name for the connector'),
     source_service: z.string().optional().describe(SOURCE_SERVICE_DESC),
+    reasoning: z.string().min(1).describe('Brief explanation of why you are making this call. Used for audit logs and debugging.'),
   })
   .passthrough();
 
@@ -22,5 +23,6 @@ export const editConnectorInput = z
     connector_class: z.string().describe('Java class for the connector'),
     name: z.string().describe('Unique name for the connector'),
     source_service: z.string().optional().describe(SOURCE_SERVICE_DESC),
+    reasoning: z.string().min(1).describe('Brief explanation of why you are making this call. Used for audit logs and debugging.'),
   })
   .passthrough();

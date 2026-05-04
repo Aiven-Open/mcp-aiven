@@ -30,6 +30,8 @@ export interface RequestOptions {
   token?: string | undefined;
   toolName?: string | undefined;
   mcpClient?: string | undefined;
+  requestId?: string | undefined;
+  toolReasoning?: string | null | undefined;
 }
 
 export interface ToolAnnotations {
@@ -79,6 +81,8 @@ export type ToolResult = CallToolResult;
 export interface HandlerContext {
   token?: string | undefined;
   mcpClient?: string | undefined;
+  requestId?: string | undefined;
+  toolReasoning?: string | null | undefined;
 }
 
 export interface ToolDefinition<TInput extends z.ZodType = z.ZodType> {
@@ -111,6 +115,13 @@ export function toolError(message: string): ToolResult {
     content: [textContent(message)],
     isError: true,
   };
+}
+
+export function toolErrorWithRequestId(message: string, requestId?: string): ToolResult {
+  const text = requestId
+    ? `${message}\nRequest ID: ${requestId} (share this for support)`
+    : message;
+  return toolError(text);
 }
 
 export interface JsonSchema {
@@ -183,6 +194,8 @@ export interface ExecutePgQueryOptions {
   token?: string | undefined;
   mcpClient?: string | undefined;
   toolName?: string | undefined;
+  requestId?: string | undefined;
+  toolReasoning?: string | null | undefined;
 }
 
 // ---------- Application ----------

@@ -40,6 +40,8 @@ export function createPgCustomTools(client: AivenClient): ToolDefinition[] {
             token: context?.token,
             mcpClient: context?.mcpClient,
             toolName: PgToolName.OptimizeQuery,
+            requestId: context?.requestId,
+            toolReasoning: context?.toolReasoning,
           };
           const data = await client.post<Record<string, unknown>>(
             `/account/${typedParams.account_id}/pg/query/optimize`,
@@ -82,6 +84,8 @@ export function createPgCustomTools(client: AivenClient): ToolDefinition[] {
           token: context?.token,
           mcpClient: context?.mcpClient,
           toolName: PgToolName.Read,
+          requestId: context?.requestId,
+          toolReasoning: context?.toolReasoning,
         });
       },
     },
@@ -111,6 +115,8 @@ export function createPgCustomTools(client: AivenClient): ToolDefinition[] {
           token: context?.token,
           mcpClient: context?.mcpClient,
           toolName: PgToolName.Write,
+          requestId: context?.requestId,
+          toolReasoning: context?.toolReasoning,
         });
       },
     },
