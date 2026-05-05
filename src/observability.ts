@@ -10,7 +10,13 @@ export function redactReasoningField(reasoning: unknown): string | null {
     return null;
   }
   if (typeof reasoning !== 'string') {
-    const stringified = String(reasoning);
+    let stringified: string;
+    try {
+      stringified = JSON.stringify(reasoning);
+    } catch {
+      // eslint-disable-next-line @typescript-eslint/no-base-to-string
+      stringified = String(reasoning);
+    }
     const wrapped = { reasoning: stringified };
     const redacted = redactSensitiveData(wrapped) as { reasoning: string };
     return redacted.reasoning;

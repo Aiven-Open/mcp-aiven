@@ -87,7 +87,9 @@ export function createApiTool(config: ApiToolConfig, client: AivenClient): ToolD
     handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
       try {
         const args = params as Record<string, unknown>;
-        const { reasoning, ...argsWithoutReasoning } = args;
+        const argsWithoutReasoning = Object.fromEntries(
+          Object.entries(args).filter(([key]) => key !== 'reasoning')
+        );
 
         const opts: RequestOptions = {
           token: context?.token,

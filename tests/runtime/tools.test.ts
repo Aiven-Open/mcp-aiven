@@ -51,9 +51,10 @@ describe('toolSuccess', () => {
       expect(result.isError).toBeUndefined();
       const out = firstTextContent(result.content);
       expect(out).toBeDefined();
-      expect(out!.length).toBeLessThanOrEqual(600);
-      expect(out!.toLowerCase()).toMatch(/trim(med)?|mcp-aiven/);
-      expect(out!.startsWith('aaa')).toBe(true);
+      const text = out as string;
+      expect(text.length).toBeLessThanOrEqual(600);
+      expect(text.toLowerCase()).toMatch(/trim(med)?|mcp-aiven/);
+      expect(text.startsWith('aaa')).toBe(true);
     } finally {
       if (prev === undefined) delete process.env['MCP_MAX_TOOL_RESULT_CHARS'];
       else process.env['MCP_MAX_TOOL_RESULT_CHARS'] = prev;

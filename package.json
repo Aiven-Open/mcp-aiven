@@ -1,6 +1,6 @@
 {
   "name": "mcp-aiven",
-  "version": "0.1.5",
+  "version": "1.0.0",
   "description": "MCP server for Aiven cloud data platform - manage PostgreSQL, Kafka, and other services",
   "type": "module",
   "main": "dist/index.js",
@@ -74,5 +74,6 @@
   },
   "engines": {
     "node": ">=18.0.0"
-  }
+  },
+  "packageManager": "pnpm@10.28.2"
 }
