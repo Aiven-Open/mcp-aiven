@@ -10,7 +10,7 @@ export function redactReasoningField(reasoning: unknown): string | null {
     return null;
   }
   if (typeof reasoning !== 'string') {
-    const stringified = String(reasoning);
+    const stringified = JSON.stringify(reasoning);
     const wrapped = { reasoning: stringified };
     const redacted = redactSensitiveData(wrapped) as { reasoning: string };
     return redacted.reasoning;

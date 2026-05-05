@@ -1,0 +1,76 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows: [Tests]
+    branches: [main]
+    types: [completed]
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: |
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      !contains(github.event.workflow_run.head_commit.message, '[skip ci]')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Determine version
+        id: version
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          LATEST_TAG=$(git tag -l 'v*' --sort=-v:refname | head -n1)
+          LATEST_VERSION=${LATEST_TAG#v}
+
+          if [ -z "$LATEST_VERSION" ] || [ "$PKG_VERSION" != "$LATEST_VERSION" ]; then
+            VERSION="$PKG_VERSION"
+            NEEDS_BUMP=false
+          else
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$PKG_VERSION"
+            VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+            NEEDS_BUMP=true
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          echo "needs_bump=$NEEDS_BUMP" >> "$GITHUB_OUTPUT"
+
+      - name: Bump package.json (patch auto-bump)
+        if: steps.version.outputs.needs_bump == 'true'
+        run: |
+          npm version ${{ steps.version.outputs.version }} --no-git-tag-version
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json
+          git commit -m "chore: bump version to ${{ steps.version.outputs.version }} [skip ci]"
+          git push
+
+      - name: Create tag and release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git tag -a "${{ steps.version.outputs.tag }}" -m "Release ${{ steps.version.outputs.tag }}"
+          git push origin "${{ steps.version.outputs.tag }}"
+          gh release create "${{ steps.version.outputs.tag }}" \
+            --title "${{ steps.version.outputs.tag }}" \
+            --generate-notes
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Publish to npm
+        run: npm install -g npm@latest && npm publish --provenance
