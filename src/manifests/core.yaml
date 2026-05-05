@@ -190,10 +190,15 @@ tools:
 
       **Do not use** for **application** services (custom apps deployed as an Aiven “application” service). For those, use **`aiven_service_application_metrics_get`** instead (GET `…/application/metrics`). If unsure, call `aiven_service_get` first and check `service_type`.
 
-      Use `period` to control the time window: `hour`, `day`, `week`, `month`, or `year`.
+      Use `period` to control the time window: `hour`, `day`, `week`, `month`, or `year`. **Default to `day`** for general overview requests; use `hour` only when the user is investigating something that just happened, and longer windows only when explicitly asked.
+
+      **Before calling with a granular period**, warn the user if you expect a large payload and ask them to confirm. Rough point counts per host per metric: `hour` ≈ 120, `day` ≈ 1440, `week` ≈ 2016, `month` ≈ 720, `year` ≈ 1460. Multi-host services (e.g. HA Postgres) and Kafka topic-level queries multiply this. If the user asks for `day` or finer on a multi-host service, or `week`/finer on anything, say something like "this will return a lot of data points — I'll summarize it, but want to confirm before fetching?" and wait for confirmation.
+
       For Kafka services, optionally pass `kafka_topic_name` to get topic-level metrics.
 
-      **Display format:** Render ALL metrics as a single ASCII dashboard using box-drawing characters (┌─┐│└┘) and progress bars (█░). One section per metric group. Show every metric returned — do not summarize or omit. Do NOT use markdown tables or bullet points. Do NOT generate scripts. Render directly as text. Add a blank line between each metric row for readability.
+      **Display format:** Render as a compact ASCII dashboard using box-drawing characters (┌─┐│└┘) and progress bars (█░). One section per metric group. For each metric series, show a one-line summary: **min / avg / max / latest** (plus units and host/node when multi-host). Do NOT echo every data point by default. Do NOT use markdown tables or bullet points. Do NOT generate scripts. Render directly as text.
+
+      **Raw data:** After the dashboard, add a short line telling the user they can ask for raw data points for any specific metric. Only dump raw series when the user explicitly asks, and only for the specific metric they named.
 
   # Not in public OpenAPI — schema is maintained here (see generator manual_schema).
   - name: aiven_service_application_metrics_get
