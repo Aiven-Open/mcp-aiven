@@ -1,13 +1,8 @@
 name: Deploy
 
 on:
-  # Auto-deploy to production after every successful release
-  workflow_run:
-    workflows: [Release]
-    branches: [main]
-    types: [completed]
-
-  # Manual "push the button" deploy — choose environment and/or version
+  # Manual "push the button" deploy — choose environment and/or version.
+  # Auto-trigger via workflow_run can be added here once manual deploys are validated.
   workflow_dispatch:
     inputs:
       environment:
@@ -32,11 +27,6 @@ jobs:
     # SLACK_WEBHOOK_URL.  For production this also enforces required-reviewer
     # approval and branch restrictions.
     environment: ${{ inputs.environment || 'production' }}
-
-    # For workflow_run trigger: only proceed when the Release workflow succeeded
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
 
     steps:
       - uses: actions/checkout@v4
