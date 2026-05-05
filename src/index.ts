@@ -10,7 +10,6 @@ import { createDocsTools } from './tools/docs/index.js';
 import { createStdioTransport, startHttpServer } from './transport.js';
 import type { ToolDefinition, McpRequestOptions } from './types.js';
 import { VERSION, API_ORIGIN, loadHttpMcpRateLimit, httpTrustProxyEnabled } from './config.js';
-import { READ_ONLY_INSTRUCTIONS } from './prompts.js';
 import { createObservabilityContext } from './observability.js';
 import { readOnlyInstructions } from './prompts.js';
 
