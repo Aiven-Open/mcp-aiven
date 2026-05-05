@@ -1,0 +1,279 @@
+name: Deploy
+
+on:
+  # Auto-deploy to production after every successful release
+  workflow_run:
+    workflows: [Release]
+    branches: [main]
+    types: [completed]
+
+  # Manual "push the button" deploy — choose environment and/or version
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        default: production
+        type: choice
+        options:
+          - production
+          - staging
+      version:
+        description: 'Version tag to deploy (e.g. v1.2.3). Defaults to latest git tag.'
+        required: false
+        default: ''
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.environment || 'production' }}
+    runs-on: ubuntu-latest
+
+    # Points to the matching GitHub Environment, which holds AIVEN_TOKEN and
+    # SLACK_WEBHOOK_URL.  For production this also enforces required-reviewer
+    # approval and branch restrictions.
+    environment: ${{ inputs.environment || 'production' }}
+
+    # For workflow_run trigger: only proceed when the Release workflow succeeded
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      # ------------------------------------------------------------------
+      # Resolve which version to deploy
+      # ------------------------------------------------------------------
+      - name: Resolve version
+        id: version
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION=$(git tag -l 'v*' --sort=-v:refname | head -n1)
+          fi
+
+          if [ -z "$VERSION" ]; then
+            echo "::error::No version specified and no git tags found."
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Deploying version: $VERSION"
+
+      # ------------------------------------------------------------------
+      # Derive the Aiven project name from the environment
+      #   production  →  mcp-aiven-prod
+      #   staging     →  mcp-aiven-staging
+      # ------------------------------------------------------------------
+      - name: Resolve Aiven project
+        id: project
+        run: |
+          ENV="${{ inputs.environment || 'production' }}"
+          case "$ENV" in
+            production) PROJECT="mcp-aiven-prod" ;;
+            staging)    PROJECT="mcp-aiven-staging" ;;
+            *)          echo "::error::Unknown environment: $ENV"; exit 1 ;;
+          esac
+          echo "name=$PROJECT" >> "$GITHUB_OUTPUT"
+          echo "Aiven project: $PROJECT"
+
+      # ------------------------------------------------------------------
+      # Discover all mcp-aiven services in the project
+      # ------------------------------------------------------------------
+      - name: Discover services
+        id: services
+        env:
+          AIVEN_TOKEN: ${{ secrets.AIVEN_TOKEN }}
+        run: |
+          PROJECT="${{ steps.project.outputs.name }}"
+
+          RESPONSE=$(curl -sf \
+            -H "Authorization: Bearer $AIVEN_TOKEN" \
+            "https://api.aiven.io/v1/project/$PROJECT/services")
+
+          SERVICES=$(echo "$RESPONSE" | \
+            jq -r '.services[] | select(.service_name | test("^mcp-aiven-[0-9]+$")) | .service_name' | \
+            sort | tr '\n' ',' | sed 's/,$//')
+
+          if [ -z "$SERVICES" ]; then
+            echo "::error::No services matching ^mcp-aiven-[0-9]+$ found in $PROJECT"
+            exit 1
+          fi
+
+          COUNT=$(echo "$SERVICES" | tr ',' '\n' | wc -l | tr -d ' ')
+          echo "Found $COUNT service(s): $SERVICES"
+          echo "services=$SERVICES" >> "$GITHUB_OUTPUT"
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+
+      # ------------------------------------------------------------------
+      # Deploy each service sequentially with health gating
+      # ------------------------------------------------------------------
+      - name: Deploy services
+        id: deploy
+        env:
+          AIVEN_TOKEN: ${{ secrets.AIVEN_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          PROJECT="${{ steps.project.outputs.name }}"
+          FAILED=""
+          DEPLOYED=""
+          START_TIME=$(date +%s)
+
+          IFS=',' read -ra SERVICES <<< "${{ steps.services.outputs.services }}"
+
+          for SERVICE in "${SERVICES[@]}"; do
+            echo ""
+            echo "=== Deploying $SERVICE → $VERSION ==="
+
+            # Trigger the deploy: set build_ref via the branch field
+            HTTP_STATUS=$(curl -s -o /tmp/deploy_response.json -w "%{http_code}" \
+              -X PUT \
+              -H "Authorization: Bearer $AIVEN_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "{\"user_config\":{\"application\":{\"source\":{\"branch\":\"$VERSION\"}}}}" \
+              "https://api.aiven.io/v1/project/$PROJECT/service/$SERVICE")
+
+            if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+              echo "::error::Failed to trigger deploy for $SERVICE (HTTP $HTTP_STATUS)"
+              cat /tmp/deploy_response.json || true
+              FAILED="$FAILED,$SERVICE"
+              continue
+            fi
+
+            echo "Deploy triggered (HTTP $HTTP_STATUS). Waiting for RUNNING state..."
+
+            # Poll until RUNNING or timeout (10 minutes)
+            DEADLINE=$(($(date +%s) + 600))
+            HEALTHY=false
+
+            while [ "$(date +%s)" -lt "$DEADLINE" ]; do
+              RESP=$(curl -sf \
+                -H "Authorization: Bearer $AIVEN_TOKEN" \
+                "https://api.aiven.io/v1/project/$PROJECT/service/$SERVICE")
+
+              STATE=$(echo "$RESP" | jq -r '.service.state // "UNKNOWN"')
+              echo "  state: $STATE"
+
+              if [ "$STATE" = "RUNNING" ]; then
+                # HTTP health check via service URI if available
+                SERVICE_URI=$(echo "$RESP" | jq -r '.service.service_uri // empty')
+                if [ -n "$SERVICE_URI" ]; then
+                  echo "  Running HTTP health check at ${SERVICE_URI}/health ..."
+                  HC_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
+                    --max-time 10 "${SERVICE_URI}/health" 2>/dev/null || echo "000")
+                  if [ "$HC_STATUS" = "200" ] || [ "$HC_STATUS" = "204" ]; then
+                    echo "  ✓ Health check passed (HTTP $HC_STATUS)"
+                    HEALTHY=true
+                    break
+                  else
+                    echo "  Health check returned HTTP $HC_STATUS — waiting..."
+                  fi
+                else
+                  # No URI available; treat RUNNING as healthy
+                  HEALTHY=true
+                  break
+                fi
+              fi
+
+              sleep 20
+            done
+
+            if [ "$HEALTHY" = "true" ]; then
+              echo "✓ $SERVICE healthy"
+              DEPLOYED="$DEPLOYED,$SERVICE"
+            else
+              echo "::error::$SERVICE did not become healthy within 10 minutes"
+              FAILED="$FAILED,$SERVICE"
+            fi
+          done
+
+          END_TIME=$(date +%s)
+          DURATION=$(( (END_TIME - START_TIME) / 60 ))
+
+          # Strip leading commas
+          DEPLOYED="${DEPLOYED#,}"
+          FAILED="${FAILED#,}"
+
+          echo "deployed=$DEPLOYED" >> "$GITHUB_OUTPUT"
+          echo "failed=$FAILED" >> "$GITHUB_OUTPUT"
+          echo "duration=${DURATION}m" >> "$GITHUB_OUTPUT"
+
+          if [ -n "$FAILED" ]; then
+            exit 1
+          fi
+
+      # ------------------------------------------------------------------
+      # Job summary (always runs)
+      # ------------------------------------------------------------------
+      - name: Write job summary
+        if: always()
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          ENV="${{ inputs.environment || 'production' }}"
+          PROJECT="${{ steps.project.outputs.name }}"
+          DEPLOYED="${{ steps.deploy.outputs.deployed }}"
+          FAILED="${{ steps.deploy.outputs.failed }}"
+          DURATION="${{ steps.deploy.outputs.duration }}"
+          STATUS="✅ Success"
+          [ -n "$FAILED" ] && STATUS="❌ Failed"
+
+          {
+            echo "## $STATUS — mcp-aiven deploy"
+            echo ""
+            echo "| Field | Value |"
+            echo "|-------|-------|"
+            echo "| Environment | \`$ENV\` |"
+            echo "| Aiven project | \`$PROJECT\` |"
+            echo "| Version | \`$VERSION\` |"
+            echo "| Duration | $DURATION |"
+
+            if [ -n "$DEPLOYED" ]; then
+              echo ""
+              echo "### ✅ Deployed successfully"
+              echo "$DEPLOYED" | tr ',' '\n' | while read -r s; do echo "- \`$s\`"; done
+            fi
+
+            if [ -n "$FAILED" ]; then
+              echo ""
+              echo "### ❌ Failed to deploy"
+              echo "$FAILED" | tr ',' '\n' | while read -r s; do echo "- \`$s\`"; done
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ------------------------------------------------------------------
+      # Slack notification (always runs, skipped if no webhook configured)
+      # ------------------------------------------------------------------
+      - name: Notify Slack
+        if: always() && secrets.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "SLACK_WEBHOOK_URL not set — skipping Slack notification"
+            exit 0
+          fi
+
+          VERSION="${{ steps.version.outputs.version }}"
+          ENV="${{ inputs.environment || 'production' }}"
+          DEPLOYED="${{ steps.deploy.outputs.deployed }}"
+          FAILED="${{ steps.deploy.outputs.failed }}"
+          DURATION="${{ steps.deploy.outputs.duration }}"
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          if [ -n "$FAILED" ]; then
+            COLOR="danger"
+            TITLE="mcp-aiven deploy FAILED ($ENV)"
+            TEXT="Version: \`$VERSION\` | Failed: $FAILED | Duration: $DURATION | <$RUN_URL|View run>"
+          else
+            COLOR="good"
+            TITLE="mcp-aiven deploy succeeded ($ENV)"
+            TEXT="Version: \`$VERSION\` | Deployed: $DEPLOYED | Duration: $DURATION | <$RUN_URL|View run>"
+          fi
+
+          curl -sf -X POST "$SLACK_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{\"attachments\":[{\"color\":\"$COLOR\",\"title\":\"$TITLE\",\"text\":\"$TEXT\"}]}"
