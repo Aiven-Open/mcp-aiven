@@ -38,21 +38,6 @@ tools:
       - provider: Cloud vendor (e.g. `aws-eu-central-2`, `google-europe-north2`)
       - geo_region: Broad geography (e.g. `europe`, `north america`)
 
-  - name: aiven_service_list
-    method: GET
-    path: /project/{project}/service
-    category: core
-    append_list_picker_hint: true
-    exclude_params: [include_secrets]
-    response_filter:
-      key: services
-      fields: [service_name, service_type]
-    description: |
-      List services in a project. `project` must be a valid Aiven project name from `aiven_project_list`.
-      This tool returns a list of services with the following fields:
-      - service_name: The name of the service
-      - service_type: The type of the service
-
   - name: aiven_service_type_plans
     method: GET
     path: /project/{project}/service-types/{service_type}/plans

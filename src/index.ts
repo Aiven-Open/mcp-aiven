@@ -7,6 +7,7 @@ import { createKafkaCustomTools } from './tools/kafka/index.js';
 import { createPgCustomTools } from './tools/pg/index.js';
 import { createApplicationTools } from './tools/applications/index.js';
 import { createDocsTools } from './tools/docs/index.js';
+import { createServiceSearchTool } from './tools/service-search.js';
 import { createStdioTransport, startHttpServer } from './transport.js';
 import type { ToolDefinition, McpRequestOptions } from './types.js';
 import { VERSION, API_ORIGIN, loadHttpMcpRateLimit, httpTrustProxyEnabled } from './config.js';
@@ -33,6 +34,7 @@ function loadAllTools(client: AivenClient): ToolDefinition[] {
     ...createPgCustomTools(client),
     ...createApplicationTools(client),
     ...createDocsTools(),
+    ...createServiceSearchTool(client),
   ];
 }
 
