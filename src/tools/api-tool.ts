@@ -4,7 +4,7 @@ import { toolSuccess, toolErrorWithRequestId } from '../types.js';
 import { errorMessage } from '../errors.js';
 import { redactSensitiveData } from '../security.js';
 import { wrapUntrustedResponse } from '../untrusted.js';
-import { applyResponseFilter } from './response-filter.js';
+import { applyResponseFilter, extendSchemaWithSearch, stripSearchParams } from './response-filter.js';
 
 function extractPathParams(path: string): Set<string> {
   return new Set(
@@ -74,6 +74,11 @@ async function executeRequest(
 
 export function createApiTool(config: ApiToolConfig, client: AivenClient): ToolDefinition {
   const pathParams = extractPathParams(config.path);
+  // Extend the schema with search/limit/offset params if the tool has search_fields configured.
+  const inputSchema = config.responseFilter?.search_fields?.length
+    ? extendSchemaWithSearch(config.inputSchema, config.responseFilter)
+    : config.inputSchema;
+  const hasSearch = inputSchema !== config.inputSchema;
 
   return {
     name: config.name,
@@ -81,14 +86,19 @@ export function createApiTool(config: ApiToolConfig, client: AivenClient): ToolD
     definition: {
       title: config.title,
       description: config.description,
-      inputSchema: config.inputSchema,
+      inputSchema,
       annotations: config.annotations,
     },
     handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
       try {
         const args = params as Record<string, unknown>;
+        const apiArgs = hasSearch ? stripSearchParams(args) : args;
+        const search = hasSearch ? args['search'] as string | undefined : undefined;
+        const limit = hasSearch ? args['limit'] as number | undefined : undefined;
+        const offset = hasSearch ? args['offset'] as number | undefined : undefined;
+
         const argsWithoutReasoning = Object.fromEntries(
-          Object.entries(args).filter(([key]) => key !== 'reasoning')
+          Object.entries(apiArgs).filter(([key]) => key !== 'reasoning')
         );
 
         const opts: RequestOptions = {
@@ -100,12 +110,13 @@ export function createApiTool(config: ApiToolConfig, client: AivenClient): ToolD
         };
 
         const data = await executeRequest(client, config, argsWithoutReasoning, pathParams, opts);
+        const redacted = redactSensitiveData(data);
 
         const filtered = config.responseFilter
-          ? applyResponseFilter(data, config.responseFilter)
-          : data;
+          ? applyResponseFilter(redacted, config.responseFilter, search, limit, offset)
+          : redacted;
 
-        return toolSuccess(wrapUntrustedResponse(redactSensitiveData(filtered)));
+        return toolSuccess(wrapUntrustedResponse(filtered));
       } catch (err) {
         return toolErrorWithRequestId(errorMessage(err), context?.requestId);
       }

@@ -6,8 +6,9 @@ import { errorMessage } from '../errors.js';
 import { wrapUntrustedResponse } from '../untrusted.js';
 import { TOOL_LIST_PICKER_SUFFIX } from '../prompts.js';
 
+import { DEFAULT_LIST_LIMIT } from './response-filter.js';
+
 const CONCURRENCY = 10;
-const MAX_RESULTS = 15;
 
 const inputSchema = z.object({
   project: z
@@ -22,10 +23,20 @@ const inputSchema = z.object({
     .string()
     .optional()
     .describe('Filter by service state (e.g. "RUNNING", "POWERED_OFF", "REBUILDING")'),
+  search: z
+    .string()
+    .optional()
+    .describe('Case-insensitive substring filter on service_name.'),
   limit: z
     .number()
     .optional()
-    .describe(`Max results to return. Defaults to ${MAX_RESULTS}. Set higher only if the user asks for the full list.`),
+    .describe(`Max results to return. Defaults to ${DEFAULT_LIST_LIMIT}. Do NOT set this unless the user explicitly asked for a specific number of results.`),
+  offset: z
+    .number()
+    .int()
+    .min(0)
+    .optional()
+    .describe('Number of items to skip for pagination. Use the value from `next_offset` in a previous response.'),
 });
 
 interface ServiceEntry {
@@ -77,7 +88,7 @@ export function createServiceSearchTool(client: AivenClient): ToolDefinition[] {
       },
       handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
         try {
-          const { project, service_type, state, limit } = params as z.infer<typeof inputSchema>;
+          const { project, service_type, state, search, limit, offset } = params as z.infer<typeof inputSchema>;
           const opts = { token: context?.token, mcpClient: context?.mcpClient, toolName: 'aiven_service_list' };
 
           let projectNames: string[];
@@ -88,14 +99,18 @@ export function createServiceSearchTool(client: AivenClient): ToolDefinition[] {
             projectNames = projectsRes.projects.map((p) => p.project_name);
           }
 
-          const maxResults = limit ?? MAX_RESULTS;
+          const cap = Math.min(limit ?? DEFAULT_LIST_LIMIT, 100);
+          const pageStart = offset ?? 0;
           const services: ServiceResult[] = [];
           const errors: ProjectError[] = [];
           const typeFilter = service_type?.toLowerCase();
           const stateFilter = state?.toLowerCase();
+          const searchNeedle = search?.toLowerCase();
 
-          while (projectNames.length > 0 && services.length < maxResults) {
-            const batch = projectNames.splice(0, CONCURRENCY);
+          const needed = pageStart + cap;
+          const projectQueue = [...projectNames];
+          while (projectQueue.length > 0 && services.length < needed) {
+            const batch = projectQueue.splice(0, CONCURRENCY);
             const batchResults = await Promise.all(batch.map(async (proj) => {
               try {
                 const res = await client.get<{ services: ServiceEntry[] }>(`/project/${encodeURIComponent(proj)}/service`, opts);
@@ -113,19 +128,23 @@ export function createServiceSearchTool(client: AivenClient): ToolDefinition[] {
               for (const s of entry.services) {
                 if (typeFilter && s.service_type.toLowerCase() !== typeFilter) continue;
                 if (stateFilter && s.state.toLowerCase() !== stateFilter) continue;
+                if (searchNeedle && !s.service_name.toLowerCase().includes(searchNeedle)) continue;
                 services.push({ project: entry.proj, service_name: s.service_name, service_type: s.service_type, state: s.state });
               }
             }
           }
 
-          const hasMore = services.length > maxResults || projectNames.length > 0;
-          const result = services.slice(0, maxResults);
+          const page = services.slice(pageStart, pageStart + cap);
+          const hasMore = pageStart + page.length < services.length || projectQueue.length > 0;
+          const nextOffset = hasMore ? pageStart + page.length : undefined;
 
           return toolSuccess(wrapUntrustedResponse({
-            showing: result.length,
-            ...(hasMore && { hint: 'More services may exist. Use a higher limit or narrow with filters (project, service_type, state) to see more.' }),
-            services: result,
+            showing: page.length,
+            ...(offset !== undefined && offset > 0 && { offset }),
+            ...(nextOffset !== undefined && { next_offset: nextOffset }),
+            services: page,
             ...(errors.length > 0 && { errors }),
+            ...(hasMore && { hint: 'More services exist. Ask the user what they are looking for, or narrow with filters (project, service_type, state, search). Do NOT increase the limit or auto-paginate.' }),
           }));
         } catch (err) {
           return toolError(errorMessage(err));

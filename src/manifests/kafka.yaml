@@ -15,6 +15,9 @@ tools:
     path: /project/{project}/service/{service_name}/topic
     category: kafka
     append_list_picker_hint: true
+    response_filter:
+      key: topics
+      search_fields: [topic_name, topic_description]
     description: |
       This tool returns `topics`: an array of topic objects with:
       - topic_name: Topic name
@@ -116,6 +119,9 @@ tools:
     path: /project/{project}/service/{service_name}/available-connectors
     category: kafka
     append_list_picker_hint: true
+    response_filter:
+      key: plugins
+      search_fields: [plugin_type]
     description: *kafka_connect_plan_gate
 
   - name: aiven_kafka_connect_list
@@ -123,6 +129,9 @@ tools:
     path: /project/{project}/service/{service_name}/connectors
     category: kafka
     append_list_picker_hint: true
+    response_filter:
+      key: connectors
+      search_fields: [name]
     description: |
       List Kafka Connect connectors with their configuration and task assignments.
 
@@ -189,6 +198,9 @@ tools:
     path: /project/{project}/service/{service_name}/kafka/schema/subjects
     category: kafka
     append_list_picker_hint: true
+    response_filter:
+      key: subjects
+      search_fields: [_string]
 
   - name: aiven_kafka_schema_registry_subject_version_get
     method: GET
