@@ -70,6 +70,28 @@ Enable read-only mode by adding `?read_only=true` to the URL. All write operatio
 }
 ```
 
+#### Scoped Tools (Remote)
+
+Reduce the tool surface exposed to your AI agent by adding `?services_scope=` to the URL. Useful when you only work with a subset of Aiven services and want to keep the agent's context focused. Combine values with commas. `core` (project/service discovery) is always included implicitly.
+
+Valid scopes: `all`, `core`, `pg`, `kafka`, `application`, `integrations`. Use `all` to explicitly load every tool (same as omitting the param). `all` cannot be combined with other scopes.
+
+```json
+{
+  "mcpServers": {
+    "aiven-mcp": {
+      "url": "https://mcp.aiven.live/mcp?services_scope=kafka"
+    }
+  }
+}
+```
+
+You can also combine with `read_only`:
+
+```
+https://mcp.aiven.live/mcp?services_scope=pg&read_only=true
+```
+
 ### Option 2: stdio (local)
 
 Run the server locally as a child process of your MCP client. Requires Node.js 18+.
@@ -124,6 +146,7 @@ MCP_HOST=http://localhost:3000 node dist/index.js
 |---|---|---|---|
 | `AIVEN_TOKEN` | stdio only | -- | Aiven API token ([create one here](https://console.aiven.io/profile/tokens)) |
 | `AIVEN_READ_ONLY` | No | `false` | Set to `true` to expose only read-only tools |
+| `AIVEN_SERVICES_SCOPE` | No | -- | Comma-separated scopes to expose (e.g. `kafka`, `pg,kafka`, or `all`). Valid: `all`, `core`, `pg`, `kafka`, `application`, `integrations`. `core` is always included. Omitting the var or setting `all` loads every tool. |
 | `MCP_HOST` | No | `https://mcp.aiven.live` | Override the OAuth protected resource host |
 | `MCP_TRANSPORT` | No | `stdio` | Set to `http` to start an HTTP server instead of stdio |
 

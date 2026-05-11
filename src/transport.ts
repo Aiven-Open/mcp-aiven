@@ -5,7 +5,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import type { Request, Response, NextFunction } from 'express';
-import { HOST } from './config.js';
+import { HOST, parseScopes } from './config.js';
 import type { HttpMcpRateLimitConfig } from './config.js';
 import type { McpServerFactory, McpRequestOptions } from './types.js';
 
@@ -84,7 +84,7 @@ function mcpRequestKey(req: Request): string {
   return ipKeyGenerator(req.ip ?? '0.0.0.0');
 }
 
-const ALLOWED_MCP_QUERY_PARAMS = new Set(['read_only']);
+const ALLOWED_MCP_QUERY_PARAMS = new Set(['read_only', 'services_scope']);
 
 export function parseMcpQueryParams(
   query: Record<string, unknown>,
@@ -107,7 +107,22 @@ export function parseMcpQueryParams(
 
   const readOnly = serverReadOnly || rawReadOnly === 'true';
 
-  return { options: { readOnly } };
+  const rawScope = query['services_scope'];
+
+  if (Array.isArray(rawScope)) {
+    return { error: 'Duplicate query parameter: services_scope' };
+  }
+
+  if (rawScope !== undefined && typeof rawScope !== 'string') {
+    return { error: 'Invalid value for services_scope: must be a comma-separated string' };
+  }
+
+  const parsed = parseScopes(rawScope);
+  if ('error' in parsed) {
+    return { error: `Invalid value for services_scope: ${parsed.error}` };
+  }
+
+  return { options: { readOnly, categories: parsed.categories } };
 }
 
 export function startHttpServer(

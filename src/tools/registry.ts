@@ -49,6 +49,11 @@ interface SchemaEntry {
 
 type SchemaMap = Record<string, SchemaEntry>;
 
+/**
+ * Maps YAML manifest `category:` values to `ServiceCategory`. `application` is intentionally
+ * absent — application tools are registered by `createApplicationTools` (custom handlers),
+ * not from a YAML manifest. If you add an `application.yaml` manifest, also add the entry here.
+ */
 const CATEGORY_MAP: Record<string, ServiceCategory> = {
   core: ServiceCategory.Core,
   pg: ServiceCategory.Pg,
