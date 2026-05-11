@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { z } from 'zod';
 import { createApiTool } from '../../src/tools/api-tool.js';
+import { applyResponseFilter as applyResultFilter } from '../../src/tools/response-filter.js';
 import {
   ServiceCategory,
   READ_ONLY_ANNOTATIONS,
@@ -40,6 +41,17 @@ function createErrorClient(status: number, message: string): AivenClient {
     patch: mockFn,
     request: mockFn,
   } as unknown as AivenClient;
+}
+
+function parseUntrustedResponse(text: string): unknown {
+  const match = text.match(
+    /<untrusted-aiven-response-[^>]+>\n([\s\S]*?)\n<\/untrusted-aiven-response-/
+  );
+  return JSON.parse(match?.[1] ?? '');
+}
+
+function parseResult(result: { content?: Array<{ type: string; text?: string }> }): Record<string, unknown> {
+  return parseUntrustedResponse(firstTextContent(result.content) ?? '') as Record<string, unknown>;
 }
 
 const baseConfig: ApiToolConfig = {
@@ -200,7 +212,7 @@ describe('createApiTool', () => {
     expect(firstTextContent(result.content)).toContain('Aiven API Error');
   });
 
-  it('should apply response filter when provided', async () => {
+  it('should apply result filter field selection', async () => {
     const config: ApiToolConfig = {
       ...baseConfig,
       responseFilter: {
@@ -217,11 +229,7 @@ describe('createApiTool', () => {
     const tool = createApiTool(config, client);
 
     const result = await tool.handler({});
-    const text = firstTextContent(result.content) ?? '';
-    const match = text.match(
-      /<untrusted-aiven-response-[^>]+>\n([\s\S]*?)\n<\/untrusted-aiven-response-/
-    );
-    const parsed = JSON.parse(match?.[1] ?? '');
+    const parsed = parseResult(result);
 
     expect(parsed).toEqual({ items: [{ name: 'a' }, { name: 'b' }] });
   });
@@ -253,5 +261,263 @@ describe('createApiTool', () => {
     expect(firstTextContent(result.content)).toContain('[REDACTED]');
     expect(firstTextContent(result.content)).not.toContain('secret');
     expect(firstTextContent(result.content)).toContain('test');
+  });
+
+  it('should filter by search param (case-insensitive)', async () => {
+    const items = [
+      { topic_name: 'orders-created' },
+      { topic_name: 'orders-updated' },
+      { topic_name: 'users-created' },
+    ];
+    const client = createMockClient({ topics: items });
+    const config: ApiToolConfig = {
+      ...baseConfig,
+      responseFilter: { key: 'topics', search_fields: ['topic_name'] },
+    };
+    const tool = createApiTool(config, client);
+
+    const result = await tool.handler({ search: 'Orders' });
+    const parsed = parseResult(result);
+
+    expect(parsed['showing']).toBe(2);
+    expect(parsed['total']).toBe(2);
+    expect((parsed['topics'] as Array<{ topic_name: string }>).map((t) => t.topic_name)).toEqual([
+      'orders-created',
+      'orders-updated',
+    ]);
+  });
+
+  it('should search across multiple fields (OR)', async () => {
+    const items = [
+      { cloud_name: 'aws-eu-west-1', provider: 'aws', geo_region: 'europe' },
+      { cloud_name: 'google-europe-west1', provider: 'google', geo_region: 'europe' },
+      { cloud_name: 'do-fra', provider: 'do', geo_region: 'europe' },
+    ];
+    const client = createMockClient({ clouds: items });
+    const config: ApiToolConfig = {
+      ...baseConfig,
+      responseFilter: { key: 'clouds', search_fields: ['cloud_name', 'provider', 'geo_region'] },
+    };
+    const tool = createApiTool(config, client);
+
+    const result = await tool.handler({ search: 'google' });
+    const parsed = parseResult(result);
+
+    expect(parsed['showing']).toBe(1);
+    expect(parsed['total']).toBe(1);
+  });
+
+  it('should apply default_limit when set', async () => {
+    const items = Array.from({ length: 10 }, (_, i) => ({ topic_name: `topic-${i}` }));
+    const client = createMockClient({ topics: items });
+    const config: ApiToolConfig = {
+      ...baseConfig,
+      responseFilter: { key: 'topics', search_fields: ['topic_name'], default_limit: 3 },
+    };
+    const tool = createApiTool(config, client);
+
+    const result = await tool.handler({});
+    const parsed = parseResult(result);
+
+    expect(parsed['showing']).toBe(3);
+    expect(parsed['total']).toBe(10);
+    expect((parsed['topics'] as unknown[]).length).toBe(3);
+    expect(parsed['hint']).toContain('offset');
+  });
+
+  it('should cap at default 15 when no explicit default_limit is set', async () => {
+    const items = Array.from({ length: 100 }, (_, i) => ({ topic_name: `topic-${i}` }));
+    const client = createMockClient({ topics: items });
+    const config: ApiToolConfig = {
+      ...baseConfig,
+      responseFilter: { key: 'topics', search_fields: ['topic_name'] },
+    };
+    const tool = createApiTool(config, client);
+
+    const result = await tool.handler({});
+    const parsed = parseResult(result);
+
+    expect(parsed['showing']).toBe(15);
+    expect(parsed['total']).toBe(100);
+    expect((parsed['topics'] as unknown[]).length).toBe(15);
+    expect(parsed['hint']).toContain('offset');
+  });
+
+  it('should respect explicit limit param', async () => {
+    const items = Array.from({ length: 20 }, (_, i) => ({ topic_name: `topic-${i}` }));
+    const client = createMockClient({ topics: items });
+    const config: ApiToolConfig = {
+      ...baseConfig,
+      responseFilter: { key: 'topics', search_fields: ['topic_name'] },
+    };
+    const tool = createApiTool(config, client);
+
+    const result = await tool.handler({ limit: 5 });
+    const parsed = parseResult(result);
+
+    expect(parsed['showing']).toBe(5);
+    expect(parsed['total']).toBe(20);
+    expect((parsed['topics'] as unknown[]).length).toBe(5);
+  });
+
+  it('should not send search/limit params to API', async () => {
+    const client = createMockClient({ topics: [{ topic_name: 'a' }] });
+    const config: ApiToolConfig = {
+      ...baseConfig,
+      responseFilter: { key: 'topics', search_fields: ['topic_name'] },
+    };
+    const tool = createApiTool(config, client);
+
+    await tool.handler({ search: 'a', limit: 5 });
+
+    const callArgs = (client.get as ReturnType<typeof vi.fn>).mock.calls[0] as
+      | [string, { query?: unknown }]
+      | undefined;
+    expect(callArgs?.[1]?.query).toBeUndefined();
+  });
+});
+
+describe('applyResultFilter', () => {
+  it('should return data unchanged when key is not in response', () => {
+    const data = { other: 'value' };
+    const result = applyResultFilter(data, { key: 'topics', search_fields: ['topic_name'] }, undefined, undefined, undefined);
+    expect(result).toEqual(data);
+  });
+
+  it('should filter fields on a single object (non-array)', () => {
+    const data = { service: { name: 'svc', secret: '123', plan: 'startup-4' } };
+    const result = applyResultFilter(data, { key: 'service', fields: ['name', 'plan'] }, undefined, undefined, undefined);
+    expect(result).toEqual({ service: { name: 'svc', plan: 'startup-4' } });
+  });
+
+  it('should filter fields on array items', () => {
+    const data = { items: [{ name: 'a', extra: 'x' }, { name: 'b', extra: 'y' }] };
+    const result = applyResultFilter(data, { key: 'items', fields: ['name'] }, undefined, undefined, undefined);
+    expect(result).toEqual({ items: [{ name: 'a' }, { name: 'b' }] });
+  });
+
+  it('should handle string arrays (schema registry subjects)', () => {
+    const data = { subjects: ['orders-value', 'users-value', 'payments-value', 'orders-key'] };
+    const config = { key: 'subjects', search_fields: ['_string'] };
+
+    const result = applyResultFilter(data, config, 'orders', undefined, undefined);
+
+    expect(result).toEqual({
+      showing: 2,
+      total: 2,
+      subjects: ['orders-value', 'orders-key'],
+    });
+  });
+
+  it('should search across multiple fields with OR logic', () => {
+    const data = {
+      clouds: [
+        { cloud_name: 'aws-eu-west-1', provider: 'aws', geo_region: 'europe' },
+        { cloud_name: 'google-us-east1', provider: 'google', geo_region: 'north america' },
+        { cloud_name: 'do-fra', provider: 'do', geo_region: 'europe' },
+      ],
+    };
+
+    const result = applyResultFilter(
+      data,
+      { key: 'clouds', search_fields: ['cloud_name', 'provider', 'geo_region'] },
+      'europe',
+      undefined,
+      undefined
+    );
+
+    expect(result['showing']).toBe(2);
+    expect(result['total']).toBe(2);
+  });
+
+  it('should apply limit and add hint when capping', () => {
+    const items = Array.from({ length: 10 }, (_, i) => ({ name: `item-${i}` }));
+    const result = applyResultFilter(
+      { items },
+      { key: 'items', search_fields: ['name'], default_limit: 3 },
+      undefined,
+      undefined,
+      undefined
+    );
+
+    expect(result['showing']).toBe(3);
+    expect(result['total']).toBe(10);
+    expect(result['hint']).toBeDefined();
+  });
+
+  it('should return all items without hint when total is within auto-return threshold (<=30)', () => {
+    const items = Array.from({ length: 25 }, (_, i) => ({ name: `item-${i}` }));
+    const result = applyResultFilter(
+      { items },
+      { key: 'items', search_fields: ['name'] },
+      undefined,
+      undefined,
+      undefined
+    );
+
+    expect(result['showing']).toBe(25);
+    expect(result['total']).toBe(25);
+    expect(result['hint']).toBeUndefined();
+  });
+
+  it('should combine field filtering with search', () => {
+    const data = {
+      clouds: [
+        { cloud_name: 'aws-eu-west-1', provider: 'aws', extra: 'drop' },
+        { cloud_name: 'google-us-east1', provider: 'google', extra: 'drop' },
+      ],
+    };
+
+    const result = applyResultFilter(
+      data,
+      { key: 'clouds', fields: ['cloud_name', 'provider'], search_fields: ['cloud_name'] },
+      'aws',
+      undefined,
+      undefined
+    );
+
+    const clouds = result['clouds'] as Array<Record<string, unknown>>;
+    expect(clouds).toHaveLength(1);
+    expect(clouds[0]).toEqual({ cloud_name: 'aws-eu-west-1', provider: 'aws' });
+    expect(clouds[0]?.['extra']).toBeUndefined();
+  });
+
+  it('should paginate with offset and return next_offset', () => {
+    const items = Array.from({ length: 25 }, (_, i) => ({ name: `item-${i}` }));
+    const page1 = applyResultFilter(
+      { items },
+      { key: 'items', search_fields: ['name'], default_limit: 10 },
+      undefined,
+      undefined,
+      undefined
+    );
+
+    expect(page1['showing']).toBe(10);
+    expect(page1['next_offset']).toBe(10);
+    expect(page1['hint']).toBeDefined();
+
+    const page2 = applyResultFilter(
+      { items },
+      { key: 'items', search_fields: ['name'], default_limit: 10 },
+      undefined,
+      undefined,
+      10
+    );
+
+    expect(page2['showing']).toBe(10);
+    expect(page2['next_offset']).toBe(20);
+    expect((page2['items'] as Array<Record<string, unknown>>)[0]).toEqual({ name: 'item-10' });
+
+    const page3 = applyResultFilter(
+      { items },
+      { key: 'items', search_fields: ['name'], default_limit: 10 },
+      undefined,
+      undefined,
+      20
+    );
+
+    expect(page3['showing']).toBe(5);
+    expect(page3['next_offset']).toBeUndefined();
+    expect(page3['hint']).toBeUndefined();
   });
 });

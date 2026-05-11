@@ -146,7 +146,9 @@ export interface JsonSchema {
 
 export interface ResponseFilterConfig {
   key: string;
-  fields: string[];
+  fields?: string[];
+  search_fields?: string[];
+  default_limit?: number;
 }
 
 export type ToolSpec = ApiToolConfig;

@@ -17,12 +17,19 @@ tools:
     path: /project/{project}/service/{service_name}/pg/available-extensions
     category: pg
     append_list_picker_hint: true
+    response_filter:
+      key: extensions
+      search_fields: [name]
 
   - name: aiven_pg_service_query_statistics
     method: POST
     path: /project/{project}/service/{service_name}/pg/query/stats
     category: pg
     readOnly: true
+    response_filter:
+      key: queries
+      fields: [query, database_name, user_name, calls, rows, mean_time, total_time, max_time]
+      search_fields: [query, database_name, user_name]
 
     description: |
       This tool returns **`queries`**: an array of one row per normalized query with:

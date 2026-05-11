@@ -7,6 +7,10 @@ tools:
     category: integrations
     readOnly: true
     append_list_picker_hint: true
+    response_filter:
+      key: service_integrations
+      fields: [service_integration_id, integration_type, source_service, dest_service, enabled, active]
+      search_fields: [integration_type]
     description: |
       List all integrations for a specific service. Returns both integrations where this service is the source and where it is the destination.
 
@@ -55,6 +59,10 @@ tools:
     category: integrations
     readOnly: true
     append_list_picker_hint: true
+    response_filter:
+      key: integration_types
+      fields: [integration_type, source_service_types, dest_service_types]
+      search_fields: [integration_type]
     description: |
       List all available service integration types for a project. Returns the integration type name along with the valid source and destination service types for each.
 
@@ -66,6 +74,10 @@ tools:
     category: integrations
     readOnly: true
     append_list_picker_hint: true
+    response_filter:
+      key: endpoint_types
+      fields: [endpoint_type, title, service_types]
+      search_fields: [endpoint_type]
     description: |
       List all available integration endpoint types for a project. Integration endpoints represent external services (e.g. Datadog, external Elasticsearch, Prometheus remote write, rsyslog, AWS CloudWatch, Google Cloud Logging).
 

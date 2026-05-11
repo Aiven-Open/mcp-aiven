@@ -5,6 +5,8 @@ import type { ToolResult } from '../../src/types.js';
 
 interface ParsedResponse {
   showing: number;
+  offset?: number;
+  next_offset?: number;
   hint?: string;
   services: Array<{ project: string; service_name: string; service_type: string; state: string }>;
   errors?: Array<{ project: string; error: string }>;
@@ -106,7 +108,8 @@ describe('service-search', () => {
     const parsed = parseResponse(result);
     expect(parsed.showing).toBe(3);
     expect(parsed.services).toHaveLength(3);
-    expect(parsed.hint).toContain('More services may exist');
+    expect(parsed.next_offset).toBe(3);
+    expect(parsed.hint).toContain('More services exist');
   });
 
   it('stops fetching projects early when limit is reached', async () => {
@@ -120,7 +123,7 @@ describe('service-search', () => {
     const result = await tool.handler({ limit: 3 });
     const parsed = parseResponse(result);
     expect(parsed.showing).toBe(3);
-    expect(parsed.hint).toContain('More services may exist');
+    expect(parsed.hint).toContain('More services exist');
     // Should not have fetched all 20 projects (concurrency=10, so at most 1 batch of /service calls)
     const getCalls = vi.mocked(client.get).mock.calls.filter((c) => c[0].includes('/service'));
     expect(getCalls.length).toBeLessThan(20);
@@ -146,7 +149,22 @@ describe('service-search', () => {
     expect(parsed.errors?.[0]).toMatchObject({ project: 'bad', error: 'forbidden' });
   });
 
-  it('returns default MAX_RESULTS when no limit specified', async () => {
+  it('filters by search (free-text on service_name)', async () => {
+    const client = createMockClient(['proj-a'], {
+      'proj-a': [
+        { service_name: 'my-kafka', service_type: 'kafka', state: 'RUNNING' },
+        { service_name: 'my-pg', service_type: 'pg', state: 'RUNNING' },
+        { service_name: 'other-pg', service_type: 'pg', state: 'RUNNING' },
+      ],
+    });
+    const [tool] = createServiceSearchTool(client);
+    const result = await tool.handler({ project: 'proj-a', search: 'my-' });
+    const parsed = parseResponse(result);
+    expect(parsed.showing).toBe(2);
+    expect(parsed.services.map((s) => s.service_name)).toEqual(['my-kafka', 'my-pg']);
+  });
+
+  it('returns default limit when no limit specified', async () => {
     const client = createMockClient(['proj-a'], {
       'proj-a': makeServices('proj-a', 20),
     });
@@ -154,6 +172,7 @@ describe('service-search', () => {
     const result = await tool.handler({ project: 'proj-a' });
     const parsed = parseResponse(result);
     expect(parsed.showing).toBe(15);
-    expect(parsed.hint).toContain('More services may exist');
+    expect(parsed.next_offset).toBe(15);
+    expect(parsed.hint).toContain('More services exist');
   });
 });
