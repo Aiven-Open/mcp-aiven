@@ -53,9 +53,12 @@
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "pnpm generate:api-types && pnpm generate && pnpm build && pnpm test --run",
-    "generate:api-types": "openapi-typescript https://api.aiven.io/doc/openapi.json -o src/generated/aiven-api.ts"
+    "generate:api-types": "openapi-typescript https://api.aiven.io/doc/openapi.json -o src/generated/aiven-api.ts",
+    "deploy:cf": "wrangler deploy"
   },
   "devDependencies": {
+    "@cloudflare/containers": "^0.3.3",
+    "@cloudflare/workers-types": "^4.20260510.0",
     "@eslint/js": "^9.0.0",
     "@types/express": "^5.0.6",
     "@types/node": "^22.10.0",
@@ -70,7 +73,8 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.0.0",
-    "vitest": "^2.0.0"
+    "vitest": "^2.0.0",
+    "wrangler": "^4.88.0"
   },
   "engines": {
     "node": ">=18.0.0"

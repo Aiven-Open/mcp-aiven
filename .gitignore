@@ -36,6 +36,7 @@ OAUTH_PLAN.md
 
 .husky/
 .cache/
+.wrangler/
 generator/schemas/
 src/generated/
 .claude/settings.local.json

@@ -36,6 +36,14 @@ export default tseslint.config(
     },
   },
   {
+    files: ['worker/**/*.ts'],
+    languageOptions: {
+      parserOptions: {
+        project: './worker/tsconfig.json',
+      },
+    },
+  },
+  {
     files: ['tests/**/*.test.ts'],
     rules: {
       '@typescript-eslint/unbound-method': 'off',

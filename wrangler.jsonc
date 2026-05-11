@@ -1,0 +1,37 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mcp-aiven",
+  "main": "worker/src/index.ts",
+  "compatibility_date": "2026-05-11",
+
+  "containers": [
+    {
+      "class_name": "McpAivenContainer",
+      "image": "./Dockerfile",
+      // https://developers.cloudflare.com/containers/platform-details/limits/
+      "instance_type": "standard-2",
+      "max_instances": 5
+    }
+  ],
+
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "MCP_CONTAINER",
+        "class_name": "McpAivenContainer"
+      }
+    ]
+  },
+
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["McpAivenContainer"]
+    }
+  ],
+
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true }
+  }
+}
