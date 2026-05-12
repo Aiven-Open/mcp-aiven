@@ -37,7 +37,6 @@ export class AivenClient {
 
     const timeout = options?.timeout ?? this.defaultTimeout;
     const perRequestHeaders = this.buildHeaders(token, options);
-    this.logAivenRequest(method, path, perRequestHeaders);
 
     const result = (await this.fetchClient.request(
       method.toLowerCase() as never,
@@ -68,21 +67,6 @@ export class AivenClient {
     }
 
     return result.data as T;
-  }
-
-  private logAivenRequest(method: HttpMethod, path: string, perRequestHeaders: Record<string, string>): void {
-    const url = `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
-    const merged: Record<string, string> = {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      'User-Agent': `mcp-aiven/${VERSION}`,
-      ...perRequestHeaders,
-    };
-    const forLog = { ...merged };
-    if (forLog['Authorization']?.startsWith('Bearer ')) {
-      forLog['Authorization'] = 'Bearer [REDACTED]';
-    }
-    console.error('mcp-aiven: Aiven request %s %s headers=%s', method, url, JSON.stringify(forLog));
   }
 
   private buildHeaders(token: string, options?: RequestOptions): Record<string, string> {
