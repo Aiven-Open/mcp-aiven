@@ -1,42 +1,55 @@
 # Dependencies
 node_modules/
-.pnpm-store/
+package-lock.json
 
 # Build output
 dist/
+build/
+out/
+*.js.map
 
-# Environment
+# Environment and credentials -- NEVER commit these
 .env
+.env.*
 .env.local
 .env.*.local
+*.pem
+*.key
+*.p12
+*.pfx
+*.cert
+*.crt
+*.jks
+credentials.json
+service-account*.json
+**/secrets/
+**/credentials/
 
-# IDE
-.cursor
-.vscode/
-.idea/
-*.code-workspace
-
-# OS
+# OS files
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
 # Logs
 *.log
 npm-debug.log*
 
-# Test coverage
+# Coverage
 coverage/
+.nyc_output/
 
-# Cache
+# TypeScript cache
 *.tsbuildinfo
 
-# Internal planning docs
-DESIGN.md
-OAUTH_PLAN.md
+# Package tarballs
+*.tgz
 
-.husky/
-.cache/
-generator/schemas/
-src/generated/
-.claude/settings.local.json
-.mcp.json
+# macOS
+._*
