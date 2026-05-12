@@ -75,9 +75,14 @@ async function main(): Promise<void> {
   const allTools: readonly ToolDefinition[] = loadAllTools(client);
 
   function createMcpServer(options: McpRequestOptions): McpServer {
-    const tools = options.readOnly
-      ? allTools.filter((t) => t.definition.annotations.readOnlyHint)
-      : allTools;
+    let tools: readonly ToolDefinition[] = allTools;
+    if (options.readOnly) {
+      tools = tools.filter((t) => t.definition.annotations.readOnlyHint);
+    }
+    if (options.categories) {
+      const allowed = options.categories;
+      tools = tools.filter((t) => allowed.has(t.category));
+    }
 
     const serverOptions = options.readOnly
       ? ([{ instructions: readOnlyInstructions(transport) }] as const)
@@ -98,7 +103,7 @@ async function main(): Promise<void> {
       readOnly: config.readOnly,
     });
   } else {
-    const server = createMcpServer({ readOnly: config.readOnly });
+    const server = createMcpServer({ readOnly: config.readOnly, categories: config.categories });
     await server.connect(createStdioTransport());
     console.error('mcp-aiven: Server connected and ready');
   }
