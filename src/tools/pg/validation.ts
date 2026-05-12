@@ -29,6 +29,12 @@ const READONLY_ALLOWED = new Set(['SelectStmt', 'ExplainStmt']);
 //   - Privilege escalation via role or configuration modification
 //   - Authentication or security policy changes
 //
+// Note on AlterTableStmt: This covers all ALTER TABLE subcommands, including
+// ENABLE/DISABLE TRIGGER and ENABLE/DISABLE ROW LEVEL SECURITY. Subcommand-level
+// validation would require AST inspection and is a potential future hardening step.
+// For now, the security gain from blocking CREATE EXTENSION, LOAD, ALTER ROLE, etc.
+// is substantial compared to the previous blocklist approach.
+//
 // If you need to add a new statement type to this set, evaluate it against the
 // threat categories above and document the justification here.
 const WRITE_ALLOWED = new Set([
@@ -93,7 +99,7 @@ export async function validateWriteQuery(query: string): Promise<SqlValidationRe
   if (!WRITE_ALLOWED.has(stmtType)) {
     return {
       valid: false,
-      error: `Blocked statement type: ${stmtType}. Only INSERT, UPDATE, DELETE, CREATE TABLE, CREATE INDEX, ALTER TABLE, COMMENT, CREATE SCHEMA, CREATE VIEW, REFRESH MATERIALIZED VIEW, and CREATE/ALTER SEQUENCE statements are allowed through this tool.`,
+      error: `Blocked statement type: ${stmtType}. Only INSERT, UPDATE, DELETE, CREATE TABLE, CREATE TABLE AS, CREATE INDEX, ALTER TABLE, COMMENT, CREATE SCHEMA, CREATE VIEW, REFRESH MATERIALIZED VIEW, and CREATE/ALTER SEQUENCE statements are allowed through this tool.`,
     };
   }
   return { valid: true, stmtType };
