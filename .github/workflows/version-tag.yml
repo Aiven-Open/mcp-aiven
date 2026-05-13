@@ -25,16 +25,18 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Configure git identity
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
       - name: Determine version
         id: version
+        env:
+          DRY_RUN: ${{ github.event_name == 'pull_request' }}
         run: |
-          DRY_RUN=${{ github.event_name == 'pull_request' }}
           PKG_VERSION=$(node -p "require('./package.json').version")
+
+          if ! [[ "$PKG_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid version in package.json: $PKG_VERSION"
+            exit 1
+          fi
+
           LATEST_TAG=$(git tag -l 'v*' --sort=-v:refname | head -n1)
           LATEST_VERSION=${LATEST_TAG#v}
 
@@ -50,7 +52,11 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
           echo "needs_bump=$NEEDS_BUMP" >> "$GITHUB_OUTPUT"
-          echo "dry_run=$DRY_RUN" >> "$GITHUB_OUTPUT"
+          {
+            echo "dry_run<<EOF"
+            echo "$DRY_RUN"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
           echo "📦 Next version: v$VERSION"
           echo "   Latest tag: ${LATEST_TAG:-none}"
@@ -58,21 +64,53 @@ jobs:
           echo "   Auto-bump: $NEEDS_BUMP"
           echo "   Dry run: $DRY_RUN"
 
-      - name: Bump package.json (patch auto-bump)
-        if: steps.version.outputs.needs_bump == 'true' && steps.version.outputs.dry_run == 'false'
+      - name: Check GitHub App credentials
+        id: app-creds
         run: |
-          npm version ${{ steps.version.outputs.version }} --no-git-tag-version
+          if [ -n "$APP_ID" ] && [ -n "$APP_KEY" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::GitHub App credentials not configured -- skipping version bump and push"
+          fi
+        env:
+          APP_ID: ${{ vars.VERSION_BOT_APP_ID }}
+          APP_KEY: ${{ secrets.VERSION_BOT_PRIVATE_KEY }}
+
+      - name: Generate GitHub App token
+        if: steps.app-creds.outputs.available == 'true' && steps.version.outputs.needs_bump == 'true' && steps.version.outputs.dry_run == 'false'
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.VERSION_BOT_APP_ID }}
+          private-key: ${{ secrets.VERSION_BOT_PRIVATE_KEY }}
+
+      - name: Configure git identity
+        if: steps.app-creds.outputs.available == 'true' && steps.version.outputs.needs_bump == 'true' && steps.version.outputs.dry_run == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump package.json (patch auto-bump)
+        if: steps.app-creds.outputs.available == 'true' && steps.version.outputs.needs_bump == 'true' && steps.version.outputs.dry_run == 'false'
+        env:
+          NEW_VERSION: ${{ steps.version.outputs.version }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          npm version "$NEW_VERSION" --no-git-tag-version
           git add package.json
-          git commit -m "chore: bump version to ${{ steps.version.outputs.version }} [skip ci]"
+          git commit -m "chore: bump version to $NEW_VERSION [skip ci]"
           git push origin HEAD:main
 
       - name: Create tag and GitHub Release
         if: steps.version.outputs.dry_run == 'false'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW_TAG: ${{ steps.version.outputs.tag }}
         run: |
-          git tag -a "${{ steps.version.outputs.tag }}" -m "Release ${{ steps.version.outputs.tag }}"
-          git push origin "${{ steps.version.outputs.tag }}"
-          gh release create "${{ steps.version.outputs.tag }}" \
-            --title "${{ steps.version.outputs.tag }}" \
+          git tag -a "$NEW_TAG" -m "Release $NEW_TAG"
+          git push origin "$NEW_TAG"
+          gh release create "$NEW_TAG" \
+            --title "$NEW_TAG" \
             --generate-notes
