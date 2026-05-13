@@ -57,6 +57,11 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^12.0.8",
+    "@semantic-release/npm": "^13.1.5",
+    "@semantic-release/release-notes-generator": "^14.1.1",
     "@types/express": "^5.0.6",
     "@types/node": "^22.10.0",
     "@types/pg": "^8.16.0",
@@ -67,6 +72,7 @@
     "lint-staged": "^15.0.0",
     "openapi-typescript": "^7.13.0",
     "prettier": "^3.2.0",
+    "semantic-release": "^25.0.3",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.0.0",
@@ -75,5 +81,18 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "packageManager": "pnpm@10.28.2"
+  "packageManager": "pnpm@10.28.2",
+  "release": {
+    "branches": ["main"],
+    "plugins": [
+      "@semantic-release/commit-analyzer",
+      "@semantic-release/release-notes-generator",
+      ["@semantic-release/git", {
+        "assets": ["package.json"],
+        "message": "chore(release): ${nextRelease.version}"
+      }],
+      "@semantic-release/npm",
+      "@semantic-release/github"
+    ]
+  }
 }
