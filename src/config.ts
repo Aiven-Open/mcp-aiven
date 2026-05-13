@@ -4,7 +4,10 @@ import { ServiceCategory } from './types.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json') as { version: string };
-export const VERSION = pkg.version;
+// APP_VERSION is injected by the deploy pipeline so production containers report the real version.
+// When installed from npm the published package.json already contains the correct version.
+// In a local git clone this falls back to the placeholder "0.0.0-semantically-released".
+export const VERSION = process.env['APP_VERSION'] ?? pkg.version;
 export const API_ORIGIN = process.env['AIVEN_API_ORIGIN'] ?? 'https://api.aiven.io';
 export const API_BASE_URL = `${API_ORIGIN}/v1`;
 export const HOST = process.env['MCP_HOST'] ?? 'https://mcp.aiven.live';

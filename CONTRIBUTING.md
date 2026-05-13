@@ -100,6 +100,28 @@ versioning, GitHub Releases, and npm publishing. The version bump is determined 
 | `feat!:` or `BREAKING CHANGE:` | Major (x.0.0) | `feat!: redesign tool schema format` |
 | `chore:`, `docs:`, `ci:`, `test:`, `refactor:` | No release | `chore: update dev dependencies` |
 
+## Versioning
+
+This project uses [semantic-release](https://github.com/semantic-release/semantic-release) for fully automated versioning and publishing.
+
+**The `version` field in `package.json` is a placeholder** (`0.0.0-semantically-released`) and is **not** updated in the repository. This is [intentional and recommended](https://github.com/semantic-release/semantic-release/blob/master/docs/support/FAQ.md#why-is-the-packagejsons-version-not-updated-in-my-repository).
+
+Use **Git tags** or **npm releases** as the source of truth for the current version:
+
+```shell
+# Latest published version
+npm dist-tags ls mcp-aiven
+
+# All git tags
+git tag --list --sort=-version:refname
+```
+
+**Version at runtime:**
+
+- When installed from npm (`npx mcp-aiven` / `npm install mcp-aiven`): the published `package.json` contains the real version, available as `process.env.npm_package_version`.
+- In production containers: the `APP_VERSION` environment variable is injected by the deploy pipeline.
+- In a local git clone: falls back to `0.0.0-semantically-released` (cosmetic only, not a problem for development).
+
 - Choose a meaningful title for your pull request.
 - Commit messages should describe the changes, not the filenames. Win our admiration by following
   the [excellent advice from Chris Beams](https://chris.beams.io/posts/git-commit/) when composing
