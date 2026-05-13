@@ -89,9 +89,20 @@ pnpm build
 
 ## Opening a PR
 
+This project uses [semantic-release](https://github.com/semantic-release/semantic-release) to automate
+versioning, GitHub Releases, and npm publishing. The version bump is determined by the PR title
+(squash merge), so use [Conventional Commits](https://www.conventionalcommits.org/) prefixes:
+
+| PR title prefix | Release type | Example |
+|---|---|---|
+| `fix:` | Patch (1.2.x) | `fix: handle empty response from API` |
+| `feat:` | Minor (1.x.0) | `feat: add Redis support` |
+| `feat!:` or `BREAKING CHANGE:` | Major (x.0.0) | `feat!: redesign tool schema format` |
+| `chore:`, `docs:`, `ci:`, `test:`, `refactor:` | No release | `chore: update dev dependencies` |
+
+- Choose a meaningful title for your pull request.
 - Commit messages should describe the changes, not the filenames. Win our admiration by following
   the [excellent advice from Chris Beams](https://chris.beams.io/posts/git-commit/) when composing
   commit messages.
-- Choose a meaningful title for your pull request.
 - The pull request description should focus on what changed and why.
 - Check that the tests pass (and add test coverage for your changes if appropriate).
