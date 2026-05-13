@@ -21,6 +21,8 @@ jobs:
         with:
           app-id: ${{ vars.VERSION_BOT_APP_ID }}
           private-key: ${{ secrets.VERSION_BOT_PRIVATE_KEY }}
+          owner: Aiven-Open
+          repositories: mcp-aiven
 
       - uses: actions/checkout@v4
         with:
