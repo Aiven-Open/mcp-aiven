@@ -133,7 +133,7 @@ export function startHttpServer(
   if (config.trustProxy) {
     app.set('trust proxy', 1);
   }
-  app.use(express.json({ limit: '5mb' }));
+  const mcpJsonParser = express.json({ limit: '512kb' });
 
   const mcpPostRateLimit = createMcpPostRateLimit(config.rateLimit, {
     error: 'Too many MCP requests. Please wait before trying again.',
@@ -160,7 +160,7 @@ export function startHttpServer(
     res.status(405).set('Allow', 'POST').json({ error: 'Method Not Allowed' });
   });
 
-  app.post('/mcp', mcpPostRateLimit, authMiddleware, (req: Request, res: Response) => {
+  app.post('/mcp', mcpPostRateLimit, authMiddleware, mcpJsonParser, (req: Request, res: Response) => {
     void (async (): Promise<void> => {
       const parsed = parseMcpQueryParams(req.query as Record<string, unknown>, config.readOnly);
       if ('error' in parsed) {
