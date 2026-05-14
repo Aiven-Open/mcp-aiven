@@ -89,9 +89,9 @@ pnpm build
 
 ## Opening a PR
 
-This project uses [semantic-release](https://github.com/semantic-release/semantic-release) to automate
-versioning, GitHub Releases, and npm publishing. The version bump is determined by the PR title
-(squash merge), so use [Conventional Commits](https://www.conventionalcommits.org/) prefixes:
+This project uses [release-please](https://github.com/googleapis/release-please) to automate
+versioning, changelogs, and GitHub Releases. The version bump is determined by commit messages,
+so use [Conventional Commits](https://www.conventionalcommits.org/) prefixes:
 
 | PR title prefix | Release type | Example |
 |---|---|---|
