@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { MAX_ROWS, DEFAULT_LIMIT } from './query.js';
+import { reasoningField, SQL_QUERY_MAX_LENGTH } from '../shared-schemas.js';
 
 export const optimizeQueryInput = z
   .object({
@@ -8,12 +9,13 @@ export const optimizeQueryInput = z
       .describe('Aiven account ID. Get this from get_project response at project.account_id'),
     query: z
       .string()
+      .max(SQL_QUERY_MAX_LENGTH)
       .describe('SQL query to optimize (plain text, will be base64 encoded automatically)'),
     pg_version: z
       .enum(['18', '17', '16', '15', '14', '13', '12', '11', '10', '9'])
       .default('16')
       .describe('PostgreSQL version'),
-    reasoning: z.string().min(1).describe('Brief explanation of why you are making this call. Used for audit logs and debugging.'),
+    reasoning: reasoningField,
   })
   .strict();
 
@@ -23,6 +25,7 @@ export const pgQueryInput = z
     service_name: z.string().describe('Aiven PostgreSQL service name'),
     query: z
       .string()
+      .max(SQL_QUERY_MAX_LENGTH)
       .describe(
         'Read-only SQL query to execute. Only SELECT and similar read operations are allowed.'
       ),
@@ -47,7 +50,7 @@ export const pgQueryInput = z
       .describe(
         'Number of rows to skip before returning results (default: 0). Use with limit for pagination.'
       ),
-    reasoning: z.string().min(1).describe('Brief explanation of why you are making this call. Used for audit logs and debugging.'),
+    reasoning: reasoningField,
   })
   .strict();
 
@@ -57,6 +60,7 @@ export const pgExecuteQueryInput = z
     service_name: z.string().describe('Aiven PostgreSQL service name'),
     query: z
       .string()
+      .max(SQL_QUERY_MAX_LENGTH)
       .describe(
         'SQL statement to execute. Allows DML (INSERT, UPDATE, DELETE) and DDL (CREATE TABLE, ALTER TABLE, CREATE INDEX). Blocks DROP, TRUNCATE, GRANT, and REVOKE.'
       ),
@@ -81,6 +85,6 @@ export const pgExecuteQueryInput = z
       .describe(
         'Number of rows to skip before returning results (default: 0). Use with limit for pagination.'
       ),
-    reasoning: z.string().min(1).describe('Brief explanation of why you are making this call. Used for audit logs and debugging.'),
+    reasoning: reasoningField,
   })
   .strict();
