@@ -154,7 +154,7 @@ EXPOSE 3000
 CMD ["node", "dist/index.js"]
 \`\`\``,
         inputSchema: deployApplicationInput,
-        annotations: CREATE_ANNOTATIONS,
+        annotations: { ...CREATE_ANNOTATIONS, destructiveHint: true },
       },
       handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
         const {
@@ -315,7 +315,7 @@ Runtime errors in the app (500s, crashes, SSL errors) are NOT deploy failures â€
 
 The rebuild pulls the latest commit from the configured branch and rebuilds the Docker image. It does not change any service settings.`,
         inputSchema: redeployApplicationInput,
-        annotations: UPDATE_ANNOTATIONS,
+        annotations: { ...UPDATE_ANNOTATIONS, destructiveHint: true },
       },
       handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
         const { project, service_name: serviceName } = params as z.infer<

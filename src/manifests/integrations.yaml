@@ -20,6 +20,7 @@ tools:
     method: POST
     path: /project/{project}/integration
     category: integrations
+    destructive: true
     description: |
       Create a service integration between two Aiven services, or between an Aiven service and an external integration endpoint.
 
@@ -39,6 +40,7 @@ tools:
     method: PUT
     path: /project/{project}/integration/{integration_id}
     category: integrations
+    destructive: true
     description: |
       Update the configuration of an existing service integration.
 

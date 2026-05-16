@@ -36,6 +36,7 @@ tools:
     method: POST
     path: /project/{project}/service/{service_name}/topic
     category: kafka
+    destructive: true
     description: |
       Create a Kafka topic.
 
@@ -66,6 +67,7 @@ tools:
     method: PUT
     path: /project/{project}/service/{service_name}/topic/{topic_name}
     category: kafka
+    destructive: true
 
   - name: aiven_kafka_topic_delete
     method: DELETE
@@ -104,6 +106,7 @@ tools:
     method: POST
     path: /project/{project}/service/{service_name}/kafka/rest/topics/{topic_name}/produce
     category: kafka
+    destructive: true
 
     description: |
       Produce messages into a Kafka topic.
@@ -173,6 +176,7 @@ tools:
     method: POST
     path: /project/{project}/service/{service_name}/connectors/{connector_name}/pause
     category: kafka
+    destructive: true
     description: *kafka_connect_plan_gate
 
   - name: aiven_kafka_connect_resume_connector
@@ -185,6 +189,7 @@ tools:
     method: POST
     path: /project/{project}/service/{service_name}/connectors/{connector_name}/restart
     category: kafka
+    destructive: true
     description: *kafka_connect_plan_gate
 
   - name: aiven_kafka_connect_delete_connector
