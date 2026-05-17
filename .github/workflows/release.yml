@@ -9,14 +9,21 @@ permissions:
   pull-requests: write
 
 jobs:
+  # On every push to main, release-please either:
+  #   1. Creates/updates a release PR (if there are releasable commits)
+  #   2. Creates a GitHub release + tag (if a release PR was just merged)
   release-please:
     runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
         with:
           release-type: node
 
+      # Only runs when a release PR was created/updated (not when a release is created)
       - name: Notify Slack (release PR)
         if: steps.release.outputs.pr != ''
         env:
@@ -33,3 +40,57 @@ jobs:
           curl -sf -X POST "$SLACK_WEBHOOK_URL" \
             -H "Content-Type: application/json" \
             -d "{\"attachments\":[{\"color\":\"good\",\"title\":\"mcp-aiven ${VERSION} release PR ready\",\"text\":\"<$PR_URL|Review and merge when ready>\"}]}"
+
+  # Publish to npm only when release-please created a release (i.e. a release PR was merged).
+  publish:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          check-latest: true
+          registry-url: https://registry.npmjs.org
+          cache: false
+      - run: npm install -g npm@latest
+      - run: pnpm install --frozen-lockfile
+      # Auth via npm trusted publishers (OIDC) — no NPM_TOKEN needed.
+      # Requires id-token: write permission on this job.
+      - run: npm publish
+        id: npm-publish
+
+      # Runs regardless of whether npm publish succeeded or failed
+      - name: Notify Slack (publish)
+        if: always()
+        env:
+          VERSION: ${{ needs.release-please.outputs.tag_name }}
+          PUBLISH_RESULT: ${{ steps.npm-publish.conclusion }}
+          WEBHOOK_SUCCESS: ${{ secrets.SLACK_WEBHOOK_PUBLISH_SUCCESS }}
+          WEBHOOK_FAILURE: ${{ secrets.SLACK_WEBHOOK_PUBLISH_FAILURE }}
+        run: |
+          RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases/tag/${VERSION}"
+
+          if [ "$PUBLISH_RESULT" = "success" ]; then
+            WEBHOOK_URL="$WEBHOOK_SUCCESS"
+            COLOR="good"
+            TITLE="mcp-aiven ${VERSION} published to npm"
+          else
+            WEBHOOK_URL="$WEBHOOK_FAILURE"
+            COLOR="danger"
+            TITLE="mcp-aiven ${VERSION} npm publish FAILED"
+          fi
+
+          if [ -z "$WEBHOOK_URL" ]; then
+            echo "No webhook configured for this result, skipping"
+            exit 0
+          fi
+
+          curl -sf -X POST "$WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{\"attachments\":[{\"color\":\"$COLOR\",\"title\":\"$TITLE\",\"text\":\"<$RELEASE_URL|View release>\"}]}"
