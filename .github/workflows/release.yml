@@ -18,10 +18,16 @@ jobs:
           release-type: node
 
       - name: Notify Slack (release PR)
-        if: steps.release.outputs.pr != '' && secrets.SLACK_WEBHOOK_RELEASE_PR_OPENED != ''
+        if: steps.release.outputs.pr != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_RELEASE_PR_OPENED }}
         run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "No Slack webhook configured, skipping notification"
+            exit 0
+          fi
           PR_URL="${{ steps.release.outputs.pr }}"
           VERSION="${{ steps.release.outputs.version }}"
-          curl -sf -X POST "${{ secrets.SLACK_WEBHOOK_RELEASE_PR_OPENED }}" \
+          curl -sf -X POST "$SLACK_WEBHOOK_URL" \
             -H "Content-Type: application/json" \
             -d "{\"attachments\":[{\"color\":\"good\",\"title\":\"mcp-aiven ${VERSION} release PR ready\",\"text\":\"<$PR_URL|Review and merge when ready>\"}]}"
