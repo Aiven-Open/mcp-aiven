@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { reasoningField } from '../shared-schemas.js';
 
 const environmentVariableItem = z.object({
   key: z.string().describe('Environment variable name (e.g. NODE_ENV, API_KEY)'),
@@ -244,7 +245,7 @@ export const deployApplicationInput = z
           'and ask the user which to use.'
       ),
 
-    reasoning: z.string().min(1).describe('Brief explanation of why you are making this call. Used for audit logs and debugging.'),
+    reasoning: reasoningField,
   })
   .strict();
 
@@ -252,7 +253,7 @@ export const redeployApplicationInput = z
   .object({
     project: z.string().describe('Aiven project name'),
     service_name: z.string().describe('Name of the existing application service to redeploy'),
-    reasoning: z.string().min(1).describe('Brief explanation of why you are making this call. Used for audit logs and debugging.'),
+    reasoning: reasoningField,
   })
   .strict();
 
@@ -263,7 +264,7 @@ export const vcsIntegrationListInput = z
       .describe(
         'Aiven project name. The organization_id is resolved internally from this project.'
       ),
-    reasoning: z.string().min(1).describe('Brief explanation of why you are making this call. Used for audit logs and debugging.'),
+    reasoning: reasoningField,
   })
   .strict();
 
@@ -279,6 +280,6 @@ export const vcsIntegrationRepositoryListInput = z
       .describe(
         'VCS integration ID returned by aiven_vcs_integration_list (e.g. "vcs-abc123").'
       ),
-    reasoning: z.string().min(1).describe('Brief explanation of why you are making this call. Used for audit logs and debugging.'),
+    reasoning: reasoningField,
   })
   .strict();
