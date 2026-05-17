@@ -57,7 +57,6 @@ jobs:
           node-version: 22
           check-latest: true
           registry-url: https://registry.npmjs.org
-          cache: false
       - run: npm install -g npm@latest
       - run: pnpm install --frozen-lockfile
       # Auth via npm trusted publishers (OIDC) — no NPM_TOKEN needed.
