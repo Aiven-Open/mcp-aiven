@@ -73,6 +73,7 @@ tools:
     method: POST
     path: /project/{project}/service
     category: core
+    destructive: true
     append_list_picker_hint: true
     defaults:
       project_vpc_id: null

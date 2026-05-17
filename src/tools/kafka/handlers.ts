@@ -26,7 +26,7 @@ export function createKafkaCustomTools(client: AivenClient): ToolDefinition[] {
         title: 'Create Kafka Connect Connector',
         description: CREATE_CONNECTOR_DESCRIPTION,
         inputSchema: createConnectorInput,
-        annotations: CREATE_ANNOTATIONS,
+        annotations: { ...CREATE_ANNOTATIONS, destructiveHint: true },
       },
       handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
         try {
@@ -63,7 +63,7 @@ export function createKafkaCustomTools(client: AivenClient): ToolDefinition[] {
         title: 'Edit Kafka Connect Connector',
         description: EDIT_CONNECTOR_DESCRIPTION,
         inputSchema: editConnectorInput,
-        annotations: UPDATE_ANNOTATIONS,
+        annotations: { ...UPDATE_ANNOTATIONS, destructiveHint: true },
       },
       handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
         try {

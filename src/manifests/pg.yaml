@@ -43,12 +43,14 @@ tools:
     method: POST
     path: /project/{project}/service/{service_name}/connection_pool
     category: pg
+    destructive: true
     description: *pg_connection_pool_plan_gate
 
   - name: aiven_pg_bouncer_update
     method: PUT
     path: /project/{project}/service/{service_name}/connection_pool/{pool_name}
     category: pg
+    destructive: true
     description: *pg_connection_pool_plan_gate
 
   - name: aiven_pg_bouncer_delete
