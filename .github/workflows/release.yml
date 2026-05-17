@@ -21,13 +21,15 @@ jobs:
         if: steps.release.outputs.pr != ''
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_RELEASE_PR_OPENED }}
+          PR_NUMBER: ${{ fromJSON(steps.release.outputs.pr).number }}
+          PR_TITLE: ${{ fromJSON(steps.release.outputs.pr).title }}
         run: |
           if [ -z "$SLACK_WEBHOOK_URL" ]; then
             echo "No Slack webhook configured, skipping notification"
             exit 0
           fi
-          PR_URL="${{ steps.release.outputs.pr }}"
-          VERSION="${{ steps.release.outputs.version }}"
+          PR_URL="https://github.com/${{ github.repository }}/pull/${PR_NUMBER}"
+          VERSION=$(echo "$PR_TITLE" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "unknown")
           curl -sf -X POST "$SLACK_WEBHOOK_URL" \
             -H "Content-Type: application/json" \
             -d "{\"attachments\":[{\"color\":\"good\",\"title\":\"mcp-aiven ${VERSION} release PR ready\",\"text\":\"<$PR_URL|Review and merge when ready>\"}]}"
