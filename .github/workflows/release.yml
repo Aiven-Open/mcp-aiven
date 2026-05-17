@@ -21,8 +21,8 @@ jobs:
         if: steps.release.outputs.pr != ''
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_RELEASE_PR_OPENED }}
-          PR_NUMBER: ${{ fromJSON(steps.release.outputs.pr).number }}
-          PR_TITLE: ${{ fromJSON(steps.release.outputs.pr).title }}
+          PR_NUMBER: ${{ steps.release.outputs.pr && fromJSON(steps.release.outputs.pr).number || '' }}
+          PR_TITLE: ${{ steps.release.outputs.pr && fromJSON(steps.release.outputs.pr).title || '' }}
         run: |
           if [ -z "$SLACK_WEBHOOK_URL" ]; then
             echo "No Slack webhook configured, skipping notification"
