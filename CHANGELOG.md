@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.1](https://github.com/Aiven-Open/mcp-aiven/compare/v1.3.0...v1.3.1) (2026-05-17)
+
+
+### Bug Fixes
+
+* invalid secrets references in release and publish workflows ([#77](https://github.com/Aiven-Open/mcp-aiven/issues/77)) ([372c474](https://github.com/Aiven-Open/mcp-aiven/commit/372c47494f6c3a19366fa1e4fe32e6e786c23e40))
+* limit large fields max size ([#71](https://github.com/Aiven-Open/mcp-aiven/issues/71)) ([450e3c1](https://github.com/Aiven-Open/mcp-aiven/commit/450e3c1539ad2fdbdea75e105ed7de2e0554c2ec))
+
 ## [1.3.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.2.0...v1.3.0) (2026-05-17)
 
 
