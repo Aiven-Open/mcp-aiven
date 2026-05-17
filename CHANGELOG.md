@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.2](https://github.com/Aiven-Open/mcp-aiven/compare/v1.3.1...v1.3.2) (2026-05-17)
+
+
+### Bug Fixes
+
+* move npm publish into release workflow ([#79](https://github.com/Aiven-Open/mcp-aiven/issues/79)) ([ac220f7](https://github.com/Aiven-Open/mcp-aiven/commit/ac220f761246d4e8b96d16e293cf8eee9c4022ed))
+
 ## [1.3.1](https://github.com/Aiven-Open/mcp-aiven/compare/v1.3.0...v1.3.1) (2026-05-17)
 
 
