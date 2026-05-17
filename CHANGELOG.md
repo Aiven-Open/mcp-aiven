@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.3](https://github.com/Aiven-Open/mcp-aiven/compare/v1.3.2...v1.3.3) (2026-05-17)
+
+
+### Bug Fixes
+
+* remove invalid cache: false from setup-node ([#81](https://github.com/Aiven-Open/mcp-aiven/issues/81)) ([7029863](https://github.com/Aiven-Open/mcp-aiven/commit/70298632fe1b51def9ac4258fad1e76ef88ea9f4))
+
 ## [1.3.2](https://github.com/Aiven-Open/mcp-aiven/compare/v1.3.1...v1.3.2) (2026-05-17)
 
 
