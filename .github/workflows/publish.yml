@@ -27,7 +27,7 @@ jobs:
   notify-slack:
     runs-on: ubuntu-latest
     needs: publish
-    if: always() && (secrets.SLACK_WEBHOOK_PUBLISH_SUCCESS != '' || secrets.SLACK_WEBHOOK_PUBLISH_FAILURE != '')
+    if: always()
     steps:
       - name: Notify Slack (publish)
         run: |
