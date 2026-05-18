@@ -5,7 +5,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import type { Request, Response, NextFunction } from 'express';
-import { HOST, parseScopes } from './config.js';
+import { HOST, parseScopes, isMaintenanceMode } from './config.js';
 import type { HttpMcpRateLimitConfig } from './config.js';
 import type { McpServerFactory, McpRequestOptions } from './types.js';
 
@@ -154,6 +154,21 @@ export function startHttpServer(
   if (config.trustProxy) {
     app.set('trust proxy', 1);
   }
+
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (!isMaintenanceMode()) {
+      next();
+      return;
+    }
+    if (req.path === '/health') {
+      res.json({ status: 'maintenance' });
+      return;
+    }
+    res.status(503).json({
+      error: 'Service is under maintenance. Please try again later.',
+    });
+  });
+
   const mcpJsonParser = express.json({ limit: '512kb' });
 
   const mcpPostIpRateLimit = createMcpPostIpRateLimit(config.rateLimit, {
