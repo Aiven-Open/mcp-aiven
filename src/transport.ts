@@ -48,7 +48,7 @@ function rateLimitExceededHandler(scope: string) {
   };
 }
 
-function createMcpPostRateLimit(
+function createMcpPostBearerRateLimit(
   cfg: HttpMcpRateLimitConfig,
   message: { error: string }
 ): ReturnType<typeof rateLimit> {
@@ -57,9 +57,30 @@ function createMcpPostRateLimit(
     limit: cfg.limit,
     standardHeaders: 'draft-7',
     legacyHeaders: false,
-    keyGenerator: (req: Request) => mcpRequestKey(req),
+    keyGenerator: (req: Request) => bearerOrIpKey(req),
     message,
-    handler: rateLimitExceededHandler('mcp-post'),
+    handler: rateLimitExceededHandler('mcp-post-bearer'),
+  });
+}
+
+/**
+ * IP-keyed limiter applied alongside the bearer-keyed one. Catches
+ * bearer-rotation floods where each request uses a fresh fake token (which
+ * would otherwise get its own per-bearer bucket and bypass the cap). Uses
+ * the same limit/window — whichever bucket fills first triggers the 429.
+ */
+function createMcpPostIpRateLimit(
+  cfg: HttpMcpRateLimitConfig,
+  message: { error: string }
+): ReturnType<typeof rateLimit> {
+  return rateLimit({
+    windowMs: cfg.windowMs,
+    limit: cfg.limit,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    keyGenerator: (req: Request) => ipKeyGenerator(req.ip ?? '0.0.0.0'),
+    message,
+    handler: rateLimitExceededHandler('mcp-post-ip'),
   });
 }
 
@@ -73,7 +94,7 @@ function authMiddleware(req: Request, res: Response, next: NextFunction): void {
   next();
 }
 
-function mcpRequestKey(req: Request): string {
+function bearerOrIpKey(req: Request): string {
   const auth = req.headers.authorization;
   if (typeof auth === 'string' && auth.startsWith('Bearer ')) {
     const token = auth.slice(7).trim();
@@ -135,7 +156,11 @@ export function startHttpServer(
   }
   const mcpJsonParser = express.json({ limit: '512kb' });
 
-  const mcpPostRateLimit = createMcpPostRateLimit(config.rateLimit, {
+  const mcpPostIpRateLimit = createMcpPostIpRateLimit(config.rateLimit, {
+    error: 'Too many MCP requests from this client. Please wait before trying again.',
+  });
+
+  const mcpPostBearerRateLimit = createMcpPostBearerRateLimit(config.rateLimit, {
     error: 'Too many MCP requests. Please wait before trying again.',
   });
 
@@ -160,7 +185,7 @@ export function startHttpServer(
     res.status(405).set('Allow', 'POST').json({ error: 'Method Not Allowed' });
   });
 
-  app.post('/mcp', mcpPostRateLimit, authMiddleware, mcpJsonParser, (req: Request, res: Response) => {
+  app.post('/mcp', mcpPostIpRateLimit, mcpPostBearerRateLimit, authMiddleware, mcpJsonParser, (req: Request, res: Response) => {
     void (async (): Promise<void> => {
       const parsed = parseMcpQueryParams(req.query as Record<string, unknown>, config.readOnly);
       if ('error' in parsed) {
