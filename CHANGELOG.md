@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.3.3...v1.4.0) (2026-05-18)
+
+
+### Features
+
+* mcp maintenance mode ([#85](https://github.com/Aiven-Open/mcp-aiven/issues/85)) ([45e52cf](https://github.com/Aiven-Open/mcp-aiven/commit/45e52cf78bcdf0cd5d648a1ba5efd4861ba13cf8))
+
+
+### Bug Fixes
+
+* add IP-keyed rate limit ([#83](https://github.com/Aiven-Open/mcp-aiven/issues/83)) ([fe2ef14](https://github.com/Aiven-Open/mcp-aiven/commit/fe2ef14bbbca189f8c57103493faeda15138b302))
+
 ## [1.3.3](https://github.com/Aiven-Open/mcp-aiven/compare/v1.3.2...v1.3.3) (2026-05-17)
 
 
