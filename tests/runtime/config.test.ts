@@ -3,6 +3,7 @@ import {
   loadConfig,
   loadHttpMcpRateLimit,
   httpTrustProxyEnabled,
+  isMaintenanceMode,
   parseScopes,
 } from '../../src/config.js';
 import { ServiceCategory } from '../../src/types.js';
@@ -211,5 +212,40 @@ describe('httpTrustProxyEnabled', () => {
 
     process.env['MCP_TRUST_PROXY'] = 'true';
     expect(httpTrustProxyEnabled()).toBe(true);
+  });
+});
+
+describe('isMaintenanceMode', () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    process.env = { ...originalEnv };
+    delete process.env['MAINTENANCE_MODE'];
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it('should be false when MAINTENANCE_MODE is unset', () => {
+    expect(isMaintenanceMode()).toBe(false);
+  });
+
+  it('should be false when MAINTENANCE_MODE is "false"', () => {
+    process.env['MAINTENANCE_MODE'] = 'false';
+    expect(isMaintenanceMode()).toBe(false);
+  });
+
+  it('should be true when MAINTENANCE_MODE is "true"', () => {
+    process.env['MAINTENANCE_MODE'] = 'true';
+    expect(isMaintenanceMode()).toBe(true);
+  });
+
+  it('should be false for non-exact values like "TRUE" or "1"', () => {
+    process.env['MAINTENANCE_MODE'] = 'TRUE';
+    expect(isMaintenanceMode()).toBe(false);
+
+    process.env['MAINTENANCE_MODE'] = '1';
+    expect(isMaintenanceMode()).toBe(false);
   });
 });

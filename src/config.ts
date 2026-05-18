@@ -86,6 +86,10 @@ export function parseScopes(
   return { categories: set };
 }
 
+export function isMaintenanceMode(): boolean {
+  return process.env['MAINTENANCE_MODE'] === 'true';
+}
+
 export function loadConfig(transport: 'stdio' | 'http' = 'stdio'): AivenConfig {
   const token = process.env['AIVEN_TOKEN'];
 
