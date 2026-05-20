@@ -151,6 +151,8 @@ MCP_HOST=http://localhost:3000 node dist/index.js
 | `MCP_TRANSPORT` | No | `stdio` | Set to `http` to start an HTTP server instead of stdio |
 | `MCP_HTTP_RATE_LIMIT_MAX` | No | `100` | Max requests per window on `POST /mcp` (HTTP transport). Applies independently to a per-bearer-token bucket and a per-source-IP bucket; whichever fills first returns 429. |
 | `MCP_HTTP_RATE_LIMIT_WINDOW_MS` | No | `60000` | Window length in milliseconds for `MCP_HTTP_RATE_LIMIT_MAX`. |
+| `OTEL_METRICS_PORT` | No | -- | Port to expose a Prometheus `/metrics` endpoint (e.g. `9464`). When unset, OTEL instrumentation is disabled and the server behaves as before. |
+| `OTEL_SERVICE_NAME` | No | `mcp-aiven` | Override the OTEL service name label on exported metrics. |
 
 In remote (HTTP) mode, `AIVEN_TOKEN` is not needed. Your MCP client sends your token as a Bearer token with each request.
 
