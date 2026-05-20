@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Must be first import: initializes OTEL before Express loads (no-ops if OTEL_EXPORTER_OTLP_ENDPOINT is unset)
+import './instrumentation.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { loadConfig } from './config.js';
 import { AivenClient } from './client.js';
