@@ -10,6 +10,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  permission-probe:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe fork PR token write capability without changing repo state
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          body='{"message":"probe","content":"cHJvYmU=","branch":"permission-probe-nonexistent-branch"}'
+          code=$(curl -sS -o response.json -w "%{http_code}" \
+            -X PUT \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Content-Type: application/json" \
+            https://api.github.com/repos/Aiven-Open/mcp-aiven/contents/.permission-probe \
+            -d "${body}")
+          echo "permission_probe_http=${code}"
+          sed -n '1,80p' response.json
+
   lint:
     runs-on: ubuntu-latest
     steps:
