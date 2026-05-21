@@ -28,6 +28,9 @@
   },
   "bugs": "https://github.com/Aiven-Open/mcp-aiven/issues",
   "homepage": "https://github.com/Aiven-Open/mcp-aiven/blob/main/README.md",
+  "optionalDependencies": {
+    "@sentry/node": "^9.46.0"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.6.1",
     "express": "^5.2.1",

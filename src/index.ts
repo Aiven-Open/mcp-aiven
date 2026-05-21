@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Must be first import: initializes Sentry before Express and other modules load
+import './sentry/init.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { loadConfig } from './config.js';
 import { AivenClient } from './client.js';
@@ -13,6 +15,7 @@ import type { ToolDefinition, McpRequestOptions } from './types.js';
 import { VERSION, API_ORIGIN, loadHttpMcpRateLimit, httpTrustProxyEnabled } from './config.js';
 import { createObservabilityContext } from './observability.js';
 import { readOnlyInstructions } from './prompts.js';
+import { wrapServerWithSentry, setupServerErrorHandler, flushAndExit } from './sentry/wrap.js';
 
 /** Streamable HTTP: inbound `/mcp` `User-Agent` (SDK `requestInfo.headers`). */
 function mcpClientFromRequestInfo(requestInfo: unknown): string | undefined {
@@ -94,7 +97,13 @@ async function main(): Promise<void> {
   }
 
   if (transport === 'http') {
-    startHttpServer(createMcpServer, {
+    const createMcpServerWithSentry = (options: McpRequestOptions): McpServer => {
+      const server = createMcpServer(options);
+      const wrapped = wrapServerWithSentry(server);
+      setupServerErrorHandler(wrapped);
+      return wrapped;
+    };
+    startHttpServer(createMcpServerWithSentry, {
       port: parseInt(process.env['PORT'] ?? '3000', 10),
       apiOrigin: API_ORIGIN,
       scopes: ['projects', 'services', 'accounts:read'],
@@ -104,12 +113,14 @@ async function main(): Promise<void> {
     });
   } else {
     const server = createMcpServer({ readOnly: config.readOnly, categories: config.categories });
-    await server.connect(createStdioTransport());
+    const wrapped = wrapServerWithSentry(server);
+    setupServerErrorHandler(wrapped);
+    await wrapped.connect(createStdioTransport());
     console.error('mcp-aiven: Server connected and ready');
   }
 }
 
-main().catch((error: unknown) => {
+main().catch(async (error: unknown) => {
   console.error('mcp-aiven: Fatal error:', error instanceof Error ? error.message : error);
-  process.exit(1);
+  await flushAndExit(error);
 });
