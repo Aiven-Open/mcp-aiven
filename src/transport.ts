@@ -8,6 +8,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { HOST, parseScopes, isMaintenanceMode } from './config.js';
 import type { HttpMcpRateLimitConfig } from './config.js';
 import type { McpServerFactory, McpRequestOptions } from './types.js';
+import { captureException } from './sentry/wrap.js';
 
 export function createStdioTransport(): StdioServerTransport {
   return new StdioServerTransport();
@@ -220,6 +221,7 @@ export function startHttpServer(
 
       await transport.handleRequest(req, res, req.body);
     })().catch((err: unknown) => {
+      void captureException(err);
       console.error('mcp-aiven: MCP handler error:', err);
       if (!res.headersSent) {
         res.status(500).json({ error: 'Internal server error' });
