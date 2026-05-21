@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Must be first import so instrumentation can hook into Express and other modules
+import './instrumentation/index.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { loadConfig } from './config.js';
 import { AivenClient } from './client.js';
@@ -13,6 +15,7 @@ import type { ToolDefinition, McpRequestOptions } from './types.js';
 import { VERSION, API_ORIGIN, loadHttpMcpRateLimit } from './config.js';
 import { createObservabilityContext } from './observability.js';
 import { readOnlyInstructions } from './prompts.js';
+import { instrumentServer, flushAndExit } from './instrumentation/index.js';
 
 /** Streamable HTTP: inbound `/mcp` `User-Agent` (SDK `requestInfo.headers`). */
 function mcpClientFromRequestInfo(requestInfo: unknown): string | undefined {
@@ -94,7 +97,10 @@ async function main(): Promise<void> {
   }
 
   if (transport === 'http') {
-    startHttpServer(createMcpServer, {
+    const createInstrumentedServer = (options: McpRequestOptions): McpServer => {
+      return instrumentServer(createMcpServer(options));
+    };
+    startHttpServer(createInstrumentedServer, {
       port: parseInt(process.env['PORT'] ?? '3000', 10),
       apiOrigin: API_ORIGIN,
       scopes: ['projects', 'services', 'accounts:read'],
@@ -102,13 +108,13 @@ async function main(): Promise<void> {
       readOnly: config.readOnly,
     });
   } else {
-    const server = createMcpServer({ readOnly: config.readOnly, categories: config.categories });
+    const server = instrumentServer(createMcpServer({ readOnly: config.readOnly, categories: config.categories }));
     await server.connect(createStdioTransport());
     console.error('mcp-aiven: Server connected and ready');
   }
 }
 
-main().catch((error: unknown) => {
+main().catch(async (error: unknown) => {
   console.error('mcp-aiven: Fatal error:', error instanceof Error ? error.message : error);
-  process.exit(1);
+  await flushAndExit(error);
 });
