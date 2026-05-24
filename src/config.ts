@@ -29,12 +29,6 @@ export function loadHttpMcpRateLimit(): HttpMcpRateLimitConfig {
   };
 }
 
-/** When true, Express honors X-Forwarded-For for req.ip (use behind a reverse proxy). */
-export function httpTrustProxyEnabled(): boolean {
-  const v = process.env['MCP_TRUST_PROXY'];
-  return v === '1' || v === 'true';
-}
-
 /**
  * User-selectable scope names. Maps to ServiceCategory; `core` is always implicitly included
  * because every other category depends on `aiven_project_list` / `aiven_service_get` etc.

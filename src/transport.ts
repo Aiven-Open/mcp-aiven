@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { isIP } from 'node:net';
 import express from 'express';
 import rateLimit, { ipKeyGenerator, type Options } from 'express-rate-limit';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -8,6 +9,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { HOST, parseScopes, isMaintenanceMode } from './config.js';
 import type { HttpMcpRateLimitConfig } from './config.js';
 import type { McpServerFactory, McpRequestOptions } from './types.js';
+import { isCloudflareAddress, normalizePeerIp } from './cloudflare-ips.js';
 
 export function createStdioTransport(): StdioServerTransport {
   return new StdioServerTransport();
@@ -18,7 +20,6 @@ export interface HttpServerConfig {
   apiOrigin: string;
   scopes: string[];
   rateLimit: HttpMcpRateLimitConfig;
-  trustProxy: boolean;
   readOnly: boolean;
 }
 
@@ -78,10 +79,19 @@ function createMcpPostIpRateLimit(
     limit: cfg.limit,
     standardHeaders: 'draft-7',
     legacyHeaders: false,
-    keyGenerator: (req: Request) => ipKeyGenerator(req.ip ?? '0.0.0.0'),
+    keyGenerator: clientIpKey,
     message,
     handler: rateLimitExceededHandler('mcp-post-ip'),
   });
+}
+
+export function clientIpKey(req: Request): string {
+  const peer = normalizePeerIp(req.socket.remoteAddress);
+  const cf = req.headers['cf-connecting-ip'];
+  if (typeof cf === 'string' && isIP(cf) !== 0 && isCloudflareAddress(peer)) {
+    return ipKeyGenerator(cf);
+  }
+  return ipKeyGenerator(req.ip ?? peer ?? '0.0.0.0');
 }
 
 function authMiddleware(req: Request, res: Response, next: NextFunction): void {
@@ -94,7 +104,7 @@ function authMiddleware(req: Request, res: Response, next: NextFunction): void {
   next();
 }
 
-function bearerOrIpKey(req: Request): string {
+export function bearerOrIpKey(req: Request): string {
   const auth = req.headers.authorization;
   if (typeof auth === 'string' && auth.startsWith('Bearer ')) {
     const token = auth.slice(7).trim();
@@ -102,7 +112,7 @@ function bearerOrIpKey(req: Request): string {
       return createHash('sha256').update(token).digest('hex');
     }
   }
-  return ipKeyGenerator(req.ip ?? '0.0.0.0');
+  return clientIpKey(req);
 }
 
 const ALLOWED_MCP_QUERY_PARAMS = new Set(['read_only', 'services_scope']);
@@ -151,9 +161,6 @@ export function startHttpServer(
   config: HttpServerConfig
 ): void {
   const app = express();
-  if (config.trustProxy) {
-    app.set('trust proxy', 1);
-  }
 
   app.use((req: Request, res: Response, next: NextFunction) => {
     if (!isMaintenanceMode()) {

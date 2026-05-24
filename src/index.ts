@@ -10,7 +10,7 @@ import { createDocsTools } from './tools/docs/index.js';
 import { createServiceSearchTool } from './tools/service-search.js';
 import { createStdioTransport, startHttpServer } from './transport.js';
 import type { ToolDefinition, McpRequestOptions } from './types.js';
-import { VERSION, API_ORIGIN, loadHttpMcpRateLimit, httpTrustProxyEnabled } from './config.js';
+import { VERSION, API_ORIGIN, loadHttpMcpRateLimit } from './config.js';
 import { createObservabilityContext } from './observability.js';
 import { readOnlyInstructions } from './prompts.js';
 
@@ -99,7 +99,6 @@ async function main(): Promise<void> {
       apiOrigin: API_ORIGIN,
       scopes: ['projects', 'services', 'accounts:read'],
       rateLimit: loadHttpMcpRateLimit(),
-      trustProxy: httpTrustProxyEnabled(),
       readOnly: config.readOnly,
     });
   } else {
