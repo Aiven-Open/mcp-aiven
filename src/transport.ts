@@ -5,7 +5,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import type { Request, Response, NextFunction } from 'express';
-import { HOST, parseScopes, isMaintenanceMode } from './config.js';
+import { parseScopes, isMaintenanceMode } from './config.js';
 import type { HttpMcpRateLimitConfig } from './config.js';
 import type { McpServerFactory, McpRequestOptions } from './types.js';
 
@@ -184,9 +184,9 @@ export function startHttpServer(
   });
 
   app.get('/.well-known/oauth-protected-resource', (_req: Request, res: Response) => {
+    const host = _req.headers.host;
     res.json({
-      resource: HOST,
-      authorization_servers: [config.apiOrigin],
+      resource: `${_req.protocol}://${host}`,      authorization_servers: [config.apiOrigin],
       scopes_supported: config.scopes,
       bearer_methods_supported: ['header'],
     });
