@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   loadConfig,
   loadHttpMcpRateLimit,
-  httpTrustProxyEnabled,
   isMaintenanceMode,
   parseScopes,
 } from '../../src/config.js';
@@ -187,31 +186,6 @@ describe('loadHttpMcpRateLimit', () => {
     process.env['MCP_HTTP_RATE_LIMIT_MAX'] = '-1';
 
     expect(loadHttpMcpRateLimit()).toEqual({ windowMs: 60_000, limit: 100 });
-  });
-});
-
-describe('httpTrustProxyEnabled', () => {
-  const originalEnv = process.env;
-
-  beforeEach(() => {
-    process.env = { ...originalEnv };
-    delete process.env['MCP_TRUST_PROXY'];
-  });
-
-  afterEach(() => {
-    process.env = originalEnv;
-  });
-
-  it('should be false when MCP_TRUST_PROXY is unset', () => {
-    expect(httpTrustProxyEnabled()).toBe(false);
-  });
-
-  it('should be true when MCP_TRUST_PROXY is 1 or true', () => {
-    process.env['MCP_TRUST_PROXY'] = '1';
-    expect(httpTrustProxyEnabled()).toBe(true);
-
-    process.env['MCP_TRUST_PROXY'] = 'true';
-    expect(httpTrustProxyEnabled()).toBe(true);
   });
 });
 
