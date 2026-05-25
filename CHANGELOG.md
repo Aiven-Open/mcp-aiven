@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.4.0...v1.5.0) (2026-05-25)
+
+
+### Features
+
+* rate limit behind load balancer ([#91](https://github.com/Aiven-Open/mcp-aiven/issues/91)) ([da32fc3](https://github.com/Aiven-Open/mcp-aiven/commit/da32fc398e88244fba13ebfe4c6108a2b58129b1))
+
 ## [1.4.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.3.3...v1.4.0) (2026-05-18)
 
 
