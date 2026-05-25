@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.5.0...v1.6.0) (2026-05-25)
+
+
+### Features
+
+* **redeploy:** add optional branch param to aiven_application_redeploy ([#89](https://github.com/Aiven-Open/mcp-aiven/issues/89)) ([ed00551](https://github.com/Aiven-Open/mcp-aiven/commit/ed005519c2542d1c92015b655d35a75a84765a9e))
+
 ## [1.5.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.4.0...v1.5.0) (2026-05-25)
 
 
