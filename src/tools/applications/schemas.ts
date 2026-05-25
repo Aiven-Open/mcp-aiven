@@ -253,6 +253,13 @@ export const redeployApplicationInput = z
   .object({
     project: z.string().describe('Aiven project name'),
     service_name: z.string().describe('Name of the existing application service to redeploy'),
+    branch: z
+      .string()
+      .optional()
+      .describe(
+        'Git branch or tag to switch to before rebuilding (e.g. "my-feature-branch", "v1.2.3"). ' +
+          'If omitted, redeploys from the branch the service is currently configured on.'
+      ),
     reasoning: reasoningField,
   })
   .strict();

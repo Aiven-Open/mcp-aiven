@@ -305,7 +305,7 @@ CMD ["node", "dist/index.js"]
 Use this ONLY when:
 - The application service already exists and was previously deployed successfully with \`aiven_application_deploy\`
 - The user has pushed a code change to the same repository and branch the service was deployed from
-- Everything else stays the same: same repo, same branch, same port, same service configuration
+- Everything else stays the same: same repo, same port, same service configuration
 
 Do NOT use this tool:
 - When the Aiven service itself was never created (e.g. \`aiven_application_deploy\` returned an API error and no service exists) — call \`aiven_application_deploy\` again instead.
@@ -313,12 +313,12 @@ Do NOT use this tool:
 
 Runtime errors in the app (500s, crashes, SSL errors) are NOT deploy failures — the service exists and is running. Use this tool to pick up a code fix in those cases.
 
-The rebuild pulls the latest commit from the configured branch and rebuilds the Docker image. It does not change any service settings.`,
+The rebuild pulls the latest commit from the configured branch and rebuilds the Docker image. Optionally, pass \`branch\` to switch to a different branch or tag before rebuilding — all other service settings remain unchanged.`,
         inputSchema: redeployApplicationInput,
         annotations: { ...UPDATE_ANNOTATIONS, destructiveHint: true },
       },
       handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
-        const { project, service_name: serviceName } = params as z.infer<
+        const { project, service_name: serviceName, branch } = params as z.infer<
           typeof redeployApplicationInput
         >;
 
@@ -329,17 +329,18 @@ The rebuild pulls the latest commit from the configured branch and rebuilds the 
             toolReasoning: context?.toolReasoning,
           };
 
-          // A no-op service update (empty PUT body) triggers a redeploy — same
-          // mechanism used by the Aiven Console redeploy button.
+          // PUT with user_config sets the branch (and triggers rebuild when branch changes)
+          // or triggers a rebuild from the current branch when body is empty.
           await client.put<Record<string, unknown>>(
             `/project/${encodeURIComponent(project)}/service/${encodeURIComponent(serviceName)}`,
-            {},
+            branch ? { user_config: { application: { source: { branch } } } } : {},
             opts
           );
 
           return toolSuccess(
             wrapUntrustedResponse({
               service_name: serviceName,
+              branch: branch ?? 'current',
               message: 'Redeploy triggered. The service will pull latest code, rebuild, and deploy.',
             })
           );
