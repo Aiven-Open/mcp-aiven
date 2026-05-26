@@ -13,6 +13,7 @@ import type { ToolDefinition, McpRequestOptions } from './types.js';
 import { VERSION, API_ORIGIN, loadHttpMcpRateLimit } from './config.js';
 import { createObservabilityContext } from './observability.js';
 import { readOnlyInstructions } from './prompts.js';
+import { inboundMcpClientIpFromRequestInfo } from './inbound-client-ip.js';
 
 /** Streamable HTTP: inbound `/mcp` `User-Agent` (SDK `requestInfo.headers`). */
 function mcpClientFromRequestInfo(requestInfo: unknown): string | undefined {
@@ -57,6 +58,7 @@ function registerTools(server: McpServer, tools: readonly ToolDefinition[]): voi
         const context = {
           token: extra.authInfo?.token,
           mcpClient: mcpClientFromRequestInfo(extra.requestInfo) ?? server.server.getClientVersion()?.name,
+          clientIp: inboundMcpClientIpFromRequestInfo(extra.requestInfo),
           requestId: obsContext.requestId,
           toolReasoning: obsContext.toolReasoning,
         };

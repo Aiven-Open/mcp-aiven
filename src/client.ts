@@ -4,14 +4,19 @@ import type { AivenConfig, HttpMethod, RequestOptions } from './types.js';
 import { AivenError } from './errors.js';
 import { VERSION, API_BASE_URL } from './config.js';
 
+/** Sent on PG Editor run-query so Acorn can verify the caller is MCP (value from MCP_ACORN_SECRET). */
+export const MCP_ACORN_AUTHORIZATION_HEADER = 'X-MCP-Acorn-Authorization';
+
 export class AivenClient {
   private readonly token: string | undefined;
+  private readonly mcpAcornSecret: string | undefined;
   private readonly defaultTimeout: number;
   private readonly transport: 'stdio' | 'http';
   private readonly fetchClient: ReturnType<typeof createClient<paths>>;
 
   constructor(config: AivenConfig) {
     this.token = config.token;
+    this.mcpAcornSecret = config.mcpAcornSecret;
     this.defaultTimeout = 30000;
     this.transport = config.transport;
     this.fetchClient = createClient<paths>({
@@ -80,11 +85,23 @@ export class AivenClient {
     if (options?.mcpClient) {
       headers['X-MCP-Client'] = options.mcpClient;
     }
+    if (options?.clientIp) {
+      headers['X-MCP-Client-IP'] = options.clientIp;
+    }
     if (options?.requestId) {
       headers['X-MCP-Request-ID'] = options.requestId;
     }
     if (options?.toolReasoning) {
       headers['X-MCP-Tool-Reasoning'] = options.toolReasoning;
+    }
+    if (options?.mcpAcornAuth) {
+      if (!this.mcpAcornSecret) {
+        throw new AivenError(
+          500,
+          'MCP_ACORN_SECRET environment variable is required for PG Editor run-query'
+        );
+      }
+      headers[MCP_ACORN_AUTHORIZATION_HEADER] = this.mcpAcornSecret;
     }
     return headers;
   }

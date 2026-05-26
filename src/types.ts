@@ -17,6 +17,8 @@ export interface AivenConfig {
   readonly readOnly: boolean;
   readonly transport: 'stdio' | 'http';
   readonly categories: ReadonlySet<ServiceCategory> | undefined;
+  /** Shared secret for Acorn to verify PG Editor run-query calls originated from MCP. */
+  readonly mcpAcornSecret: string | undefined;
 }
 
 export interface McpRequestOptions {
@@ -32,8 +34,11 @@ export interface RequestOptions {
   token?: string | undefined;
   toolName?: string | undefined;
   mcpClient?: string | undefined;
+  clientIp?: string | undefined;
   requestId?: string | undefined;
   toolReasoning?: string | null | undefined;
+  /** Attach MCP_ACORN_SECRET as X-MCP-Acorn-Authorization (PG Editor run-query). */
+  mcpAcornAuth?: boolean | undefined;
 }
 
 export interface ToolAnnotations {
@@ -83,6 +88,7 @@ export type ToolResult = CallToolResult;
 export interface HandlerContext {
   token?: string | undefined;
   mcpClient?: string | undefined;
+  clientIp?: string | undefined;
   requestId?: string | undefined;
   toolReasoning?: string | null | undefined;
 }
@@ -180,6 +186,8 @@ export enum PgToolName {
   OptimizeQuery = 'aiven_pg_optimize_query',
   Read = 'aiven_pg_read',
   Write = 'aiven_pg_write',
+  ListDatabases = 'aiven_pg_list_databases',
+  ListSchemas = 'aiven_pg_list_schemas',
 }
 
 export enum PgQueryMode {
@@ -191,12 +199,14 @@ export interface ExecutePgQueryOptions {
   project: string;
   service_name: string;
   query: string;
-  database?: string | undefined;
+  database: string;
+  schema: string;
   mode: PgQueryMode;
   limit?: number | undefined;
   offset?: number | undefined;
   token?: string | undefined;
   mcpClient?: string | undefined;
+  clientIp?: string | undefined;
   toolName?: string | undefined;
   requestId?: string | undefined;
   toolReasoning?: string | null | undefined;

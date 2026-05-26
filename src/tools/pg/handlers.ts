@@ -14,12 +14,32 @@ import { errorMessage } from '../../errors.js';
 import { redactSensitiveData } from '../../security.js';
 import { wrapUntrustedResponse } from '../../untrusted.js';
 import { executePgQuery } from './query.js';
-import { optimizeQueryInput, pgQueryInput, pgExecuteQueryInput } from './schemas.js';
+import {
+  optimizeQueryInput,
+  pgQueryInput,
+  pgExecuteQueryInput,
+  pgListDatabasesInput,
+  pgListSchemasInput,
+} from './schemas.js';
 import {
   OPTIMIZE_QUERY_DESCRIPTION,
   PG_READ_DESCRIPTION,
   PG_WRITE_DESCRIPTION,
+  PG_LIST_DATABASES_DESCRIPTION,
+  PG_LIST_SCHEMAS_DESCRIPTION,
 } from './descriptions.js';
+import { fetchPgDatabaseNames, fetchPgSchemaNames } from './pg-editor.js';
+
+function requestOpts(context: HandlerContext | undefined, toolName: string) {
+  return {
+    token: context?.token,
+    mcpClient: context?.mcpClient,
+    clientIp: context?.clientIp,
+    toolName,
+    requestId: context?.requestId,
+    toolReasoning: context?.toolReasoning,
+  };
+}
 
 export function createPgCustomTools(client: AivenClient): ToolDefinition[] {
   return [
@@ -37,13 +57,6 @@ export function createPgCustomTools(client: AivenClient): ToolDefinition[] {
           const typedParams = params as z.infer<typeof optimizeQueryInput>;
           const encodedQuery = Buffer.from(typedParams.query).toString('base64');
 
-          const opts = {
-            token: context?.token,
-            mcpClient: context?.mcpClient,
-            toolName: PgToolName.OptimizeQuery,
-            requestId: context?.requestId,
-            toolReasoning: context?.toolReasoning,
-          };
           const data = await client.post<Record<string, unknown>>(
             `/account/${typedParams.account_id}/pg/query/optimize`,
             {
@@ -51,10 +64,63 @@ export function createPgCustomTools(client: AivenClient): ToolDefinition[] {
               pg_version: typedParams.pg_version,
               flags: [],
             },
-            opts
+            requestOpts(context, PgToolName.OptimizeQuery)
           );
 
           return toolSuccess(wrapUntrustedResponse(redactSensitiveData(data)));
+        } catch (err) {
+          return toolError(errorMessage(err));
+        }
+      },
+    },
+
+    {
+      name: PgToolName.ListDatabases,
+      category: ServiceCategory.Pg,
+      definition: {
+        title: 'List PostgreSQL Databases',
+        description: PG_LIST_DATABASES_DESCRIPTION,
+        inputSchema: pgListDatabasesInput,
+        annotations: READ_ONLY_ANNOTATIONS,
+      },
+      handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
+        try {
+          const { project, service_name: serviceName } = params as z.infer<typeof pgListDatabasesInput>;
+          const databases = await fetchPgDatabaseNames(
+            client,
+            project,
+            serviceName,
+            requestOpts(context, PgToolName.ListDatabases)
+          );
+          return toolSuccess(wrapUntrustedResponse({ databases }));
+        } catch (err) {
+          return toolError(errorMessage(err));
+        }
+      },
+    },
+
+    {
+      name: PgToolName.ListSchemas,
+      category: ServiceCategory.Pg,
+      definition: {
+        title: 'List PostgreSQL Schemas',
+        description: PG_LIST_SCHEMAS_DESCRIPTION,
+        inputSchema: pgListSchemasInput,
+        annotations: READ_ONLY_ANNOTATIONS,
+      },
+      handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
+        try {
+          const { project, service_name: serviceName, database } = params as z.infer<
+            typeof pgListSchemasInput
+          >;
+          const schemas = await fetchPgSchemaNames(
+            client,
+            project,
+            serviceName,
+            database,
+            requestOpts(context, PgToolName.ListSchemas)
+          );
+          return toolSuccess(wrapUntrustedResponse({ schemas }));
         } catch (err) {
           return toolError(errorMessage(err));
         }
@@ -71,7 +137,7 @@ export function createPgCustomTools(client: AivenClient): ToolDefinition[] {
         annotations: READ_ONLY_ANNOTATIONS,
       },
       handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
-        const { project, service_name, query, database, limit, offset } = params as z.infer<
+        const { project, service_name, query, database, schema, limit, offset } = params as z.infer<
           typeof pgQueryInput
         >;
         return executePgQuery(client, {
@@ -79,11 +145,13 @@ export function createPgCustomTools(client: AivenClient): ToolDefinition[] {
           service_name,
           query,
           database,
+          schema,
           mode: PgQueryMode.ReadOnly,
           limit,
           offset,
           token: context?.token,
           mcpClient: context?.mcpClient,
+          clientIp: context?.clientIp,
           toolName: PgToolName.Read,
           requestId: context?.requestId,
           toolReasoning: context?.toolReasoning,
@@ -101,7 +169,7 @@ export function createPgCustomTools(client: AivenClient): ToolDefinition[] {
         annotations: WRITE_DML_ANNOTATIONS,
       },
       handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
-        const { project, service_name, query, database, limit, offset } = params as z.infer<
+        const { project, service_name, query, database, schema, limit, offset } = params as z.infer<
           typeof pgExecuteQueryInput
         >;
 
@@ -110,11 +178,13 @@ export function createPgCustomTools(client: AivenClient): ToolDefinition[] {
           service_name,
           query,
           database,
+          schema,
           mode: PgQueryMode.ReadWrite,
           limit,
           offset,
           token: context?.token,
           mcpClient: context?.mcpClient,
+          clientIp: context?.clientIp,
           toolName: PgToolName.Write,
           requestId: context?.requestId,
           toolReasoning: context?.toolReasoning,

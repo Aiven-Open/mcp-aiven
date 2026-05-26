@@ -151,6 +151,7 @@ MCP_HOST=http://localhost:3000 node dist/index.js
 | `MCP_TRANSPORT` | No | `stdio` | Set to `http` to start an HTTP server instead of stdio |
 | `MCP_HTTP_RATE_LIMIT_MAX` | No | `100` | Max requests per window on `POST /mcp` (HTTP transport). Applies independently to a per-bearer-token bucket and a per-source-IP bucket; whichever fills first returns 429. |
 | `MCP_HTTP_RATE_LIMIT_WINDOW_MS` | No | `60000` | Window length in milliseconds for `MCP_HTTP_RATE_LIMIT_MAX`. |
+| `MCP_ACORN_SECRET` | Yes (PG read/write) | — | Shared secret sent as `X-MCP-Acorn-Authorization` on `pg-editor/run-query` so Acorn can verify the request came from MCP |
 
 In remote (HTTP) mode, `AIVEN_TOKEN` is not needed. Your MCP client sends your token as a Bearer token with each request.
 
@@ -208,8 +209,10 @@ In remote (HTTP) mode, `AIVEN_TOKEN` is not needed. Your MCP client sends your t
 | `aiven_pg_bouncer_create` | Create a PgBouncer connection pool |
 | `aiven_pg_bouncer_update` | Update a PgBouncer connection pool |
 | `aiven_pg_bouncer_delete` | Delete a PgBouncer connection pool |
-| `aiven_pg_read` | Run a read-only SQL query |
-| `aiven_pg_write` | Run a write SQL statement (INSERT, UPDATE, DELETE, CREATE TABLE, etc.) |
+| `aiven_pg_list_databases` | List databases on a PostgreSQL service (pick target before querying) |
+| `aiven_pg_list_schemas` | List schemas in a database (pick target before querying) |
+| `aiven_pg_read` | Run a read-only SQL query (via PG Editor API) |
+| `aiven_pg_write` | Run a write SQL statement (INSERT, UPDATE, DELETE, CREATE TABLE, etc.; via PG Editor API) |
 | `aiven_pg_optimize_query` | AI-powered query optimization (EverSQL) |
 
 ### Applications

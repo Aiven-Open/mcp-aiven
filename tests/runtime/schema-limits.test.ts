@@ -31,6 +31,8 @@ const baseConnector = {
 const basePgQuery = {
   project: 'p',
   service_name: 's',
+  database: 'defaultdb',
+  schema: 'public',
   query: 'SELECT 1',
   reasoning: validReasoning,
 };

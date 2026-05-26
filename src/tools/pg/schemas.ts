@@ -19,20 +19,47 @@ export const optimizeQueryInput = z
   })
   .strict();
 
+const pgTargetFields = {
+  project: z.string().describe('Aiven project name — use aiven_project_list to get valid names'),
+  service_name: z.string().describe('Aiven PostgreSQL service name'),
+  database: z
+    .string()
+    .describe(
+      'Database name. Call aiven_pg_list_databases first if the user has not specified one.'
+    ),
+  schema: z
+    .string()
+    .describe(
+      'PostgreSQL schema name (e.g. "public"). Call aiven_pg_list_schemas for the chosen database if unknown.'
+    ),
+};
+
+export const pgListDatabasesInput = z
+  .object({
+    project: pgTargetFields.project,
+    service_name: pgTargetFields.service_name,
+    reasoning: reasoningField,
+  })
+  .strict();
+
+export const pgListSchemasInput = z
+  .object({
+    project: pgTargetFields.project,
+    service_name: pgTargetFields.service_name,
+    database: pgTargetFields.database,
+    reasoning: reasoningField,
+  })
+  .strict();
+
 export const pgQueryInput = z
   .object({
-    project: z.string().describe('Aiven project name — use aiven_project_list to get valid names'),
-    service_name: z.string().describe('Aiven PostgreSQL service name'),
+    ...pgTargetFields,
     query: z
       .string()
       .max(SQL_QUERY_MAX_LENGTH)
       .describe(
         'Read-only SQL query to execute. Only SELECT and similar read operations are allowed.'
       ),
-    database: z
-      .string()
-      .optional()
-      .describe('Database name to connect to (default: service default, usually "defaultdb")'),
     limit: z
       .number()
       .int()
@@ -56,18 +83,13 @@ export const pgQueryInput = z
 
 export const pgExecuteQueryInput = z
   .object({
-    project: z.string().describe('Aiven project name — use aiven_project_list to get valid names'),
-    service_name: z.string().describe('Aiven PostgreSQL service name'),
+    ...pgTargetFields,
     query: z
       .string()
       .max(SQL_QUERY_MAX_LENGTH)
       .describe(
         'SQL statement to execute. Allows DML (INSERT, UPDATE, DELETE) and DDL (CREATE TABLE, ALTER TABLE, CREATE INDEX). Blocks DROP, TRUNCATE, GRANT, and REVOKE.'
       ),
-    database: z
-      .string()
-      .optional()
-      .describe('Database name to connect to (default: service default, usually "defaultdb")'),
     limit: z
       .number()
       .int()
