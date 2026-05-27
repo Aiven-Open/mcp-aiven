@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.6.0...v1.7.0) (2026-05-27)
+
+
+### Features
+
+* add opt-in Sentry integration for error tracking and logging ([#88](https://github.com/Aiven-Open/mcp-aiven/issues/88)) ([1f56fa0](https://github.com/Aiven-Open/mcp-aiven/commit/1f56fa04b22060d03080a764a5f52e46510dc784))
+
 ## [1.6.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.5.0...v1.6.0) (2026-05-25)
 
 
