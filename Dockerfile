@@ -15,4 +15,13 @@ RUN pnpm generate && pnpm generate:api-types && pnpm build && \
 EXPOSE 3000
 
 ENV MCP_TRANSPORT=http PORT=3000
+
+# When SENTRY_DSN is set, preload Sentry's ESM hooks via NODE_OPTIONS.
+# Must happen at Node startup (--import flag) because ESM loads all modules before app code runs.
+ENTRYPOINT ["sh", "-c", "\
+if [ -n \"$SENTRY_DSN\" ]; then \
+  export NODE_OPTIONS=\"${NODE_OPTIONS:+$NODE_OPTIONS }--import @sentry/node/preload\"; \
+fi; \
+exec \"$@\"", "--"]
+
 CMD ["node", "dist/index.js"]
