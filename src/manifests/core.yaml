@@ -74,6 +74,7 @@ tools:
     path: /project/{project}/service
     category: core
     destructive: true
+    enrich_service_state: assume-recent
     append_list_picker_hint: true
     defaults:
       project_vpc_id: null
@@ -92,7 +93,7 @@ tools:
       This tool returns a `service` object with the following fields:
       - service_name: Name of the service
       - service_type: Service type (e.g. `pg`, `kafka`)
-      - state: Provisioning lifecycle (e.g. `BUILDING`, `REBUILDING`, `RUNNING`; not always `RUNNING` immediately after create)
+      - state: Provisioning lifecycle value (often `REBUILDING` right after create). When present, `state_display` is `BUILDING` for initial provisioning.
       - plan: Selected plan identifier
       - cloud_name: Cloud region identifier where the service runs
 
@@ -100,6 +101,7 @@ tools:
     method: GET
     path: /project/{project}/service/{service_name}
     category: core
+    enrich_service_state: from-create-time
     exclude_params: [include_secrets]
     description: |
       Get service information. `project` must be a valid Aiven project name from `aiven_project_list`.
@@ -107,7 +109,7 @@ tools:
 
       **Returns:** A `service` object; exact keys depend on `service_type` (Postgres example below). Not an exhaustive listing.
 
-      **Core:** `service_name`, `service_type`, `service_type_description`, `state`, `plan`, optional `plan_price_usd`, `cloud_name`, `cloud_description`, `tags`, `create_time`, `update_time`, `termination_protection`, sizing (`disk_space_mb`, `node_count`, node CPU/memory, `metadata` such as `pg_version`), `features`, `maintenance`, `service_notifications`, `tech_emails`, `project_vpc_id`, **`service_integrations`**, **`server_group`**, `cmk_id`, `group_list`, `is_cluster_plan`.
+      **Core:** `service_name`, `service_type`, `service_type_description`, `state`, optional `state_display` (`BUILDING` when `state` is `REBUILDING` and the service was created within the last 30 minutes — initial provisioning, not a rebuild), `plan`, optional `plan_price_usd`, `cloud_name`, `cloud_description`, `tags`, `create_time`, `update_time`, `termination_protection`, sizing (`disk_space_mb`, `node_count`, node CPU/memory, `metadata` such as `pg_version`), `features`, `maintenance`, `service_notifications`, `tech_emails`, `project_vpc_id`, **`service_integrations`**, **`server_group`**, `cmk_id`, `group_list`, `is_cluster_plan`.
 
       **Connectivity:** **`components`** (hosts, ports, roles such as primary/replica), **`connection_info`**, **`service_uri`**, **`service_uri_params`**. Sensitive values appear as **`[REDACTED]`** through this MCP.
 

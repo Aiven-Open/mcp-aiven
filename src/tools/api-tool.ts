@@ -5,6 +5,7 @@ import { errorMessage } from '../errors.js';
 import { redactSensitiveData } from '../security.js';
 import { wrapUntrustedResponse } from '../untrusted.js';
 import { applyResponseFilter, extendSchemaWithSearch, stripSearchParams } from './response-filter.js';
+import { enrichServiceResponse } from '../shared/service-state.js';
 
 function extractPathParams(path: string): Set<string> {
   return new Set(
@@ -112,9 +113,15 @@ export function createApiTool(config: ApiToolConfig, client: AivenClient): ToolD
         const data = await executeRequest(client, config, argsWithoutReasoning, pathParams, opts);
         const redacted = redactSensitiveData(data);
 
-        const filtered = config.responseFilter
+        let filtered = config.responseFilter
           ? applyResponseFilter(redacted, config.responseFilter, search, limit, offset)
           : redacted;
+
+        if (config.enrichServiceState) {
+          filtered = enrichServiceResponse(filtered, {
+            assumeRecent: config.enrichServiceState === 'assume-recent',
+          });
+        }
 
         return toolSuccess(wrapUntrustedResponse(filtered));
       } catch (err) {

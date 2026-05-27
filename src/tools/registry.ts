@@ -10,6 +10,7 @@ import type {
   JsonSchema,
   ResponseFilterConfig,
   HandlerContext,
+  ServiceStateEnrichment,
 } from '../types.js';
 import {
   ServiceCategory,
@@ -34,6 +35,7 @@ interface ManifestEntry {
   destructive?: boolean;
   defaults?: Record<string, unknown>;
   response_filter?: ResponseFilterConfig;
+  enrich_service_state?: ServiceStateEnrichment;
 }
 
 interface ManifestFile {
@@ -176,6 +178,7 @@ export function loadApiTools(client: AivenClient): ToolDefinition[] {
         annotations: deriveAnnotations(entry.method, entry.readOnly, entry.destructive),
         defaults: entry.defaults,
         responseFilter: entry.response_filter,
+        enrichServiceState: entry.enrich_service_state,
       },
       client
     );
