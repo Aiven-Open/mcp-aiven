@@ -68,11 +68,19 @@ tools:
     path: /project/{project}/service/{service_name}/topic/{topic_name}
     category: kafka
     destructive: true
+    description: |
+      Update a Kafka topic.
+
+      Top-level body params: `partitions` (1–1000000), `replication` (≥1), `owner_user_group_id`, `tags`, `topic_description`. Topic-level Kafka settings go under **`config`** (e.g. `config.cleanup_policy`, `config.retention_ms`, `config.retention_bytes`, `config.min_insync_replicas`, `config.compression_type`, `config.max_message_bytes`, tiered-storage `config.local_retention_ms` / `config.local_retention_bytes`, etc.).
+
+      Response is empty on success.
 
   - name: aiven_kafka_topic_delete
     method: DELETE
     path: /project/{project}/service/{service_name}/topic/{topic_name}
     category: kafka
+    description: |
+      Delete a Kafka topic. Response is empty on success.
 
   - name: aiven_kafka_topic_message_list
     method: POST
@@ -125,7 +133,7 @@ tools:
     response_filter:
       key: plugins
       search_fields: [plugin_type]
-    description: *kafka_connect_plan_gate
+    description_prefix: *kafka_connect_plan_gate
 
   - name: aiven_kafka_connect_list
     method: GET
@@ -177,26 +185,26 @@ tools:
     path: /project/{project}/service/{service_name}/connectors/{connector_name}/pause
     category: kafka
     destructive: true
-    description: *kafka_connect_plan_gate
+    description_prefix: *kafka_connect_plan_gate
 
   - name: aiven_kafka_connect_resume_connector
     method: POST
     path: /project/{project}/service/{service_name}/connectors/{connector_name}/resume
     category: kafka
-    description: *kafka_connect_plan_gate
+    description_prefix: *kafka_connect_plan_gate
 
   - name: aiven_kafka_connect_restart_connector
     method: POST
     path: /project/{project}/service/{service_name}/connectors/{connector_name}/restart
     category: kafka
     destructive: true
-    description: *kafka_connect_plan_gate
+    description_prefix: *kafka_connect_plan_gate
 
   - name: aiven_kafka_connect_delete_connector
     method: DELETE
     path: /project/{project}/service/{service_name}/connectors/{connector_name}
     category: kafka
-    description: *kafka_connect_plan_gate
+    description_prefix: *kafka_connect_plan_gate
 
   - name: aiven_kafka_schema_registry_subjects
     method: GET
@@ -206,8 +214,16 @@ tools:
     response_filter:
       key: subjects
       search_fields: [_string]
+    description: |
+      List Schema Registry subjects on a Kafka service.
+
+      Returns `subjects`: an array of subject name strings.
 
   - name: aiven_kafka_schema_registry_subject_version_get
     method: GET
     path: /project/{project}/service/{service_name}/kafka/schema/subjects/{subject_name}/versions/{version_id}
     category: kafka
+    description: |
+      Get a specific version of a Schema Registry subject. Path params: `subject_name` and `version_id`.
+
+      Returns a `version` object with: `id` (integer schema id), `subject` (string), `version` (integer), `schema` (string, max 1 MiB), `schemaType` (`AVRO`, `JSON`, or `PROTOBUF`), and optional `references` (array of `{ name, subject, version }` linking other subjects).

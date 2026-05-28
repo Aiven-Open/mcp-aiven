@@ -29,6 +29,7 @@ interface ManifestEntry {
   path: string;
   category: string;
   description?: string;
+  description_prefix?: string;
   append_list_picker_hint?: boolean;
   readOnly?: boolean;
   destructive?: boolean;
@@ -159,6 +160,9 @@ export function loadApiTools(client: AivenClient): ToolDefinition[] {
     }
 
     let description = entry.description ?? schemaEntry.description;
+    if (entry.description_prefix) {
+      description = `${entry.description_prefix.trimEnd()}\n\n${description}`;
+    }
     if (entry.append_list_picker_hint) {
       description = `${description}\n\n${TOOL_LIST_PICKER_SUFFIX}`;
     }

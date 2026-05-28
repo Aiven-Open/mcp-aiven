@@ -3,7 +3,7 @@ import { MAX_ROWS, DEFAULT_LIMIT } from './query.js';
 
 export const OPTIMIZE_QUERY_DESCRIPTION = `Get AI-powered query optimization using EverSQL.
 
-**IMPORTANT:** Requires account_id. Get it by calling get_project first -
+**IMPORTANT:** Requires account_id. Get it by calling aiven_project_get first -
 the account_id is in the response at project.account_id.
 
 Analyzes your SQL query and returns:
@@ -14,8 +14,8 @@ Analyzes your SQL query and returns:
 Works best with SELECT queries but also helps with INSERT/UPDATE/DELETE.
 
 **Example workflow:**
-1. Call get_project(project="my-project") -> get account_id from response
-2. Call optimize_query(account_id="...", query="SELECT * FROM orders WHERE status = 'pending'")`;
+1. Call aiven_project_get(project="my-project") -> get account_id from response
+2. Call aiven_pg_optimize_query(account_id="...", query="SELECT * FROM orders WHERE status = 'pending'")`;
 
 export const PG_READ_DESCRIPTION = `Execute a read-only SQL query against an Aiven PostgreSQL service.
 
