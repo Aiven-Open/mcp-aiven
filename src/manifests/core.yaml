@@ -180,6 +180,10 @@ tools:
     path: /project/{project}/service/{service_name}/query/activity
     category: core
     readOnly: true
+    description: |
+      Fetch current queries / connections for the service. Body params: `limit` (1–5000, default 100), `offset` (default 0), `order_by` (default `client_id:desc`).
+
+      Returns `queries`: an array where each item describes one connection. Item fields are engine-specific. Always-available identifiers include `pid`, `state`, `query`, `query_duration`, `query_start`, `client_addr`, `client_port`, `application_name`, `backend_start`, `backend_type`, `wait_event`, `wait_event_type`.
 
   - name: aiven_service_metrics_fetch
     method: POST
@@ -255,3 +259,7 @@ tools:
     response_filter:
       key: events
       search_fields: [actor, event_type, event_desc, service_name]
+    description: |
+      Get project event log entries.
+
+      Returns `events`: an array of entries with `id` (event identifier), `time` (ISO 8601 UTC), `actor` (initiator of the event), `event_type` (event type identifier), `event_desc` (event description), and `service_name`.

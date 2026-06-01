@@ -20,6 +20,10 @@ tools:
     response_filter:
       key: extensions
       search_fields: [name]
+    description: |
+      List PostgreSQL extensions that can be loaded with `CREATE EXTENSION` in this service.
+
+      Returns `extensions`: an array of `{ name, default_version, versions }`, where `versions` is an array of installable version strings.
 
   - name: aiven_pg_service_query_statistics
     method: POST
@@ -44,17 +48,17 @@ tools:
     path: /project/{project}/service/{service_name}/connection_pool
     category: pg
     destructive: true
-    description: *pg_connection_pool_plan_gate
+    description_prefix: *pg_connection_pool_plan_gate
 
   - name: aiven_pg_bouncer_update
     method: PUT
     path: /project/{project}/service/{service_name}/connection_pool/{pool_name}
     category: pg
     destructive: true
-    description: *pg_connection_pool_plan_gate
+    description_prefix: *pg_connection_pool_plan_gate
 
   - name: aiven_pg_bouncer_delete
     method: DELETE
     path: /project/{project}/service/{service_name}/connection_pool/{pool_name}
     category: pg
-    description: *pg_connection_pool_plan_gate
+    description_prefix: *pg_connection_pool_plan_gate
