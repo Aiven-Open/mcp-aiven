@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.1](https://github.com/Aiven-Open/mcp-aiven/compare/v1.7.0...v1.7.1) (2026-06-01)
+
+
+### Bug Fixes
+
+* **descriptions:** correct cross-tool refs, restore plan-gate summaries, ground new descriptions in OpenAPI [EVERSQL-1822] ([#97](https://github.com/Aiven-Open/mcp-aiven/issues/97)) ([be2df18](https://github.com/Aiven-Open/mcp-aiven/commit/be2df184309479277590fb472c2dfeb496c5fb5c))
+
 ## [1.7.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.6.0...v1.7.0) (2026-05-27)
 
 
