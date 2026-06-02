@@ -165,6 +165,8 @@ tools:
 
       **Local file (required when the user asks for logs):** Do **not** leave large log payloads only in the chat. Write fetched log lines to a **local file** in the workspace (create parent directories if needed). **Default:** one file per investigation, e.g. `logs/{project}-{service_name}-{YYYYMMDD-HHMMSS}.log` — create it on the first batch and **append** every later page to that same path when paginating. Format each line with timestamp and message when available (e.g. `{time} {unit} {msg}`). Use separate files (e.g. `…-page2.log`, `…-page3.log`) **only** if the user explicitly asks for split output. In your reply, give the **file path** (unchanged across pages when appending), a short summary (time range, errors, line count), and offer the next page — do **not** paste hundreds of log lines into the message.
 
+      **Severity filter:** Use `severity` when the user asks for a specific log level. Allowed values: `emerg`, `alert`, `crit`, `err`, `warning`, `notice`, `info`, `debug`. Omit to return all severities. Keep the same `severity` when paginating.
+
       **Sort order:** Use `sort_order: "desc"` (API default) for newest-first troubleshooting. Use `"asc"` only when the user explicitly wants oldest-first.
 
       **Pagination:** Request and response `offset` are **opaque cursors** defined by the API — pass them back unchanged. Do **not** invent, guess, or arithmetic-adjust offsets (including subtracting time from `first_log_offset`); the API does not document that. `first_log_offset` identifies the first log in the **current** page only; use the top-level response **`offset`** for the next request.
