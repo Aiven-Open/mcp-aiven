@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.7.1...v1.8.0) (2026-06-02)
+
+
+### Features
+
+* add severity filter to service logs tool ([#99](https://github.com/Aiven-Open/mcp-aiven/issues/99)) ([992617f](https://github.com/Aiven-Open/mcp-aiven/commit/992617fdd10814ec0f0a5f484f6f4854811ba71b))
+
 ## [1.7.1](https://github.com/Aiven-Open/mcp-aiven/compare/v1.7.0...v1.7.1) (2026-06-01)
 
 
