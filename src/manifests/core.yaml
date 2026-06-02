@@ -109,7 +109,7 @@ tools:
 
       **Core:** `service_name`, `service_type`, `service_type_description`, `state`, `plan`, optional `plan_price_usd`, `cloud_name`, `cloud_description`, `tags`, `create_time`, `update_time`, `termination_protection`, sizing (`disk_space_mb`, `node_count`, node CPU/memory, `metadata` such as `pg_version`), `features`, `maintenance`, `service_notifications`, `tech_emails`, `project_vpc_id`, **`service_integrations`**, **`server_group`**, `cmk_id`, `group_list`, `is_cluster_plan`.
 
-      **Connectivity:** **`components`** (hosts, ports, roles such as primary/replica), **`connection_info`**, **`service_uri`**, **`service_uri_params`**. Sensitive values appear as **`[REDACTED]`** through this MCP.
+      **Connectivity:** **`components`** (hosts, ports, roles such as primary/replica), **`connection_info`**, **`service_uri`**, **`service_uri_params`**. Connection URIs are returned with only the password masked (e.g. `postgresql://avnadmin:<REDACTED_PASSWORD>@host:port/defaultdb?sslmode=require`); share this URI with the user and point them to the Aiven Console (https://console.aiven.io/) for the real password. Standalone secrets (passwords, tokens, certificates) still appear as **`[REDACTED]`**.
 
       **PostgreSQL / engine-specific:** `databases`, **`backups`**, **`connection_pools`**, replica/standby entries in `connection_info`, **`users`**, **`user_config`** (e.g. backups, `ip_filter`, engine tuning).
 

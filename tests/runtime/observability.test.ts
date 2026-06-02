@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { redactReasoningField } from '../../src/observability.js';
-import { REDACTED_PLACEHOLDER } from '../../src/security.js';
+import { REDACTED_PASSWORD_PLACEHOLDER } from '../../src/security.js';
 
 describe('redactReasoningField', () => {
   it('returns null for undefined', () => {
@@ -21,16 +21,18 @@ describe('redactReasoningField', () => {
     );
   });
 
-  it('redacts string that is a bare sensitive URI', () => {
+  it('masks only the password in a bare connection URI', () => {
     expect(redactReasoningField('postgres://admin:secret@host:5432/db')).toBe(
-      REDACTED_PLACEHOLDER
+      `postgres://admin:${REDACTED_PASSWORD_PLACEHOLDER}@host:5432/db`
     );
   });
 
-  it('does not redact string with embedded URI (redaction is value-level, not substring)', () => {
+  it('masks the password in an embedded URI (substring-level for URIs)', () => {
     const input = 'connect to postgres://admin:secret@host:5432/db';
     const result = redactReasoningField(input);
-    expect(result).toBe(input);
+    expect(result).toBe(
+      `connect to postgres://admin:${REDACTED_PASSWORD_PLACEHOLDER}@host:5432/db`
+    );
   });
 
   it('serializes object reasoning via JSON.stringify', () => {

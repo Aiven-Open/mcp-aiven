@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   redactSensitiveData,
+  maskUriPassword,
   REDACTED_PLACEHOLDER,
+  REDACTED_PASSWORD_PLACEHOLDER,
   REDACTED_FIELDS,
 } from '../../src/security.js';
 
@@ -22,25 +24,39 @@ describe('redactSensitiveData', () => {
     expect(result.name).toBe('test');
   });
 
-  it('should redact connection_uri fields', () => {
+  it('should mask only the password in connection_uri fields', () => {
     const input = { connection_uri: 'postgres://user:pass@host:5432/db' };
     const result = redactSensitiveData(input);
 
-    expect(result.connection_uri).toBe(REDACTED_PLACEHOLDER);
+    expect(result.connection_uri).toBe(
+      `postgres://user:${REDACTED_PASSWORD_PLACEHOLDER}@host:5432/db`
+    );
   });
 
-  it('should redact postgres URIs in string values', () => {
+  it('should mask only the password in postgres URIs in string values', () => {
     const input = { uri: 'postgres://user:pass@host:5432/db' };
     const result = redactSensitiveData(input);
 
-    expect(result.uri).toBe(REDACTED_PLACEHOLDER);
+    expect(result.uri).toBe(`postgres://user:${REDACTED_PASSWORD_PLACEHOLDER}@host:5432/db`);
   });
 
-  it('should redact kafka URIs in string values', () => {
+  it('should mask only the password in kafka URIs in string values', () => {
     const input = { uri: 'kafka://user:pass@host:9092' };
     const result = redactSensitiveData(input);
 
-    expect(result.uri).toBe(REDACTED_PLACEHOLDER);
+    expect(result.uri).toBe(`kafka://user:${REDACTED_PASSWORD_PLACEHOLDER}@host:9092`);
+  });
+
+  it('should preserve the documented PG service_uri shape with password masked', () => {
+    const input = {
+      service_uri:
+        'postgresql://avnadmin:realsecret@customer-intelligence-pg-eversql-sandbox.a.aivencloud.com:22202/defaultdb?sslmode=require',
+    };
+    const result = redactSensitiveData(input);
+
+    expect(result.service_uri).toBe(
+      'postgresql://avnadmin:<REDACTED_PASSWORD>@customer-intelligence-pg-eversql-sandbox.a.aivencloud.com:22202/defaultdb?sslmode=require'
+    );
   });
 
   it('should redact certificate fields', () => {
@@ -122,14 +138,64 @@ describe('sensitive field patterns', () => {
     expect(REDACTED_FIELDS.has('plan')).toBe(false);
   });
 
-  it('should redact sensitive URIs in values via redactSensitiveData', () => {
-    // Test via behavior rather than directly calling removed helpers
-    expect(redactSensitiveData('postgres://user:pass@host:5432/db')).toBe(REDACTED_PLACEHOLDER);
-    expect(redactSensitiveData('postgresql://admin:secret@localhost/mydb')).toBe(
-      REDACTED_PLACEHOLDER
+  it('should mask only the password in sensitive URIs via redactSensitiveData', () => {
+    expect(redactSensitiveData('postgres://user:pass@host:5432/db')).toBe(
+      `postgres://user:${REDACTED_PASSWORD_PLACEHOLDER}@host:5432/db`
     );
-    expect(redactSensitiveData('kafka://user:pass@host:9092')).toBe(REDACTED_PLACEHOLDER);
-    expect(redactSensitiveData('https://user:pass@api.example.com')).toBe(REDACTED_PLACEHOLDER);
+    expect(redactSensitiveData('postgresql://admin:secret@localhost/mydb')).toBe(
+      `postgresql://admin:${REDACTED_PASSWORD_PLACEHOLDER}@localhost/mydb`
+    );
+    expect(redactSensitiveData('kafka://user:pass@host:9092')).toBe(
+      `kafka://user:${REDACTED_PASSWORD_PLACEHOLDER}@host:9092`
+    );
+    expect(redactSensitiveData('https://user:pass@api.example.com')).toBe(
+      `https://user:${REDACTED_PASSWORD_PLACEHOLDER}@api.example.com`
+    );
+  });
+
+  it('maskUriPassword masks only the password and leaves non-URIs untouched', () => {
+    expect(maskUriPassword('postgres://user:pass@host:5432/db')).toBe(
+      `postgres://user:${REDACTED_PASSWORD_PLACEHOLDER}@host:5432/db`
+    );
+    expect(maskUriPassword('not a uri')).toBe('not a uri');
+    expect(maskUriPassword('https://api.aiven.io/v1/project')).toBe(
+      'https://api.aiven.io/v1/project'
+    );
+  });
+
+  it('fully masks passwords that contain @ (no fragment leak)', () => {
+    expect(maskUriPassword('mysql://avnadmin:p@ssw0rd@host:12691/db')).toBe(
+      `mysql://avnadmin:${REDACTED_PASSWORD_PLACEHOLDER}@host:12691/db`
+    );
+    expect(maskUriPassword('postgres://avnadmin:AVNS_a@b@c@host:5432/db')).toBe(
+      `postgres://avnadmin:${REDACTED_PASSWORD_PLACEHOLDER}@host:5432/db`
+    );
+    expect(redactSensitiveData({ service_uri: 'redis://default:s3cr@t@redis-host:6379' })).toEqual(
+      { service_uri: `redis://default:${REDACTED_PASSWORD_PLACEHOLDER}@redis-host:6379` }
+    );
+  });
+
+  it('does not mask @ that appears only in the query string', () => {
+    expect(maskUriPassword('https://u:p@host/cb?next=a@b.com')).toBe(
+      `https://u:${REDACTED_PASSWORD_PLACEHOLDER}@host/cb?next=a@b.com`
+    );
+  });
+
+  it('leaves a credential-less URI (user but no password) untouched', () => {
+    expect(maskUriPassword('postgres://user@host:5432/db')).toBe('postgres://user@host:5432/db');
+  });
+
+  it('masks the password for an IPv6 host URI', () => {
+    expect(maskUriPassword('postgres://avnadmin:pw@[2001:db8::1]:5432/db')).toBe(
+      `postgres://avnadmin:${REDACTED_PASSWORD_PLACEHOLDER}@[2001:db8::1]:5432/db`
+    );
+  });
+
+  it('should still fully redact standalone secrets and certificates', () => {
+    expect(redactSensitiveData({ password: 'secret123' }).password).toBe(REDACTED_PLACEHOLDER);
+    expect(
+      redactSensitiveData('-----BEGIN CERTIFICATE-----\nblob\n-----END CERTIFICATE-----')
+    ).toBe(REDACTED_PLACEHOLDER);
   });
 
   it('should not redact URLs without credentials', () => {
