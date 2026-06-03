@@ -88,8 +88,10 @@ function createMcpPostIpRateLimit(
 
 export function clientIpKey(req: Request): string {
   const peer = normalizePeerIp(req.socket.remoteAddress);
+  const isCfPeer = isCloudflareAddress(peer);
+  console.error(`mcp-aiven: cloudflare peer check ip=${peer ?? 'unknown'} isCloudflare=${isCfPeer}`);
   const cf = req.headers['cf-connecting-ip'];
-  if (typeof cf === 'string' && isIP(cf) !== 0 && isCloudflareAddress(peer)) {
+  if (typeof cf === 'string' && isIP(cf) !== 0 && isCfPeer) {
     return ipKeyGenerator(cf);
   }
   return ipKeyGenerator(req.ip ?? peer ?? '0.0.0.0');
