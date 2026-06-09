@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.1](https://github.com/Aiven-Open/mcp-aiven/compare/v1.8.0...v1.8.1) (2026-06-09)
+
+
+### Bug Fixes
+
+* default include_secrets ([#107](https://github.com/Aiven-Open/mcp-aiven/issues/107)) ([a49d118](https://github.com/Aiven-Open/mcp-aiven/commit/a49d118c43c6f890f2bb153b19f1f85b89e6240d))
+
 ## [1.8.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.7.1...v1.8.0) (2026-06-02)
 
 
