@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
 import type { AivenClient } from '../client.js';
 import type {
@@ -94,7 +95,7 @@ function deriveAnnotations(
 }
 
 function loadManifests(): ManifestEntry[] {
-  const manifestDir = path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'manifests');
+  const manifestDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'manifests');
   // eslint-disable-next-line security/detect-non-literal-fs-filename -- trusted internal path
   const files = fs
     .readdirSync(manifestDir)
