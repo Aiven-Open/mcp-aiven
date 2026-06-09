@@ -277,6 +277,25 @@ describe('aiven_pg_read', () => {
     expect(calls[3]?.[0]).toBe('COMMIT');
   });
 
+  it('should request service info with include_secrets so the password is not redacted', async () => {
+    const client = createMockClient(getServiceResponse());
+    const tools = createPgCustomTools(client);
+    const tool = getPgQueryTool(tools);
+
+    await tool.handler({
+      project: 'proj',
+      service_name: 'svc',
+      query: 'SELECT 1',
+    });
+
+    const serviceGetCall = (client.get as ReturnType<typeof vi.fn>).mock.calls.find(
+      (call) =>
+        typeof call[0] === 'string' && call[0].includes('/service/') && !call[0].includes('/kms/ca')
+    ) as [string, { query?: Record<string, unknown> }] | undefined;
+    expect(serviceGetCall).toBeDefined();
+    expect(serviceGetCall?.[1]?.query).toMatchObject({ include_secrets: true });
+  });
+
   it('should return query results with metadata wrapped in UUID boundaries', async () => {
     const pgModule = await import('pg');
     const MockClient = pgModule.default.Client as unknown as ReturnType<typeof vi.fn>;
