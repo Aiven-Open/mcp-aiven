@@ -3,6 +3,7 @@ import {
   clientIpFromForwardedFor,
   inboundMcpClientIpFromHeaders,
   inboundMcpClientIpFromRequestInfo,
+  resolveInboundMcpClientIpFromHeaders,
 } from '../../src/inbound-client-ip.js';
 
 describe('clientIpFromForwardedFor', () => {
@@ -18,6 +19,28 @@ describe('clientIpFromForwardedFor', () => {
 
   it('ignores invalid leftmost hop', () => {
     expect(clientIpFromForwardedFor('not-an-ip, 203.0.113.50')).toBeUndefined();
+  });
+});
+
+describe('resolveInboundMcpClientIpFromHeaders', () => {
+  it('records x-forwarded-for as source', () => {
+    expect(
+      resolveInboundMcpClientIpFromHeaders({
+        'x-forwarded-for': '203.0.113.50',
+        'cf-connecting-ip': '172.70.153.179',
+      })
+    ).toEqual({ clientIp: '203.0.113.50', source: 'x-forwarded-for' });
+  });
+
+  it('records cf-connecting-ip as source when x-forwarded-for is absent', () => {
+    expect(resolveInboundMcpClientIpFromHeaders({ 'cf-connecting-ip': '203.0.113.50' })).toEqual({
+      clientIp: '203.0.113.50',
+      source: 'cf-connecting-ip',
+    });
+  });
+
+  it('returns empty when only cloudflare edge cf-connecting-ip is present', () => {
+    expect(resolveInboundMcpClientIpFromHeaders({ 'cf-connecting-ip': '172.70.153.179' })).toEqual({});
   });
 });
 
