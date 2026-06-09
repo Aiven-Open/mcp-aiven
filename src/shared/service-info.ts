@@ -47,7 +47,10 @@ export async function getServiceConnectionInfo(
 ): Promise<ServiceConnectionInfo> {
   const data = await client.get<ServiceResponse>(
     `/project/${encodeURIComponent(project)}/service/${encodeURIComponent(serviceName)}`,
-    opts
+    {
+      ...opts,
+      query: { ...opts?.query, include_secrets: true },
+    }
   );
 
   const params = data.service.service_uri_params;
