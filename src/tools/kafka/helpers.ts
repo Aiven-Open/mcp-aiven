@@ -73,9 +73,14 @@ export async function buildConnectorConfig(
 
     const fieldMapping = detectFieldMapping(connectorClass);
     if (fieldMapping) {
+      const conflicts = Object.keys(fieldMapping).filter((k) => config[k] !== undefined);
+      if (conflicts.length > 0) {
+        throw new Error(
+          `When 'source_service' is set, the tool injects connection fields from the source service. ` +
+            `Remove these user-provided field(s) or omit 'source_service': ${conflicts.join(', ')}.`
+        );
+      }
       for (const [configKey, infoField] of Object.entries(fieldMapping)) {
-        if (config[configKey] !== undefined) continue;
-
         if (infoField === '_jdbc_url') {
           config[configKey] = buildJdbcUrl(connInfo);
         } else {
