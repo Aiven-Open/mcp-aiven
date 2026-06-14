@@ -4,7 +4,7 @@ const CONNECTOR_SUFFIX = `**Kafka Connect plan gate — call \`aiven_service_get
 
 **Plans that typically include Kafka Connect:** \`startup-*\` (e.g. \`startup-2\`, \`startup-4\`), \`business-*\`, \`premium-*\`. A 403 mentioning Connect being **disabled** is typically a **plan** limitation, not token RBAC.
 
-When \`source_service\` is provided, connection credentials (hostname, port, user, password) are automatically resolved from that Aiven service — no need to look up or provide passwords manually.
+When \`source_service\` is provided, connection credentials (hostname, port, user, password) are automatically resolved from that Aiven service — no need to look up or provide passwords manually. Do not also pass connection fields (host/port/user/password/url) when using \`source_service\`.
 
 Supports Debezium CDC connectors (PostgreSQL, MySQL), JDBC source/sink, and any connector class. Extra configuration fields are passed through as-is.
 
