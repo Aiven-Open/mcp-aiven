@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.2](https://github.com/Aiven-Open/mcp-aiven/compare/v1.8.1...v1.8.2) (2026-06-14)
+
+
+### Bug Fixes
+
+* reject conflicting kafka connector fields when source_service is set ([#111](https://github.com/Aiven-Open/mcp-aiven/issues/111)) ([64ef013](https://github.com/Aiven-Open/mcp-aiven/commit/64ef01300f187b275924513a9a0fe73202ba6579))
+
 ## [1.8.1](https://github.com/Aiven-Open/mcp-aiven/compare/v1.8.0...v1.8.1) (2026-06-09)
 
 
