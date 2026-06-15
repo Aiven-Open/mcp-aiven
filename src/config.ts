@@ -101,5 +101,12 @@ export function loadConfig(transport: 'stdio' | 'http' = 'stdio'): AivenConfig {
     throw new Error(`AIVEN_SERVICES_SCOPE: ${parsed.error}`);
   }
 
-  return { token, readOnly, transport, categories: parsed.categories };
+  const mcpAcornSecret = process.env['MCP_ACORN_SECRET']?.trim();
+  return {
+    token,
+    readOnly,
+    transport,
+    categories: parsed.categories,
+    mcpAcornSecret: mcpAcornSecret && mcpAcornSecret.length > 0 ? mcpAcornSecret : undefined,
+  };
 }
