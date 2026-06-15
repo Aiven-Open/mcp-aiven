@@ -87,6 +87,11 @@ export class AivenClient {
     }
     if (options?.clientIp) {
       headers['X-MCP-Client-IP'] = options.clientIp;
+      if (options.mcpAcornAuth) {
+        console.error(
+          `mcp-aiven: setting X-MCP-Client-IP of ${options.clientIp} and sending to Acorn`
+        );
+      }
     }
     if (options?.requestId) {
       headers['X-MCP-Request-ID'] = options.requestId;

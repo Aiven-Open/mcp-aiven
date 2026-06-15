@@ -24,6 +24,8 @@ export interface AivenConfig {
 export interface McpRequestOptions {
   readonly readOnly: boolean;
   readonly categories: ReadonlySet<ServiceCategory> | undefined;
+  /** Inbound HTTP peer IP (TCP remoteAddress) for this POST /mcp request. */
+  readonly clientIp?: string | undefined;
 }
 
 export type McpServerFactory = (options: McpRequestOptions) => import('@modelcontextprotocol/sdk/server/mcp.js').McpServer;

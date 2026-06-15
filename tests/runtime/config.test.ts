@@ -41,24 +41,6 @@ describe('loadConfig', () => {
     expect(config.token).toBe('test-token');
   });
 
-  it('should load MCP_ACORN_SECRET when set', () => {
-    process.env['AIVEN_TOKEN'] = 'test-token';
-    process.env['MCP_ACORN_SECRET'] = '  acorn-secret  ';
-
-    const config = loadConfig();
-
-    expect(config.mcpAcornSecret).toBe('acorn-secret');
-  });
-
-  it('should omit MCP_ACORN_SECRET when empty', () => {
-    process.env['AIVEN_TOKEN'] = 'test-token';
-    process.env['MCP_ACORN_SECRET'] = '   ';
-
-    const config = loadConfig();
-
-    expect(config.mcpAcornSecret).toBeUndefined();
-  });
-
   it('should load config with required token', () => {
     process.env['AIVEN_TOKEN'] = 'test-token';
 

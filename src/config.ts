@@ -5,10 +5,9 @@ import { ServiceCategory } from './types.js';
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json') as { version: string };
 export const VERSION = pkg.version;
-// export const API_ORIGIN = process.env['AIVEN_API_ORIGIN'] ?? 'https://api.aiven.io';
-export const API_ORIGIN = 'https://public-aiven-rest-aiven-public-yonatan-dvir-test.a.avns.net';
+export const API_ORIGIN = process.env['AIVEN_API_ORIGIN'] ?? 'https://api.aiven.io';
 export const API_BASE_URL = `${API_ORIGIN}/v1`;
-export const HOST = 'https://mcp.avnscftest.net';
+export const HOST = 'https://019e447f-ecb3-7bb3-92cb-ebbda4551526-3000.eur-1.aiven.app';
 
 /** HTTP POST /mcp rate limit (per bearer token hash, else per client IP). */
 export interface HttpMcpRateLimitConfig {
@@ -102,12 +101,5 @@ export function loadConfig(transport: 'stdio' | 'http' = 'stdio'): AivenConfig {
     throw new Error(`AIVEN_SERVICES_SCOPE: ${parsed.error}`);
   }
 
-  const mcpAcornSecret = process.env['MCP_ACORN_SECRET']?.trim();
-  return {
-    token,
-    readOnly,
-    transport,
-    categories: parsed.categories,
-    mcpAcornSecret: mcpAcornSecret && mcpAcornSecret.length > 0 ? mcpAcornSecret : undefined,
-  };
+  return { token, readOnly, transport, categories: parsed.categories };
 }

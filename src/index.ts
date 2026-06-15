@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Must be first import so instrumentation can hook into Express and other modules
+import './instrumentation/index.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { loadConfig } from './config.js';
 import { AivenClient } from './client.js';
@@ -13,7 +15,7 @@ import type { ToolDefinition, McpRequestOptions } from './types.js';
 import { VERSION, API_ORIGIN, loadHttpMcpRateLimit } from './config.js';
 import { createObservabilityContext } from './observability.js';
 import { readOnlyInstructions } from './prompts.js';
-import { inboundMcpClientIpFromRequestInfo } from './inbound-client-ip.js';
+import { instrumentServer, flushAndExit } from './instrumentation/index.js';
 
 /** Streamable HTTP: inbound `/mcp` `User-Agent` (SDK `requestInfo.headers`). */
 function mcpClientFromRequestInfo(requestInfo: unknown): string | undefined {
@@ -39,7 +41,7 @@ function loadAllTools(client: AivenClient): ToolDefinition[] {
   ];
 }
 
-function registerTools(server: McpServer, tools: readonly ToolDefinition[]): void {
+function registerTools(server: McpServer, tools: readonly ToolDefinition[], requestOptions: McpRequestOptions): void {
   for (const tool of tools) {
     server.registerTool(
       tool.name,
@@ -58,7 +60,7 @@ function registerTools(server: McpServer, tools: readonly ToolDefinition[]): voi
         const context = {
           token: extra.authInfo?.token,
           mcpClient: mcpClientFromRequestInfo(extra.requestInfo) ?? server.server.getClientVersion()?.name,
-          clientIp: inboundMcpClientIpFromRequestInfo(extra.requestInfo),
+          clientIp: requestOptions.clientIp,
           requestId: obsContext.requestId,
           toolReasoning: obsContext.toolReasoning,
         };
@@ -91,12 +93,15 @@ async function main(): Promise<void> {
       : ([] as const);
 
     const server = new McpServer({ name: 'mcp-aiven', version: VERSION }, ...serverOptions);
-    registerTools(server, tools);
+    registerTools(server, tools, options);
     return server;
   }
 
   if (transport === 'http') {
-    startHttpServer(createMcpServer, {
+    const createInstrumentedServer = (options: McpRequestOptions): McpServer => {
+      return instrumentServer(createMcpServer(options));
+    };
+    startHttpServer(createInstrumentedServer, {
       port: parseInt(process.env['PORT'] ?? '3000', 10),
       apiOrigin: API_ORIGIN,
       scopes: ['projects', 'services', 'accounts:read'],
@@ -104,13 +109,13 @@ async function main(): Promise<void> {
       readOnly: config.readOnly,
     });
   } else {
-    const server = createMcpServer({ readOnly: config.readOnly, categories: config.categories });
+    const server = instrumentServer(createMcpServer({ readOnly: config.readOnly, categories: config.categories }));
     await server.connect(createStdioTransport());
     console.error('mcp-aiven: Server connected and ready');
   }
 }
 
-main().catch((error: unknown) => {
+main().catch(async (error: unknown) => {
   console.error('mcp-aiven: Fatal error:', error instanceof Error ? error.message : error);
-  process.exit(1);
+  await flushAndExit(error);
 });

@@ -10,6 +10,10 @@ import { HOST, parseScopes, isMaintenanceMode } from './config.js';
 import type { HttpMcpRateLimitConfig } from './config.js';
 import type { McpServerFactory, McpRequestOptions } from './types.js';
 import { isCloudflareAddress, normalizePeerIp } from './cloudflare-ips.js';
+import { captureException } from './instrumentation/index.js';
+import { inboundMcpClientIpFromRequest } from './inbound-tcp-client-ip.js';
+
+export { inboundMcpClientIpFromTcpPeer } from './inbound-tcp-client-ip.js';
 
 export function createStdioTransport(): StdioServerTransport {
   return new StdioServerTransport();
@@ -216,8 +220,12 @@ export function startHttpServer(
       }
 
       const token = (req as Request & { token: string }).token;
+      const clientIp = inboundMcpClientIpFromRequest(req);
       const transport = new StreamableHTTPServerTransport({ enableJsonResponse: true });
-      const mcpServer = createServer(parsed.options);
+      const mcpServer = createServer({
+        ...parsed.options,
+        ...(clientIp !== undefined ? { clientIp } : {}),
+      });
       await mcpServer.connect(transport as unknown as Transport);
       (req as Request & { auth: { token: string; clientId: string; scopes: string[] } }).auth = {
         token,
@@ -227,11 +235,24 @@ export function startHttpServer(
 
       await transport.handleRequest(req, res, req.body);
     })().catch((err: unknown) => {
+      captureException(err);
       console.error('mcp-aiven: MCP handler error:', err);
       if (!res.headersSent) {
         res.status(500).json({ error: 'Internal server error' });
       }
     });
+  });
+
+  // Catch errors from Express middleware (e.g. malformed JSON body from body-parser).
+  // Only reports to Sentry for 5xx (server bugs); 4xx are client errors and just get logged.
+  app.use((err: Error & { status?: number }, req: Request, res: Response, _next: NextFunction) => {
+    const status = err.status ?? 500;
+    if (status >= 500) captureException(err);
+    const label = status >= 500 ? 'unhandled exception' : 'bad input';
+    console.error(`mcp-aiven: ${req.method} ${req.path} ${label} (${status}):`, err.message);
+    if (!res.headersSent) {
+      res.status(status).json({ error: err.message || 'Internal server error' });
+    }
   });
 
   app.listen(config.port, () => {
