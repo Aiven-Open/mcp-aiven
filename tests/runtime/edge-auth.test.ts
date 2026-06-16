@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { Request, Response, NextFunction } from 'express';
-import { hasValidEdgeAuth, createEdgeAuthMiddleware } from '../../src/edge-auth.js';
+import { hasValidEdgeAuth, createEdgeAuthMiddleware, edgeAuthRejectionReason } from '../../src/edge-auth.js';
 
 function makeReq(headers: Record<string, string | undefined> = {}): Request {
   return { headers, method: 'POST', path: '/mcp' } as unknown as Request;
@@ -21,6 +21,11 @@ describe('hasValidEdgeAuth', () => {
 
   it('rejects empty header', () => {
     expect(hasValidEdgeAuth(makeReq({ 'x-edge-auth': '' }), 'secret')).toBe(false);
+  });
+
+  it('reports missing vs invalid', () => {
+    expect(edgeAuthRejectionReason(makeReq())).toBe('missing');
+    expect(edgeAuthRejectionReason(makeReq({ 'x-edge-auth': 'wrong' }))).toBe('invalid');
   });
 });
 

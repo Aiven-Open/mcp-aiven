@@ -18,6 +18,12 @@ export function hasValidEdgeAuth(req: Request, expectedSecret: string): boolean 
   return secureCompare(header, expectedSecret);
 }
 
+export function edgeAuthRejectionReason(req: Request): 'missing' | 'invalid' {
+  const header = req.headers[EDGE_AUTH_HEADER];
+  if (typeof header !== 'string' || header.length === 0) return 'missing';
+  return 'invalid';
+}
+
 export function createEdgeAuthMiddleware(edgeAuthSecret: string | undefined) {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!edgeAuthSecret) {
@@ -25,7 +31,13 @@ export function createEdgeAuthMiddleware(edgeAuthSecret: string | undefined) {
       return;
     }
     if (!hasValidEdgeAuth(req, edgeAuthSecret)) {
-      console.warn(`mcp-aiven: rejected request with missing or invalid X-Edge-Auth ${req.method} ${req.path}`);
+      const reason = edgeAuthRejectionReason(req);
+      const header = req.headers[EDGE_AUTH_HEADER];
+      const headerLen = typeof header === 'string' ? header.length : 0;
+      console.warn(
+        `mcp-aiven: rejected request: X-Edge-Auth ${reason}` +
+          ` (headerLen=${headerLen} expectedLen=${edgeAuthSecret.length}) ${req.method} ${req.path}`
+      );
       logInboundMcpRequestHeaders(req);
       res.status(403).json({ error: 'Forbidden' });
       return;
