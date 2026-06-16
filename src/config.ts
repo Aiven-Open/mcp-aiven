@@ -7,7 +7,7 @@ const pkg = require('../package.json') as { version: string };
 export const VERSION = pkg.version;
 export const API_ORIGIN = process.env['AIVEN_API_ORIGIN'] ?? 'https://api.aiven.io';
 export const API_BASE_URL = `${API_ORIGIN}/v1`;
-export const HOST = 'https://019e447f-ecb3-7bb3-92cb-ebbda4551526-3000.eur-1.aiven.app';
+export const HOST = 'https://mcp.avnscftest.net';
 
 /** HTTP POST /mcp rate limit (per bearer token hash, else per client IP). */
 export interface HttpMcpRateLimitConfig {
@@ -27,6 +27,12 @@ export function loadHttpMcpRateLimit(): HttpMcpRateLimitConfig {
     windowMs: parsePositiveIntEnv('MCP_HTTP_RATE_LIMIT_WINDOW_MS', 60_000),
     limit: parsePositiveIntEnv('MCP_HTTP_RATE_LIMIT_MAX', 100),
   };
+}
+
+/** Expected value of inbound X-Edge-Auth (injected by Cloudflare). When unset, the check is skipped. */
+export function loadMcpEdgeAuthSecret(): string | undefined {
+  const raw = process.env['MCP_EDGE_AUTH_SECRET']?.trim();
+  return raw && raw.length > 0 ? raw : undefined;
 }
 
 /**

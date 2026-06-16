@@ -12,7 +12,7 @@ import { createDocsTools } from './tools/docs/index.js';
 import { createServiceSearchTool } from './tools/service-search.js';
 import { createStdioTransport, startHttpServer } from './transport.js';
 import type { ToolDefinition, McpRequestOptions } from './types.js';
-import { VERSION, API_ORIGIN, loadHttpMcpRateLimit } from './config.js';
+import { VERSION, API_ORIGIN, loadHttpMcpRateLimit, loadMcpEdgeAuthSecret } from './config.js';
 import { createObservabilityContext } from './observability.js';
 import { readOnlyInstructions } from './prompts.js';
 import { instrumentServer, flushAndExit } from './instrumentation/index.js';
@@ -107,6 +107,7 @@ async function main(): Promise<void> {
       scopes: ['projects', 'services', 'accounts:read'],
       rateLimit: loadHttpMcpRateLimit(),
       readOnly: config.readOnly,
+      edgeAuthSecret: loadMcpEdgeAuthSecret(),
     });
   } else {
     const server = instrumentServer(createMcpServer({ readOnly: config.readOnly, categories: config.categories }));

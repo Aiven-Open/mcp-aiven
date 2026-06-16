@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   loadConfig,
   loadHttpMcpRateLimit,
+  loadMcpEdgeAuthSecret,
   isMaintenanceMode,
   parseScopes,
 } from '../../src/config.js';
@@ -186,6 +187,33 @@ describe('loadHttpMcpRateLimit', () => {
     process.env['MCP_HTTP_RATE_LIMIT_MAX'] = '-1';
 
     expect(loadHttpMcpRateLimit()).toEqual({ windowMs: 60_000, limit: 100 });
+  });
+});
+
+describe('loadMcpEdgeAuthSecret', () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    process.env = { ...originalEnv };
+    delete process.env['MCP_EDGE_AUTH_SECRET'];
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it('returns undefined when env is unset', () => {
+    expect(loadMcpEdgeAuthSecret()).toBeUndefined();
+  });
+
+  it('returns trimmed secret when set', () => {
+    process.env['MCP_EDGE_AUTH_SECRET'] = '  12345  ';
+    expect(loadMcpEdgeAuthSecret()).toBe('12345');
+  });
+
+  it('returns undefined for empty string', () => {
+    process.env['MCP_EDGE_AUTH_SECRET'] = '   ';
+    expect(loadMcpEdgeAuthSecret()).toBeUndefined();
   });
 });
 

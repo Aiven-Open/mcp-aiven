@@ -12,6 +12,7 @@ import type { McpServerFactory, McpRequestOptions } from './types.js';
 import { isCloudflareAddress, normalizePeerIp } from './cloudflare-ips.js';
 import { captureException } from './instrumentation/index.js';
 import { inboundMcpClientIpFromRequest } from './inbound-tcp-client-ip.js';
+import { createEdgeAuthMiddleware } from './edge-auth.js';
 
 export { inboundMcpClientIpFromTcpPeer } from './inbound-tcp-client-ip.js';
 
@@ -25,6 +26,8 @@ export interface HttpServerConfig {
   scopes: string[];
   rateLimit: HttpMcpRateLimitConfig;
   readOnly: boolean;
+  /** When set, POST /mcp requires matching X-Edge-Auth (Cloudflare-injected). */
+  edgeAuthSecret?: string | undefined;
 }
 
 const RATE_LIMIT_PROPERTY = 'rateLimit' as const;
@@ -190,6 +193,8 @@ export function startHttpServer(
     error: 'Too many MCP requests. Please wait before trying again.',
   });
 
+  const edgeAuthMiddleware = createEdgeAuthMiddleware(config.edgeAuthSecret);
+
   app.get('/health', (_req: Request, res: Response) => {
     res.json({ status: 'ok' });
   });
@@ -211,7 +216,7 @@ export function startHttpServer(
     res.status(405).set('Allow', 'POST').json({ error: 'Method Not Allowed' });
   });
 
-  app.post('/mcp', mcpPostIpRateLimit, mcpPostBearerRateLimit, authMiddleware, mcpJsonParser, (req: Request, res: Response) => {
+  app.post('/mcp', edgeAuthMiddleware, mcpPostIpRateLimit, mcpPostBearerRateLimit, authMiddleware, mcpJsonParser, (req: Request, res: Response) => {
     void (async (): Promise<void> => {
       const parsed = parseMcpQueryParams(req.query as Record<string, unknown>, config.readOnly);
       if ('error' in parsed) {
