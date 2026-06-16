@@ -13,6 +13,7 @@ import { isCloudflareAddress, normalizePeerIp } from './cloudflare-ips.js';
 import { captureException } from './instrumentation/index.js';
 import { inboundMcpClientIpFromRequest } from './inbound-tcp-client-ip.js';
 import { createEdgeAuthMiddleware } from './edge-auth.js';
+import { logInboundMcpRequestHeaders } from './inbound-request-headers.js';
 
 export { inboundMcpClientIpFromTcpPeer } from './inbound-tcp-client-ip.js';
 
@@ -218,6 +219,8 @@ export function startHttpServer(
 
   app.post('/mcp', edgeAuthMiddleware, mcpPostIpRateLimit, mcpPostBearerRateLimit, authMiddleware, mcpJsonParser, (req: Request, res: Response) => {
     void (async (): Promise<void> => {
+      logInboundMcpRequestHeaders(req);
+
       const parsed = parseMcpQueryParams(req.query as Record<string, unknown>, config.readOnly);
       if ('error' in parsed) {
         res.status(400).json({ error: parsed.error });

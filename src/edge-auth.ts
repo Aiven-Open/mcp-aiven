@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 import type { Request, Response, NextFunction } from 'express';
+import { logInboundMcpRequestHeaders } from './inbound-request-headers.js';
 
 /** Header set by Cloudflare Transform Rules on the path to this server. */
 export const EDGE_AUTH_HEADER = 'x-edge-auth';
@@ -25,6 +26,7 @@ export function createEdgeAuthMiddleware(edgeAuthSecret: string | undefined) {
     }
     if (!hasValidEdgeAuth(req, edgeAuthSecret)) {
       console.warn(`mcp-aiven: rejected request with missing or invalid X-Edge-Auth ${req.method} ${req.path}`);
+      logInboundMcpRequestHeaders(req);
       res.status(403).json({ error: 'Forbidden' });
       return;
     }
