@@ -38,7 +38,6 @@
     "express-rate-limit": "^8.3.2",
     "libpg-query": "^17.7.3",
     "openapi-fetch": "^0.17.0",
-    "pg": "^8.18.0",
     "yaml": "^2.4.0",
     "zod": "^3.23.8"
   },
@@ -63,7 +62,6 @@
     "@eslint/js": "^9.0.0",
     "@types/express": "^5.0.6",
     "@types/node": "^22.10.0",
-    "@types/pg": "^8.16.0",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-security": "^3.0.0",
