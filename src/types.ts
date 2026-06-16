@@ -19,6 +19,7 @@ export interface AivenConfig {
   readonly categories: ReadonlySet<ServiceCategory> | undefined;
   readonly allowSecrets: boolean;
   readonly writeAllowlist: ReadonlySet<string> | undefined;
+  readonly mcpAcornSecret: string | undefined;
 }
 
 export interface McpRequestOptions {
@@ -26,6 +27,7 @@ export interface McpRequestOptions {
   readonly categories: ReadonlySet<ServiceCategory> | undefined;
   readonly allowSecrets: boolean;
   readonly writeAllowlist: ReadonlySet<string> | undefined;
+  readonly clientIp?: string | undefined;
 }
 
 export type McpServerFactory = (options: McpRequestOptions) => import('@modelcontextprotocol/sdk/server/mcp.js').McpServer;
@@ -36,8 +38,10 @@ export interface RequestOptions {
   token?: string | undefined;
   toolName?: string | undefined;
   mcpClient?: string | undefined;
+  clientIp?: string | undefined;
   requestId?: string | undefined;
   toolReasoning?: string | null | undefined;
+  mcpAcornAuth?: boolean | undefined;
 }
 
 export interface ToolAnnotations {
@@ -87,6 +91,7 @@ export type ToolResult = CallToolResult;
 export interface HandlerContext {
   token?: string | undefined;
   mcpClient?: string | undefined;
+  clientIp?: string | undefined;
   requestId?: string | undefined;
   toolReasoning?: string | null | undefined;
 }
@@ -203,11 +208,13 @@ export interface ExecutePgQueryOptions {
   service_name: string;
   query: string;
   database?: string | undefined;
+  schema?: string | undefined;
   mode: PgQueryMode;
   limit?: number | undefined;
   offset?: number | undefined;
   token?: string | undefined;
   mcpClient?: string | undefined;
+  clientIp?: string | undefined;
   toolName?: string | undefined;
   requestId?: string | undefined;
   toolReasoning?: string | null | undefined;

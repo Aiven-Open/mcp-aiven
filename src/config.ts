@@ -9,7 +9,7 @@ export const API_ORIGIN = process.env['AIVEN_API_ORIGIN'] ?? 'https://api.aiven.
 export const API_BASE_URL = `${API_ORIGIN}/v1`;
 export const HOST = process.env['MCP_HOST'] ?? 'https://mcp.aiven.live';
 
-/** HTTP POST /mcp rate limit (per bearer token hash, else per client IP). */
+/** HTTP POST /mcp rate limit (per bearer token hash). */
 export interface HttpMcpRateLimitConfig {
   windowMs: number;
   limit: number;
@@ -95,6 +95,16 @@ export function isMaintenanceMode(): boolean {
   return process.env['MAINTENANCE_MODE'] === 'true';
 }
 
+export function isExtraProtectionEnabled(): boolean {
+  return process.env['EXTRA_PROTECTION'] === 'true';
+}
+
+export function loadEdgeAuthSecret(): string | undefined {
+  const raw = process.env['MCP_EDGE_AUTH_SECRET'];
+  if (raw === undefined || raw === '') return undefined;
+  return raw;
+}
+
 export function loadConfig(transport: 'stdio' | 'http' = 'stdio'): AivenConfig {
   const token = process.env['AIVEN_TOKEN'];
 
@@ -114,5 +124,6 @@ export function loadConfig(transport: 'stdio' | 'http' = 'stdio'): AivenConfig {
     throw new Error(`AIVEN_SERVICES_SCOPE: ${parsed.error}`);
   }
 
-  return { token, readOnly, transport, categories: parsed.categories, allowSecrets, writeAllowlist };
+  const mcpAcornSecret = process.env['MCP_ACORN_SECRET'];
+  return { token, readOnly, transport, categories: parsed.categories, allowSecrets, writeAllowlist, mcpAcornSecret };
 }

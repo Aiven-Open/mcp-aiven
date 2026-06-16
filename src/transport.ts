@@ -1,17 +1,29 @@
 import { createHash } from 'node:crypto';
 import { isIP } from 'node:net';
 import express from 'express';
-import rateLimit, { ipKeyGenerator, type Options } from 'express-rate-limit';
+import rateLimit, { type Options } from 'express-rate-limit';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import type { Request, Response, NextFunction } from 'express';
-import { HOST, parseScopes, parseWriteAllowlist, isMaintenanceMode } from './config.js';
+import { HOST, parseScopes, parseWriteAllowlist, isMaintenanceMode, isExtraProtectionEnabled, loadEdgeAuthSecret } from './config.js';
 import type { HttpMcpRateLimitConfig } from './config.js';
 import type { McpServerFactory, McpRequestOptions } from './types.js';
-import { isCloudflareAddress, normalizePeerIp } from './cloudflare-ips.js';
 import { resolveAuthorizationServer, buildResourceUrl } from './marketplace.js';
 import { captureException } from './instrumentation/index.js';
+import { createEdgeAuthMiddleware, hasValidEdgeAuth } from './edge-auth.js';
+
+const IPV4_MAPPED_IPV6_PREFIX = '::ffff:';
+
+/** Strip `::ffff:` prefix from IPv4-mapped IPv6 (Node dual-stack sockets emit this form). */
+function normalizePeerIp(ip: string | undefined): string | undefined {
+  if (ip === undefined) return undefined;
+  if (ip.toLowerCase().startsWith(IPV4_MAPPED_IPV6_PREFIX)) {
+    const v4 = ip.slice(IPV4_MAPPED_IPV6_PREFIX.length);
+    if (isIP(v4) === 4) return v4;
+  }
+  return ip;
+}
 
 export function createStdioTransport(): StdioServerTransport {
   return new StdioServerTransport();
@@ -23,9 +35,12 @@ export interface HttpServerConfig {
   scopes: string[];
   rateLimit: HttpMcpRateLimitConfig;
   readOnly: boolean;
+  extraProtection: boolean;
+  edgeAuthSecret: string | undefined;
 }
 
 const RATE_LIMIT_PROPERTY = 'rateLimit' as const;
+const NO_BEARER_RATE_LIMIT_KEY = '__no_bearer__';
 
 /** Logs and sends the same response as express-rate-limit's default handler. */
 function rateLimitExceededHandler(scope: string) {
@@ -51,6 +66,18 @@ function rateLimitExceededHandler(scope: string) {
   };
 }
 
+function createHttpAuthRateLimit(): ReturnType<typeof rateLimit> {
+  return rateLimit({
+    windowMs: 10 * 1000,
+    limit: 100,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { error: 'Too many requests. Please wait before trying again.' },
+    handler: rateLimitExceededHandler('http-auth'),
+    skip: (req) => req.method === 'GET' && req.path === '/health',
+  });
+}
+
 function createMcpPostBearerRateLimit(
   cfg: HttpMcpRateLimitConfig,
   message: { error: string }
@@ -60,40 +87,49 @@ function createMcpPostBearerRateLimit(
     limit: cfg.limit,
     standardHeaders: 'draft-7',
     legacyHeaders: false,
-    keyGenerator: (req: Request) => bearerOrIpKey(req),
+    keyGenerator: (req: Request) => bearerRateLimitKey(req),
     message,
     handler: rateLimitExceededHandler('mcp-post-bearer'),
   });
 }
 
-/**
- * IP-keyed limiter applied alongside the bearer-keyed one. Catches
- * bearer-rotation floods where each request uses a fresh fake token (which
- * would otherwise get its own per-bearer bucket and bypass the cap). Uses
- * the same limit/window — whichever bucket fills first triggers the 429.
- */
-function createMcpPostIpRateLimit(
-  cfg: HttpMcpRateLimitConfig,
-  message: { error: string }
-): ReturnType<typeof rateLimit> {
-  return rateLimit({
-    windowMs: cfg.windowMs,
-    limit: cfg.limit,
-    standardHeaders: 'draft-7',
-    legacyHeaders: false,
-    keyGenerator: clientIpKey,
-    message,
-    handler: rateLimitExceededHandler('mcp-post-ip'),
-  });
+/** Set by Cloudflare Transform Rule from ip.src / CF-Connecting-IP at the edge. */
+export const CLIENT_IP_HEADER = 'x-client-ip';
+
+function clientIpFromEdgeHeader(req: Request): string | undefined {
+  const raw = req.headers[CLIENT_IP_HEADER];
+  const value = typeof raw === 'string' ? raw.trim() : undefined;
+  if (value === undefined || value.length === 0 || isIP(value) === 0) return undefined;
+  return value;
 }
 
-export function clientIpKey(req: Request): string {
-  const peer = normalizePeerIp(req.socket.remoteAddress);
-  const cf = req.headers['cf-connecting-ip'];
-  if (typeof cf === 'string' && isIP(cf) !== 0 && isCloudflareAddress(peer)) {
-    return ipKeyGenerator(cf);
+export interface ClientIpResolveOptions {
+  extraProtection?: boolean;
+  edgeAuthSecret?: string | undefined;
+}
+
+/** True when X-Client-IP may be trusted (valid X-Edge-Auth under EXTRA_PROTECTION). */
+function trustEdgeClientIpHeader(req: Request, opts?: ClientIpResolveOptions): boolean {
+  const extraProtection = opts?.extraProtection ?? isExtraProtectionEnabled();
+  const secret =
+    opts && 'edgeAuthSecret' in opts ? opts.edgeAuthSecret : loadEdgeAuthSecret();
+  if (!extraProtection || !secret) return false;
+  return hasValidEdgeAuth(req, secret);
+}
+
+export function inboundMcpClientIpFromRequest(
+  req: Request,
+  opts?: ClientIpResolveOptions
+): string | undefined {
+  if (trustEdgeClientIpHeader(req, opts)) {
+    const fromHeader = clientIpFromEdgeHeader(req);
+    if (fromHeader !== undefined) return fromHeader;
   }
-  return ipKeyGenerator(req.ip ?? peer ?? '0.0.0.0');
+
+  const peer = normalizePeerIp(req.socket.remoteAddress);
+  const ip = req.ip ?? peer;
+  if (!ip || ip === '127.0.0.1' || ip === '::1') return undefined;
+  return ip;
 }
 
 function authMiddleware(req: Request, res: Response, next: NextFunction): void {
@@ -106,7 +142,7 @@ function authMiddleware(req: Request, res: Response, next: NextFunction): void {
   next();
 }
 
-export function bearerOrIpKey(req: Request): string {
+export function bearerRateLimitKey(req: Request): string {
   const auth = req.headers.authorization;
   if (typeof auth === 'string' && auth.startsWith('Bearer ')) {
     const token = auth.slice(7).trim();
@@ -114,7 +150,7 @@ export function bearerOrIpKey(req: Request): string {
       return createHash('sha256').update(token).digest('hex');
     }
   }
-  return clientIpKey(req);
+  return NO_BEARER_RATE_LIMIT_KEY;
 }
 
 const ALLOWED_MCP_QUERY_PARAMS = new Set([
@@ -191,6 +227,10 @@ export function startHttpServer(
   createServer: McpServerFactory,
   config: HttpServerConfig
 ): void {
+  if (config.extraProtection && !config.edgeAuthSecret) {
+    throw new Error('MCP_EDGE_AUTH_SECRET environment variable is required when EXTRA_PROTECTION=true');
+  }
+
   const app = express();
   const openAiAppsChallengeToken = process.env['OPENAI_APPS_CHALLENGE_TOKEN'];
 
@@ -199,6 +239,11 @@ export function startHttpServer(
       res.type('text/plain').set('Cache-Control', 'no-store').send(openAiAppsChallengeToken);
     });
   }
+
+  const edgeAuthMiddleware = createEdgeAuthMiddleware(
+    config.extraProtection,
+    config.edgeAuthSecret
+  );
 
   app.use((req: Request, res: Response, next: NextFunction) => {
     if (!isMaintenanceMode()) {
@@ -214,11 +259,10 @@ export function startHttpServer(
     });
   });
 
-  const mcpJsonParser = express.json({ limit: '512kb' });
+  app.use(createHttpAuthRateLimit());
+  app.use(edgeAuthMiddleware);
 
-  const mcpPostIpRateLimit = createMcpPostIpRateLimit(config.rateLimit, {
-    error: 'Too many MCP requests from this client. Please wait before trying again.',
-  });
+  const mcpJsonParser = express.json({ limit: '512kb' });
 
   const mcpPostBearerRateLimit = createMcpPostBearerRateLimit(config.rateLimit, {
     error: 'Too many MCP requests. Please wait before trying again.',
@@ -249,7 +293,7 @@ export function startHttpServer(
     res.status(405).set('Allow', 'POST').json({ error: 'Method Not Allowed' });
   });
 
-  app.post(['/mcp', '/mcp/:tenant'], mcpPostIpRateLimit, mcpPostBearerRateLimit, authMiddleware, mcpJsonParser, (req: Request, res: Response) => {
+  app.post(['/mcp', '/mcp/:tenant'], mcpPostBearerRateLimit, authMiddleware, mcpJsonParser, (req: Request, res: Response) => {
     void (async (): Promise<void> => {
       const parsed = parseMcpQueryParams(req.query as Record<string, unknown>, config.readOnly);
       if ('error' in parsed) {
@@ -258,8 +302,15 @@ export function startHttpServer(
       }
 
       const token = (req as Request & { token: string }).token;
+      const clientIp = inboundMcpClientIpFromRequest(req, {
+        extraProtection: config.extraProtection,
+        edgeAuthSecret: config.edgeAuthSecret,
+      });
       const transport = new StreamableHTTPServerTransport({ enableJsonResponse: true });
-      const mcpServer = createServer(parsed.options);
+      const mcpServer = createServer({
+        ...parsed.options,
+        ...(clientIp !== undefined ? { clientIp } : {}),
+      });
       await mcpServer.connect(transport as unknown as Transport);
       (req as Request & { auth: { token: string; clientId: string; scopes: string[] } }).auth = {
         token,
