@@ -32,7 +32,11 @@ export const pgQueryInput = z
     database: z
       .string()
       .optional()
-      .describe('Database name to connect to (default: service default, usually "defaultdb")'),
+      .describe('Database name (default: "defaultdb")'),
+    schema: z
+      .string()
+      .optional()
+      .describe('PostgreSQL schema name (default: "public")'),
     limit: z
       .number()
       .int()
@@ -67,7 +71,11 @@ export const pgExecuteQueryInput = z
     database: z
       .string()
       .optional()
-      .describe('Database name to connect to (default: service default, usually "defaultdb")'),
+      .describe('Database name (default: "defaultdb")'),
+    schema: z
+      .string()
+      .optional()
+      .describe('PostgreSQL schema name (default: "public")'),
     limit: z
       .number()
       .int()

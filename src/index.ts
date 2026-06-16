@@ -12,7 +12,7 @@ import { createDocsTools } from './tools/docs/index.js';
 import { createServiceSearchTool } from './tools/service-search.js';
 import { createStdioTransport, startHttpServer } from './transport.js';
 import type { ToolDefinition, McpRequestOptions } from './types.js';
-import { VERSION, API_ORIGIN, loadHttpMcpRateLimit } from './config.js';
+import { VERSION, API_ORIGIN, loadHttpMcpRateLimit, isExtraProtectionEnabled, loadEdgeAuthSecret } from './config.js';
 import { createObservabilityContext } from './observability.js';
 import { readOnlyInstructions } from './prompts.js';
 import { instrumentServer, flushAndExit } from './instrumentation/index.js';
@@ -41,7 +41,7 @@ function loadAllTools(client: AivenClient): ToolDefinition[] {
   ];
 }
 
-function registerTools(server: McpServer, tools: readonly ToolDefinition[]): void {
+function registerTools(server: McpServer, tools: readonly ToolDefinition[], requestOptions: McpRequestOptions): void {
   for (const tool of tools) {
     server.registerTool(
       tool.name,
@@ -60,6 +60,7 @@ function registerTools(server: McpServer, tools: readonly ToolDefinition[]): voi
         const context = {
           token: extra.authInfo?.token,
           mcpClient: mcpClientFromRequestInfo(extra.requestInfo) ?? server.server.getClientVersion()?.name,
+          clientIp: requestOptions.clientIp,
           requestId: obsContext.requestId,
           toolReasoning: obsContext.toolReasoning,
         };
@@ -92,7 +93,7 @@ async function main(): Promise<void> {
       : ([] as const);
 
     const server = new McpServer({ name: 'mcp-aiven', version: VERSION }, ...serverOptions);
-    registerTools(server, tools);
+    registerTools(server, tools, options);
     return server;
   }
 
@@ -106,6 +107,8 @@ async function main(): Promise<void> {
       scopes: ['projects', 'services', 'accounts:read'],
       rateLimit: loadHttpMcpRateLimit(),
       readOnly: config.readOnly,
+      extraProtection: isExtraProtectionEnabled(),
+      edgeAuthSecret: loadEdgeAuthSecret(),
     });
   } else {
     const server = instrumentServer(createMcpServer({ readOnly: config.readOnly, categories: config.categories }));
