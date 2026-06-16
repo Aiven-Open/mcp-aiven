@@ -37,6 +37,7 @@ describe('parseMcpQueryParams', () => {
       const result = parseMcpQueryParams({ read_only: 'false' }, false);
       expect(result).toEqual({ options: { readOnly: false, categories: undefined } });
     });
+
   });
 
   describe('server-level enforcement (env var)', () => {
