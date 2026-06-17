@@ -10,6 +10,7 @@ import { HOST, parseScopes, isMaintenanceMode } from './config.js';
 import type { HttpMcpRateLimitConfig } from './config.js';
 import type { McpServerFactory, McpRequestOptions } from './types.js';
 import { isCloudflareAddress, normalizePeerIp } from './cloudflare-ips.js';
+import { resolveAuthorizationServer } from './marketplace.js';
 import { captureException } from './instrumentation/index.js';
 
 export function createStdioTransport(): StdioServerTransport {
@@ -191,24 +192,28 @@ export function startHttpServer(
     res.json({ status: 'ok' });
   });
 
-  app.get('/.well-known/oauth-protected-resource', (_req: Request, res: Response) => {
+  const protectedResource = (resourceSuffix: string) => (req: Request, res: Response): void => {
+    const tenant = typeof req.params['tenant'] === 'string' ? req.params['tenant'].toLowerCase() : undefined;
     res.json({
-      resource: HOST,
-      authorization_servers: [config.apiOrigin],
+      resource: `${HOST}${resourceSuffix}${tenant ? `/${tenant}` : ''}`,
+      authorization_servers: [resolveAuthorizationServer(tenant, config.apiOrigin)],
       scopes_supported: config.scopes,
       bearer_methods_supported: ['header'],
     });
-  });
+  };
+  app.get('/.well-known/oauth-protected-resource', protectedResource(''));
+  app.get('/.well-known/oauth-protected-resource/mcp', protectedResource('/mcp'));
+  app.get('/.well-known/oauth-protected-resource/mcp/:tenant', protectedResource('/mcp'));
 
-  app.get('/mcp', (_req: Request, res: Response) => {
+  app.get(['/mcp', '/mcp/:tenant'], (_req: Request, res: Response) => {
     res.status(405).set('Allow', 'POST').json({ error: 'Method Not Allowed' });
   });
 
-  app.delete('/mcp', (_req: Request, res: Response) => {
+  app.delete(['/mcp', '/mcp/:tenant'], (_req: Request, res: Response) => {
     res.status(405).set('Allow', 'POST').json({ error: 'Method Not Allowed' });
   });
 
-  app.post('/mcp', mcpPostIpRateLimit, mcpPostBearerRateLimit, authMiddleware, mcpJsonParser, (req: Request, res: Response) => {
+  app.post(['/mcp', '/mcp/:tenant'], mcpPostIpRateLimit, mcpPostBearerRateLimit, authMiddleware, mcpJsonParser, (req: Request, res: Response) => {
     void (async (): Promise<void> => {
       const parsed = parseMcpQueryParams(req.query as Record<string, unknown>, config.readOnly);
       if ('error' in parsed) {
