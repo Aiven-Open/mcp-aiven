@@ -7,3 +7,7 @@ export function resolveAuthorizationServer(marketplace: unknown, apiOrigin: stri
   }
   return apiOrigin;
 }
+
+export function buildResourceUrl(host: string, tenant: string | undefined): string {
+  return tenant ? `${host}/${tenant}` : host;
+}
