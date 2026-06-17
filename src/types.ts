@@ -22,6 +22,7 @@ export interface AivenConfig {
 export interface McpRequestOptions {
   readonly readOnly: boolean;
   readonly categories: ReadonlySet<ServiceCategory> | undefined;
+  readonly allowSecrets: boolean;
 }
 
 export type McpServerFactory = (options: McpRequestOptions) => import('@modelcontextprotocol/sdk/server/mcp.js').McpServer;

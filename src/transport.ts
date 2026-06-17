@@ -117,7 +117,7 @@ export function bearerOrIpKey(req: Request): string {
   return clientIpKey(req);
 }
 
-const ALLOWED_MCP_QUERY_PARAMS = new Set(['read_only', 'services_scope']);
+const ALLOWED_MCP_QUERY_PARAMS = new Set(['read_only', 'services_scope', 'allow_secrets']);
 
 export function parseMcpQueryParams(
   query: Record<string, unknown>,
@@ -155,7 +155,19 @@ export function parseMcpQueryParams(
     return { error: `Invalid value for services_scope: ${parsed.error}` };
   }
 
-  return { options: { readOnly, categories: parsed.categories } };
+  const rawAllowSecrets = query['allow_secrets'];
+
+  if (Array.isArray(rawAllowSecrets)) {
+    return { error: 'Duplicate query parameter: allow_secrets' };
+  }
+
+  if (rawAllowSecrets !== undefined && rawAllowSecrets !== 'true' && rawAllowSecrets !== 'false') {
+    return { error: `Invalid value for allow_secrets: must be "true" or "false"` };
+  }
+
+  const allowSecrets = rawAllowSecrets === 'true';
+
+  return { options: { readOnly, categories: parsed.categories, allowSecrets } };
 }
 
 export function startHttpServer(
