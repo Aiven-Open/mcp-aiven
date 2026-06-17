@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.9.1](https://github.com/Aiven-Open/mcp-aiven/compare/v1.9.0...v1.9.1) (2026-06-17)
+
+
+### Bug Fixes
+
+* support marketplace mcp authorization ([#114](https://github.com/Aiven-Open/mcp-aiven/issues/114)) ([ad43a06](https://github.com/Aiven-Open/mcp-aiven/commit/ad43a06f694294abbaa588030b39809e39a588b4))
+* use fileURLToPath for Windows-compatible manifest path resolution ([#110](https://github.com/Aiven-Open/mcp-aiven/issues/110)) ([4459523](https://github.com/Aiven-Open/mcp-aiven/commit/4459523aa9a97c51052625b49375bc2056f188e4)), closes [#109](https://github.com/Aiven-Open/mcp-aiven/issues/109)
+
 ## [1.9.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.8.2...v1.9.0) (2026-06-17)
 
 
