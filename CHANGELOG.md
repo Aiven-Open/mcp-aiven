@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.8.2...v1.9.0) (2026-06-17)
+
+
+### Features
+
+* adapt to new app service credential integration format ([#98](https://github.com/Aiven-Open/mcp-aiven/issues/98)) ([3f19431](https://github.com/Aiven-Open/mcp-aiven/commit/3f194313b30f957e8e33c9c7bf5d00b3babb6939))
+
 ## [1.8.2](https://github.com/Aiven-Open/mcp-aiven/compare/v1.8.1...v1.8.2) (2026-06-14)
 
 
