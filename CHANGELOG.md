@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.2](https://github.com/Aiven-Open/mcp-aiven/compare/v1.9.1...v1.9.2) (2026-06-17)
+
+
+### Bug Fixes
+
+* doubled /mcp host ([#119](https://github.com/Aiven-Open/mcp-aiven/issues/119)) ([2f4a203](https://github.com/Aiven-Open/mcp-aiven/commit/2f4a2034301bfd74e619efe4e5ed22dfc4591ef6))
+
 ## [1.9.1](https://github.com/Aiven-Open/mcp-aiven/compare/v1.9.0...v1.9.1) (2026-06-17)
 
 
