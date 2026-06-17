@@ -92,6 +92,28 @@ You can also combine with `read_only`:
 https://mcp.aiven.live/mcp?services_scope=pg&read_only=true
 ```
 
+#### Marketplace Customers (Remote)
+
+If you subscribed to Aiven through a cloud marketplace, add your marketplace as a path segment so sign-in uses the correct console:
+
+| Marketplace | Path segment |
+| --- | --- |
+| AWS Marketplace | `https://mcp.aiven.live/mcp/aws` |
+| Azure Marketplace | `https://mcp.aiven.live/mcp/azure` |
+| Google Cloud Marketplace | `https://mcp.aiven.live/mcp/gcp` |
+
+```json
+{
+  "mcpServers": {
+    "aiven-mcp": {
+      "url": "https://mcp.aiven.live/mcp/<marketplace>"
+    }
+  }
+}
+```
+
+The path segment combines with the query parameters above, for example `https://mcp.aiven.live/mcp/gcp?services_scope=pg&read_only=true`.
+
 ### Option 2: stdio (local)
 
 Run the server locally as a child process of your MCP client. Requires Node.js 18+.
