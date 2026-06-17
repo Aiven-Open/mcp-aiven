@@ -68,40 +68,53 @@ async function fetchAppUrl(
   return component.path;
 }
 
+interface ExposedValueEntry {
+  environment_variable_key: string;
+}
+
+interface ApiServiceIntegrationUserConfig {
+  service_type: string;
+  exposed_values: Record<string, ExposedValueEntry>;
+}
+
 interface ApiServiceIntegration {
   integration_type: 'application_service_credential';
   source_service: string;
-  user_config: Record<string, string>;
+  user_config: ApiServiceIntegrationUserConfig;
 }
 
 /**
  * Maps a service_integrations input item to the API shape for application_service_credential.
- * pg / valkey / opensearch all use a single connection_string_environment_variable_name.
- * kafka exposes all 5 SSL credential env var names so the app code never needs to change.
+ *
+ * Emits the nested `exposed_values` format introduced in APP-199 / APP-240.
+ * The flat `*_environment_variable_name` keys are being phased out.
  */
-function buildServiceIntegration(integration: ServiceIntegrationInput): ApiServiceIntegration {
+export function buildServiceIntegration(integration: ServiceIntegrationInput): ApiServiceIntegration {
   if (integration.service_type === 'kafka') {
     return {
       integration_type: 'application_service_credential',
       source_service: integration.service_name,
       user_config: {
         service_type: 'kafka',
-        bootstrap_servers_environment_variable_name: integration.bootstrap_servers_env,
-        security_protocol_environment_variable_name: integration.security_protocol_env,
-        access_key_environment_variable_name: integration.access_key_env,
-        access_cert_environment_variable_name: integration.access_cert_env,
-        ca_cert_environment_variable_name: integration.ca_cert_env,
+        exposed_values: {
+          bootstrap_servers: { environment_variable_key: integration.bootstrap_servers_env },
+          security_protocol: { environment_variable_key: integration.security_protocol_env },
+          access_key: { environment_variable_key: integration.access_key_env },
+          access_cert: { environment_variable_key: integration.access_cert_env },
+          ca_cert: { environment_variable_key: integration.ca_cert_env },
+        },
       },
     };
   }
 
-  // pg, valkey, opensearch share the same user_config shape
   return {
     integration_type: 'application_service_credential',
     source_service: integration.service_name,
     user_config: {
       service_type: integration.service_type,
-      connection_string_environment_variable_name: integration.env_key,
+      exposed_values: {
+        connection_string: { environment_variable_key: integration.env_key },
+      },
     },
   };
 }
