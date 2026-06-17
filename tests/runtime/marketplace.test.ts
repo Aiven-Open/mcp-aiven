@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveAuthorizationServer } from '../../src/marketplace.js';
+import { resolveAuthorizationServer, buildResourceUrl } from '../../src/marketplace.js';
 
 describe('resolveAuthorizationServer', () => {
   const API = 'https://api.aiven.io';
@@ -35,5 +35,17 @@ describe('resolveAuthorizationServer', () => {
 
   it('ignores a non-string (duplicated/array) value', () => {
     expect(resolveAuthorizationServer(['gcp', 'aws'], API)).toBe(API);
+  });
+});
+
+describe('buildResourceUrl', () => {
+  const HOST = 'https://mcp.aiven.live/mcp';
+
+  it('returns the host unchanged when there is no tenant', () => {
+    expect(buildResourceUrl(HOST, undefined)).toBe('https://mcp.aiven.live/mcp');
+  });
+
+  it('appends the tenant without doubling the /mcp path segment', () => {
+    expect(buildResourceUrl(HOST, 'gcp')).toBe('https://mcp.aiven.live/mcp/gcp');
   });
 });

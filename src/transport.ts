@@ -10,7 +10,7 @@ import { HOST, parseScopes, isMaintenanceMode } from './config.js';
 import type { HttpMcpRateLimitConfig } from './config.js';
 import type { McpServerFactory, McpRequestOptions } from './types.js';
 import { isCloudflareAddress, normalizePeerIp } from './cloudflare-ips.js';
-import { resolveAuthorizationServer } from './marketplace.js';
+import { resolveAuthorizationServer, buildResourceUrl } from './marketplace.js';
 import { captureException } from './instrumentation/index.js';
 
 export function createStdioTransport(): StdioServerTransport {
@@ -192,18 +192,18 @@ export function startHttpServer(
     res.json({ status: 'ok' });
   });
 
-  const protectedResource = (resourceSuffix: string) => (req: Request, res: Response): void => {
+  const protectedResource = (req: Request, res: Response): void => {
     const tenant = typeof req.params['tenant'] === 'string' ? req.params['tenant'].toLowerCase() : undefined;
     res.json({
-      resource: `${HOST}${resourceSuffix}${tenant ? `/${tenant}` : ''}`,
+      resource: buildResourceUrl(HOST, tenant),
       authorization_servers: [resolveAuthorizationServer(tenant, config.apiOrigin)],
       scopes_supported: config.scopes,
       bearer_methods_supported: ['header'],
     });
   };
-  app.get('/.well-known/oauth-protected-resource', protectedResource(''));
-  app.get('/.well-known/oauth-protected-resource/mcp', protectedResource('/mcp'));
-  app.get('/.well-known/oauth-protected-resource/mcp/:tenant', protectedResource('/mcp'));
+  app.get('/.well-known/oauth-protected-resource', protectedResource);
+  app.get('/.well-known/oauth-protected-resource/mcp', protectedResource);
+  app.get('/.well-known/oauth-protected-resource/mcp/:tenant', protectedResource);
 
   app.get(['/mcp', '/mcp/:tenant'], (_req: Request, res: Response) => {
     res.status(405).set('Allow', 'POST').json({ error: 'Method Not Allowed' });
