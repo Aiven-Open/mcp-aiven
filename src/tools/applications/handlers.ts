@@ -20,6 +20,7 @@ import {
   redeployApplicationInput,
   vcsIntegrationListInput,
   vcsIntegrationRepositoryListInput,
+  applicationBuildLogsGetInput,
   type ServiceIntegrationInput,
 } from './schemas.js';
 
@@ -495,6 +496,47 @@ Returns \`remote_repository_id\`, \`full_name\`, \`source_url\`, and \`default_b
           );
         } catch (err) {
           return toolError(errorMessage(err));
+        }
+      },
+    },
+    {
+      name: ApplicationToolName.BuildLogsGet,
+      category: ServiceCategory.Application,
+      definition: {
+        title: 'Get Application Build Logs',
+        description: `Docker build logs for an application service (git clone → image build → push). For runtime container logs use \`aiven_project_get_service_logs\`.
+
+Start with \`sort_order: "asc"\`, \`limit: 500\`; paginate via the response \`offset\` until null. If still \`BUILDING\`/\`REBUILDING\`, return what's available and note logs are partial.`,
+        inputSchema: applicationBuildLogsGetInput,
+        annotations: READ_ONLY_ANNOTATIONS,
+      },
+      handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
+        const {
+          project,
+          service_name: serviceName,
+          limit,
+          offset,
+          sort_order: sortOrder,
+        } = params as z.infer<typeof applicationBuildLogsGetInput>;
+        const opts = {
+          token: context?.token,
+          requestId: context?.requestId,
+          toolReasoning: context?.toolReasoning,
+          query: {
+            ...(limit !== undefined ? { limit } : {}),
+            ...(offset !== undefined ? { offset } : {}),
+            ...(sortOrder !== undefined ? { sort_order: sortOrder } : {}),
+          } as Record<string, string | number | boolean | undefined>,
+        };
+
+        try {
+          const result = await client.get<Record<string, unknown>>(
+            `/project/${encodeURIComponent(project)}/service/${encodeURIComponent(serviceName)}/application/build-logs`,
+            opts
+          );
+          return toolSuccess(wrapUntrustedResponse(redactSensitiveData(result)));
+        } catch (err) {
+          return toolErrorWithRequestId(errorMessage(err), context?.requestId);
         }
       },
     },

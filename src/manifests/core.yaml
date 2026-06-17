@@ -161,7 +161,9 @@ tools:
     category: core
     readOnly: true
     description: |
-      Get service log entries (max **500 per call**; default `limit` 100). Built-in service logs are retained for **4 days**.
+      Get **runtime** service log entries for any service type, including `service_type: application` (stdout/stderr of the running container). Max **500 per call**; default `limit` 100. Built-in service logs are retained for **4 days**.
+
+      For application services, **build logs** (Docker image build output during deploy/redeploy) are separate — use `aiven_application_build_logs_get` for those.
 
       **Local file (required when the user asks for logs):** Do **not** leave large log payloads only in the chat. Write fetched log lines to a **local file** in the workspace (create parent directories if needed). **Default:** one file per investigation, e.g. `logs/{project}-{service_name}-{YYYYMMDD-HHMMSS}.log` — create it on the first batch and **append** every later page to that same path when paginating. Format each line with timestamp and message when available (e.g. `{time} {unit} {msg}`). Use separate files (e.g. `…-page2.log`, `…-page3.log`) **only** if the user explicitly asks for split output. In your reply, give the **file path** (unchanged across pages when appending), a short summary (time range, errors, line count), and offer the next page — do **not** paste hundreds of log lines into the message.
 

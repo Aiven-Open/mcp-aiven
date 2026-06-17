@@ -17,6 +17,7 @@ import {
   redeployApplicationInput,
   vcsIntegrationListInput,
   vcsIntegrationRepositoryListInput,
+  applicationBuildLogsGetInput,
 } from '../../src/tools/applications/schemas.js';
 
 const validReasoning = 'because tests';
@@ -124,6 +125,53 @@ describe('reasoning enforcement across schemas', () => {
       reasoning: overLimitReasoning,
     });
     expect(result.success).toBe(false);
+  });
+
+  it('applicationBuildLogsGetInput rejects over-limit reasoning', () => {
+    const result = applicationBuildLogsGetInput.safeParse({
+      project: 'p',
+      service_name: 's',
+      reasoning: overLimitReasoning,
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('applicationBuildLogsGetInput', () => {
+  const base = { project: 'p', service_name: 's', reasoning: validReasoning };
+
+  it('accepts valid input with no optional fields', () => {
+    expect(applicationBuildLogsGetInput.safeParse(base).success).toBe(true);
+  });
+
+  it('accepts limit within bounds', () => {
+    expect(applicationBuildLogsGetInput.safeParse({ ...base, limit: 1 }).success).toBe(true);
+    expect(applicationBuildLogsGetInput.safeParse({ ...base, limit: 500 }).success).toBe(true);
+  });
+
+  it('rejects limit below 1', () => {
+    expect(applicationBuildLogsGetInput.safeParse({ ...base, limit: 0 }).success).toBe(false);
+  });
+
+  it('rejects limit above 500', () => {
+    expect(applicationBuildLogsGetInput.safeParse({ ...base, limit: 501 }).success).toBe(false);
+  });
+
+  it('accepts valid sort_order values', () => {
+    expect(applicationBuildLogsGetInput.safeParse({ ...base, sort_order: 'asc' }).success).toBe(true);
+    expect(applicationBuildLogsGetInput.safeParse({ ...base, sort_order: 'desc' }).success).toBe(true);
+  });
+
+  it('rejects invalid sort_order', () => {
+    expect(applicationBuildLogsGetInput.safeParse({ ...base, sort_order: 'newest' }).success).toBe(false);
+  });
+
+  it('accepts an offset cursor string', () => {
+    expect(applicationBuildLogsGetInput.safeParse({ ...base, offset: '2026-06-17T10:26:56.554647+00:00' }).success).toBe(true);
+  });
+
+  it('rejects unknown keys (strict mode)', () => {
+    expect(applicationBuildLogsGetInput.safeParse({ ...base, unknown_field: 'x' }).success).toBe(false);
   });
 });
 
