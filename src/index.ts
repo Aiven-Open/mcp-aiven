@@ -10,11 +10,12 @@ import { createPgCustomTools } from './tools/pg/index.js';
 import { createApplicationTools } from './tools/applications/index.js';
 import { createDocsTools } from './tools/docs/index.js';
 import { createServiceSearchTool } from './tools/service-search.js';
+import { createConnectionInfoTool } from './tools/connection-info.js';
 import { createStdioTransport, startHttpServer } from './transport.js';
 import type { ToolDefinition, McpRequestOptions } from './types.js';
 import { VERSION, API_ORIGIN, loadHttpMcpRateLimit } from './config.js';
 import { createObservabilityContext } from './observability.js';
-import { readOnlyInstructions } from './prompts.js';
+import { readOnlyInstructions, connectionInfoInstructions } from './prompts.js';
 import { instrumentServer, flushAndExit } from './instrumentation/index.js';
 
 /** Streamable HTTP: inbound `/mcp` `User-Agent` (SDK `requestInfo.headers`). */
@@ -87,9 +88,16 @@ async function main(): Promise<void> {
       tools = tools.filter((t) => allowed.has(t.category));
     }
 
-    const serverOptions = options.readOnly
-      ? ([{ instructions: readOnlyInstructions(transport) }] as const)
-      : ([] as const);
+    if (options.allowSecrets) {
+      tools = [...tools, ...createConnectionInfoTool(client)];
+    }
+
+    const instructions: string[] = [];
+    if (options.readOnly) instructions.push(readOnlyInstructions(transport));
+    if (transport === 'http') instructions.push(connectionInfoInstructions(options.allowSecrets));
+
+    const serverOptions =
+      instructions.length > 0 ? ([{ instructions: instructions.join(' ') }] as const) : ([] as const);
 
     const server = new McpServer({ name: 'mcp-aiven', version: VERSION }, ...serverOptions);
     registerTools(server, tools);
@@ -108,7 +116,9 @@ async function main(): Promise<void> {
       readOnly: config.readOnly,
     });
   } else {
-    const server = instrumentServer(createMcpServer({ readOnly: config.readOnly, categories: config.categories }));
+    const server = instrumentServer(
+      createMcpServer({ readOnly: config.readOnly, categories: config.categories, allowSecrets: false })
+    );
     await server.connect(createStdioTransport());
     console.error('mcp-aiven: Server connected and ready');
   }

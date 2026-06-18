@@ -39,21 +39,36 @@ export async function getProjectCaCert(
   return data.certificate;
 }
 
-export async function getServiceConnectionInfo(
+export async function getServiceWithSecrets<T>(
   client: AivenClient,
   project: string,
   serviceName: string,
   opts?: RequestOptions
-): Promise<ServiceConnectionInfo> {
-  const data = await client.get<ServiceResponse>(
+): Promise<T> {
+  const data = await client.get<{ service: T }>(
     `/project/${encodeURIComponent(project)}/service/${encodeURIComponent(serviceName)}`,
     {
       ...opts,
       query: { ...opts?.query, include_secrets: true },
     }
   );
+  return data.service;
+}
 
-  const params = data.service.service_uri_params;
+export async function getServiceConnectionInfo(
+  client: AivenClient,
+  project: string,
+  serviceName: string,
+  opts?: RequestOptions
+): Promise<ServiceConnectionInfo> {
+  const service = await getServiceWithSecrets<ServiceResponse['service']>(
+    client,
+    project,
+    serviceName,
+    opts
+  );
+
+  const params = service.service_uri_params;
   if (!params) {
     throw new Error(`No connection info available for service ${serviceName}. Ensure the service is running.`);
   }

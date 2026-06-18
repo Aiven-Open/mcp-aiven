@@ -25,17 +25,17 @@ describe('parseMcpQueryParams', () => {
   describe('valid inputs', () => {
     it('returns readOnly=false and undefined categories when no query params', () => {
       const result = parseMcpQueryParams({}, false);
-      expect(result).toEqual({ options: { readOnly: false, categories: undefined } });
+      expect(result).toEqual({ options: { readOnly: false, categories: undefined, allowSecrets: false } });
     });
 
     it('returns readOnly=true when read_only=true', () => {
       const result = parseMcpQueryParams({ read_only: 'true' }, false);
-      expect(result).toEqual({ options: { readOnly: true, categories: undefined } });
+      expect(result).toEqual({ options: { readOnly: true, categories: undefined, allowSecrets: false } });
     });
 
     it('returns readOnly=false when read_only=false', () => {
       const result = parseMcpQueryParams({ read_only: 'false' }, false);
-      expect(result).toEqual({ options: { readOnly: false, categories: undefined } });
+      expect(result).toEqual({ options: { readOnly: false, categories: undefined, allowSecrets: false } });
     });
 
   });
@@ -43,17 +43,17 @@ describe('parseMcpQueryParams', () => {
   describe('server-level enforcement (env var)', () => {
     it('cannot override server readOnly=true with read_only=false', () => {
       const result = parseMcpQueryParams({ read_only: 'false' }, true);
-      expect(result).toEqual({ options: { readOnly: true, categories: undefined } });
+      expect(result).toEqual({ options: { readOnly: true, categories: undefined, allowSecrets: false } });
     });
 
     it('server readOnly=true with no query param stays true', () => {
       const result = parseMcpQueryParams({}, true);
-      expect(result).toEqual({ options: { readOnly: true, categories: undefined } });
+      expect(result).toEqual({ options: { readOnly: true, categories: undefined, allowSecrets: false } });
     });
 
     it('server readOnly=true with read_only=true stays true', () => {
       const result = parseMcpQueryParams({ read_only: 'true' }, true);
-      expect(result).toEqual({ options: { readOnly: true, categories: undefined } });
+      expect(result).toEqual({ options: { readOnly: true, categories: undefined, allowSecrets: false } });
     });
   });
 
@@ -89,6 +89,43 @@ describe('parseMcpQueryParams', () => {
     });
   });
 
+  describe('allow_secrets', () => {
+    it('defaults allowSecrets to false when absent', () => {
+      const result = parseMcpQueryParams({}, false);
+      expect(result).toMatchObject({ options: { allowSecrets: false } });
+    });
+
+    it('returns allowSecrets=true when allow_secrets=true', () => {
+      const result = parseMcpQueryParams({ allow_secrets: 'true' }, false);
+      expect(result).toMatchObject({ options: { allowSecrets: true } });
+    });
+
+    it('returns allowSecrets=false when allow_secrets=false', () => {
+      const result = parseMcpQueryParams({ allow_secrets: 'false' }, false);
+      expect(result).toMatchObject({ options: { allowSecrets: false } });
+    });
+
+    it('is independent of server read-only enforcement (no server-side enable)', () => {
+      const result = parseMcpQueryParams({}, true);
+      expect(result).toMatchObject({ options: { allowSecrets: false } });
+    });
+
+    it('rejects array values (duplicate param injection)', () => {
+      const result = parseMcpQueryParams({ allow_secrets: ['true', 'false'] }, false);
+      expect(result).toEqual({ error: 'Duplicate query parameter: allow_secrets' });
+    });
+
+    it('rejects invalid value "1"', () => {
+      const result = parseMcpQueryParams({ allow_secrets: '1' }, false);
+      expect(result).toEqual({ error: 'Invalid value for allow_secrets: must be "true" or "false"' });
+    });
+
+    it('rejects invalid value "TRUE" (case sensitive)', () => {
+      const result = parseMcpQueryParams({ allow_secrets: 'TRUE' }, false);
+      expect(result).toEqual({ error: 'Invalid value for allow_secrets: must be "true" or "false"' });
+    });
+  });
+
   describe('services scoping', () => {
     it('parses ?services=kafka and implicitly includes core', () => {
       const result = parseMcpQueryParams({ services_scope: 'kafka' }, false);
@@ -96,6 +133,7 @@ describe('parseMcpQueryParams', () => {
         options: {
           readOnly: false,
           categories: new Set([ServiceCategory.Core, ServiceCategory.Kafka]),
+          allowSecrets: false,
         },
       });
     });
@@ -110,6 +148,7 @@ describe('parseMcpQueryParams', () => {
             ServiceCategory.Kafka,
             ServiceCategory.Pg,
           ]),
+          allowSecrets: false,
         },
       });
     });
@@ -135,8 +174,8 @@ describe('parseMcpQueryParams', () => {
       const orgA = parseMcpQueryParams({ read_only: 'true' }, false);
       const orgB = parseMcpQueryParams({}, false);
 
-      expect(orgA).toEqual({ options: { readOnly: true, categories: undefined } });
-      expect(orgB).toEqual({ options: { readOnly: false, categories: undefined } });
+      expect(orgA).toEqual({ options: { readOnly: true, categories: undefined, allowSecrets: false } });
+      expect(orgB).toEqual({ options: { readOnly: false, categories: undefined, allowSecrets: false } });
     });
   });
 });

@@ -96,7 +96,6 @@ function deriveAnnotations(
 
 function loadManifests(): ManifestEntry[] {
   const manifestDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'manifests');
-  // eslint-disable-next-line security/detect-non-literal-fs-filename -- trusted internal path
   const files = fs
     .readdirSync(manifestDir)
     .filter((f) => f.endsWith('.yaml'))

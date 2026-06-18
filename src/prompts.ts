@@ -12,6 +12,15 @@ export function readOnlyInstructions(transport: 'stdio' | 'http'): string {
   );
 }
 
+export function connectionInfoInstructions(allowSecrets: boolean): string {
+  return allowSecrets
+    ? 'Connection info is redacted as `[REDACTED]` in all tools except ' +
+        '`aiven_service_connection_info` — use that tool to get live credentials.'
+    : 'Connection info is redacted as `[REDACTED]` and cannot be retrieved through ' +
+        'this connector. This is expected — do not guess credentials or call tools not ' +
+        'in your tool list. To enable, reconfigure the connector with `allow_secrets=true`.';
+}
+
 export const TOOL_LIST_PICKER_SUFFIX =
   '**Lists & picks:** When turning this tool’s output into user choices, curate **2–5** options at a time unless they explicitly ask for the full catalog. ' +
   'In **Claude Code**, prefer `AskUserQuestion` when appropriate.';
