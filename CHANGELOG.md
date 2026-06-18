@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.10.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.9.2...v1.10.0) (2026-06-18)
+
+
+### Features
+
+* add aiven_application_build_logs_get tool ([#116](https://github.com/Aiven-Open/mcp-aiven/issues/116)) ([0ecde0e](https://github.com/Aiven-Open/mcp-aiven/commit/0ecde0e4a0e305c22684938e819bb1fbe71b4eea))
+
+
+### Bug Fixes
+
+* aiven marketplace urls documentation ([#117](https://github.com/Aiven-Open/mcp-aiven/issues/117)) ([cc0764c](https://github.com/Aiven-Open/mcp-aiven/commit/cc0764ce3241b7a7c93377b9678286b5e0e0748b))
+
 ## [1.9.2](https://github.com/Aiven-Open/mcp-aiven/compare/v1.9.1...v1.9.2) (2026-06-17)
 
 
