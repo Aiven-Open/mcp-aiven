@@ -9,6 +9,8 @@ import { TOOL_LIST_PICKER_SUFFIX } from '../prompts.js';
 import { DEFAULT_LIST_LIMIT } from './response-filter.js';
 
 const CONCURRENCY = 10;
+const MAX_PROJECTS_PER_CALL = 25;
+const MAX_OFFSET = 500;
 
 const inputSchema = z.object({
   project: z
@@ -35,8 +37,11 @@ const inputSchema = z.object({
     .number()
     .int()
     .min(0)
+    .max(MAX_OFFSET, {
+      message: `Pagination is intentionally bounded at offset ${MAX_OFFSET}. Instead of paging deeper, narrow the results with filters (project, service_type, state, search).`,
+    })
     .optional()
-    .describe('Number of items to skip for pagination. Use the value from `next_offset` in a previous response.'),
+    .describe(`Number of items to skip for pagination (0–${MAX_OFFSET}). Use the value from \`next_offset\` in a previous response.`),
 });
 
 interface ServiceEntry {
@@ -89,15 +94,28 @@ export function createServiceSearchTool(client: AivenClient): ToolDefinition[] {
       handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
         try {
           const { project, service_type, state, search, limit, offset } = params as z.infer<typeof inputSchema>;
+
+          if (offset !== undefined && offset > MAX_OFFSET) {
+            return toolError(
+              `offset ${offset} exceeds the maximum of ${MAX_OFFSET}. Pagination is intentionally bounded — narrow the results with filters (project, service_type, state, search) instead of paginating deeper.`
+            );
+          }
+
           const opts = { token: context?.token, mcpClient: context?.mcpClient, toolName: 'aiven_service_list' };
 
           let projectNames: string[];
+          let totalProjects: number;
           if (project) {
             projectNames = [project];
+            totalProjects = 1;
           } else {
             const projectsRes = await client.get<{ projects: ProjectEntry[] }>('/project', opts);
-            projectNames = projectsRes.projects.map((p) => p.project_name);
+            const allProjects = projectsRes.projects.map((p) => p.project_name);
+            totalProjects = allProjects.length;
+            projectNames = allProjects.slice(0, MAX_PROJECTS_PER_CALL);
           }
+          const projectsScanned = projectNames.length;
+          const projectsSkipped = totalProjects - projectsScanned;
 
           const cap = Math.min(limit ?? DEFAULT_LIST_LIMIT, 100);
           const pageStart = offset ?? 0;
@@ -135,16 +153,39 @@ export function createServiceSearchTool(client: AivenClient): ToolDefinition[] {
           }
 
           const page = services.slice(pageStart, pageStart + cap);
-          const hasMore = pageStart + page.length < services.length || projectQueue.length > 0;
-          const nextOffset = hasMore ? pageStart + page.length : undefined;
+          const moreInScanned = pageStart + page.length < services.length || projectQueue.length > 0;
+          const hasMore = moreInScanned || projectsSkipped > 0;
+          const rawNextOffset = pageStart + page.length;
+          const nextOffset = moreInScanned && rawNextOffset <= MAX_OFFSET ? rawNextOffset : undefined;
+          const offsetCeilingReached = moreInScanned && nextOffset === undefined;
+
+          const scope = project
+            ? `project "${project}"`
+            : projectsSkipped > 0
+              ? `${projectsScanned} of ${totalProjects} accessible projects (capped at ${MAX_PROJECTS_PER_CALL} per call)`
+              : `all ${totalProjects} accessible projects`;
+
+          const hintParts: string[] = [];
+          if (projectsSkipped > 0) {
+            hintParts.push(`${projectsSkipped} project(s) were NOT searched because this call scans at most ${MAX_PROJECTS_PER_CALL}. To reach them, pass a specific \`project\`.`);
+          }
+          if (offsetCeilingReached) {
+            hintParts.push(`More services exist but offset is capped at ${MAX_OFFSET}, so they are not reachable by paginating further.`);
+          } else if (moreInScanned) {
+            hintParts.push(`More matching services exist — fetch the next page with \`offset: ${nextOffset}\`.`);
+          }
+          hintParts.push('Narrow with filters (project, service_type, state, search) rather than increasing the limit or auto-paginating.');
 
           return toolSuccess(wrapUntrustedResponse({
+            summary: `Showing ${page.length} service(s) from ${scope}.`,
             showing: page.length,
+            searched_projects: projectsScanned,
+            total_projects: totalProjects,
             ...(offset !== undefined && offset > 0 && { offset }),
             ...(nextOffset !== undefined && { next_offset: nextOffset }),
             services: page,
             ...(errors.length > 0 && { errors }),
-            ...(hasMore && { hint: 'More services exist. Ask the user what they are looking for, or narrow with filters (project, service_type, state, search). Do NOT increase the limit or auto-paginate.' }),
+            ...(hasMore && { hint: hintParts.join(' ') }),
           }));
         } catch (err) {
           return toolError(errorMessage(err));
