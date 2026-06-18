@@ -132,6 +132,41 @@ describe('sensitive field patterns', () => {
     expect(redactSensitiveData('https://user:pass@api.example.com')).toBe(REDACTED_PLACEHOLDER);
   });
 
+  it('should redact credential URIs embedded mid-string', () => {
+    expect(
+      redactSensitiveData('error connecting to https://pg:password@host.com:1234/defaultdb')
+    ).toBe(REDACTED_PLACEHOLDER);
+    expect(
+      redactSensitiveData('failed: postgres://user:pass@host:5432/db is unreachable')
+    ).toBe(REDACTED_PLACEHOLDER);
+  });
+
+  it('should redact embedded credential URIs in object string values', () => {
+    const input = {
+      message: 'error connecting to postgres://avnadmin:AVNS_secret@pg-host:5432/defaultdb',
+      level: 'error',
+    };
+    const result = redactSensitiveData(input) as Record<string, unknown>;
+
+    expect(result['message']).toBe(REDACTED_PLACEHOLDER);
+    expect(result['level']).toBe('error');
+  });
+
+  it('should redact credential URIs in multi-line log output', () => {
+    const input = {
+      logs: [
+        { msg: 'starting service' },
+        { msg: 'connecting to kafka://user:pass@broker:9092' },
+        { msg: 'ready' },
+      ],
+    };
+    const result = redactSensitiveData(input) as { logs: { msg: string }[] };
+
+    expect(result.logs[0]?.msg).toBe('starting service');
+    expect(result.logs[1]?.msg).toBe(REDACTED_PLACEHOLDER);
+    expect(result.logs[2]?.msg).toBe('ready');
+  });
+
   it('should not redact URLs without credentials', () => {
     expect(redactSensitiveData('https://api.aiven.io/v1/project')).toBe(
       'https://api.aiven.io/v1/project'

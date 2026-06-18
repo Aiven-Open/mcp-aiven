@@ -10,7 +10,10 @@ export const REDACTED_FIELDS = new Set([
 ]);
 
 const REDACTED_KEY = /(?:^|\.)(password|token|secret|api_key|access_key|access_secret|secret_key|auth_token|private_key|client_secret|connection_string|sasl_password|keystore_password|truststore_password|.*_uri|.*_url|ca_cert|client_cert|client_key|ssl_cert|ssl_key|certificate|.*_cert|.*_key|.*_ca|.*_certificate|.*_pem)$/i;
-const SENSITIVE_VALUE = /-----BEGIN [A-Z ]*(?:PRIVATE KEY|CERTIFICATE)-----|^[a-z]+:\/\/[^:]+:[^@]+@/i;
+// NOTE: the URI branch is intentionally NOT ^-anchored — secrets frequently appear
+// mid-string (e.g. "error connecting to postgres://user:pass@host/db" in log lines).
+// `\s` in the password class stops a match from greedily spanning whitespace.
+const SENSITIVE_VALUE = /-----BEGIN [A-Z ]*(?:PRIVATE KEY|CERTIFICATE)-----|[a-z]+:\/\/[^:\s]+:[^@\s]+@/i;
 
 const SCRUB_PATTERNS: { pattern: RegExp; replacement: string }[] = [
   {
