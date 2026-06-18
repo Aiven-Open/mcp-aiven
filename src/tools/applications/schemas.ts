@@ -290,3 +290,31 @@ export const vcsIntegrationRepositoryListInput = z
     reasoning: reasoningField,
   })
   .strict();
+
+export const applicationBuildLogsGetInput = z
+  .object({
+    project: z.string().describe('Aiven project name — use aiven_project_list to get valid names'),
+    service_name: z.string().describe('Name of the application service whose build logs to fetch'),
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(500)
+      .optional()
+      .describe('Max log entries to return (1–500). Default: 100.'),
+    offset: z
+      .string()
+      .optional()
+      .describe(
+        'Opaque pagination cursor from the previous response `offset` field. Omit on the first call.'
+      ),
+    sort_order: z
+      .enum(['asc', 'desc'])
+      .optional()
+      .describe(
+        'Log sort order. "asc" = oldest-first (recommended for reading a full build top-to-bottom). ' +
+          '"desc" = newest-first (default). Keep the same value when paginating.'
+      ),
+    reasoning: reasoningField,
+  })
+  .strict();
