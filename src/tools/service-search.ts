@@ -9,7 +9,7 @@ import { TOOL_LIST_PICKER_SUFFIX } from '../prompts.js';
 import { DEFAULT_LIST_LIMIT } from './response-filter.js';
 
 const CONCURRENCY = 10;
-const MAX_PROJECTS_PER_CALL = 25;
+const MAX_PROJECTS_PER_CALL = CONCURRENCY;
 const MAX_OFFSET = 500;
 
 const inputSchema = z.object({

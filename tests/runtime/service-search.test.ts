@@ -180,7 +180,7 @@ describe('service-search', () => {
     expect(vi.mocked(client.get)).not.toHaveBeenCalled();
   });
 
-  it('bounds the fan-out to at most 25 projects per call', async () => {
+  it('bounds the fan-out to at most 10 projects per call', async () => {
     const projects = Array.from({ length: 40 }, (_, idx) => `proj-${idx}`);
     const servicesByProject: Record<string, Array<{ service_name: string; service_type: string; state: string }>> = {};
     for (const p of projects) servicesByProject[p] = makeServices(p, 1);
@@ -189,12 +189,12 @@ describe('service-search', () => {
     const result = await tool.handler({ limit: 100 });
     const parsed = parseResponse(result);
 
-    expect(parsed.searched_projects).toBe(25);
+    expect(parsed.searched_projects).toBe(10);
     expect(parsed.total_projects).toBe(40);
     const serviceCalls = vi.mocked(client.get).mock.calls.filter((c) => c[0].includes('/service'));
-    expect(serviceCalls.length).toBeLessThanOrEqual(25);
-    expect(parsed.hint).toContain('15 project(s) were NOT searched');
-    expect(parsed.summary).toContain('25 of 40 accessible projects');
+    expect(serviceCalls.length).toBeLessThanOrEqual(10);
+    expect(parsed.hint).toContain('30 project(s) were NOT searched');
+    expect(parsed.summary).toContain('10 of 40 accessible projects');
   });
 
   it('accepts an offset exactly at the maximum', async () => {
