@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.10.0...v1.11.0) (2026-06-18)
+
+
+### Features
+
+* add aiven_service_connection_info tool gated by allow_secrets ([#121](https://github.com/Aiven-Open/mcp-aiven/issues/121)) ([73d8d3a](https://github.com/Aiven-Open/mcp-aiven/commit/73d8d3a6ebfcb141ce5955f4fb042c986c7d79af))
+
 ## [1.10.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.9.2...v1.10.0) (2026-06-18)
 
 
