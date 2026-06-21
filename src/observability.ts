@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { redactSensitiveData } from './security.js';
+import { scrubReasoning } from './security.js';
 
 export function generateRequestId(): string {
   return randomUUID();
@@ -17,16 +17,12 @@ export function redactReasoningField(reasoning: unknown): string | null {
       // eslint-disable-next-line @typescript-eslint/no-base-to-string
       stringified = String(reasoning);
     }
-    const wrapped = { reasoning: stringified };
-    const redacted = redactSensitiveData(wrapped) as { reasoning: string };
-    return redacted.reasoning;
+    return scrubReasoning(stringified);
   }
   if (reasoning.length === 0) {
     return reasoning;
   }
-  const wrapped = { reasoning };
-  const redacted = redactSensitiveData(wrapped) as { reasoning: string };
-  return redacted.reasoning;
+  return scrubReasoning(reasoning);
 }
 
 export function createObservabilityContext(reasoning?: string): {
