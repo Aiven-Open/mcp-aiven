@@ -156,6 +156,9 @@ export interface ResponseFilterConfig {
 
 export type ToolSpec = ApiToolConfig;
 
+/** Enrich REBUILDING → state_display BUILDING for newly created services (see service-state.ts). */
+export type ServiceStateEnrichment = 'from-create-time' | 'assume-recent';
+
 export interface ApiToolConfig {
   name: string;
   title: string;
@@ -167,6 +170,7 @@ export interface ApiToolConfig {
   annotations: ToolAnnotations;
   defaults?: Record<string, unknown> | undefined;
   responseFilter?: ResponseFilterConfig | undefined;
+  enrichServiceState?: ServiceStateEnrichment | undefined;
 }
 
 export interface ServiceConnectionInfo {

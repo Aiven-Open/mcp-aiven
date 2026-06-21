@@ -86,6 +86,33 @@ describe('createApiTool', () => {
     expect(client.get).toHaveBeenCalledWith('/project', expect.objectContaining({ toolName: 'aiven_list_projects' }));
   });
 
+  it('should add state_display for recently created REBUILDING services', async () => {
+    const client = createMockClient({
+      service: {
+        state: 'REBUILDING',
+        create_time: new Date().toISOString(),
+      },
+    });
+    const tool = createApiTool(
+      {
+        ...baseConfig,
+        path: '/project/{project}/service/{service_name}',
+        inputSchema: z.object({ project: z.string(), service_name: z.string() }).strict(),
+        enrichServiceState: 'from-create-time',
+      },
+      client
+    );
+
+    const result = await tool.handler({ project: 'p', service_name: 's' });
+    const parsed = parseResult(result);
+
+    expect(parsed['service']).toEqual({
+      state: 'REBUILDING',
+      create_time: expect.any(String),
+      state_display: 'BUILDING',
+    });
+  });
+
   it('should replace path params in URL', async () => {
     const config: ApiToolConfig = {
       ...baseConfig,
