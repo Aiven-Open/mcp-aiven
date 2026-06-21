@@ -12,7 +12,14 @@ export function readOnlyInstructions(transport: 'stdio' | 'http'): string {
   );
 }
 
-export function connectionInfoInstructions(allowSecrets: boolean): string {
+export function connectionInfoInstructions(allowSecrets: boolean, readOnly: boolean): string {
+  if (allowSecrets && readOnly) {
+    return (
+      'Connection info is redacted as `[REDACTED]`. `allow_secrets=true` was requested but is ' +
+      'disabled because the server is in read-only mode — live credentials would let you bypass ' +
+      'read-only restrictions. To retrieve connection info, reconnect without `read_only=true`.'
+    );
+  }
   return allowSecrets
     ? 'Connection info is redacted as `[REDACTED]` in all tools except ' +
         '`aiven_service_connection_info` — use that tool to get live credentials.'

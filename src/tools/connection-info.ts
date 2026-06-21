@@ -47,7 +47,7 @@ function toConnectionUser(user: ServiceUser): ServiceUser {
   };
 }
 
-export function createConnectionInfoTool(client: AivenClient): ToolDefinition[] {
+export function createConnectionInfoTool(client: AivenClient, readOnly: boolean): ToolDefinition[] {
   return [
     {
       name: 'aiven_service_connection_info',
@@ -60,6 +60,13 @@ export function createConnectionInfoTool(client: AivenClient): ToolDefinition[] 
       },
       handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
         try {
+          if (readOnly) {
+            return toolError(
+              'Disabled while read_only is active. Connection info grants live credentials ' +
+                'that would bypass read-only restrictions. Disable read_only to retrieve connection info.'
+            );
+          }
+
           const { project, service_name } = params as z.infer<typeof inputSchema>;
           const opts = {
             token: context?.token,

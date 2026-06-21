@@ -89,12 +89,13 @@ async function main(): Promise<void> {
     }
 
     if (options.allowSecrets) {
-      tools = [...tools, ...createConnectionInfoTool(client)];
+      tools = [...tools, ...createConnectionInfoTool(client, options.readOnly)];
     }
 
     const instructions: string[] = [];
     if (options.readOnly) instructions.push(readOnlyInstructions(transport));
-    if (transport === 'http') instructions.push(connectionInfoInstructions(options.allowSecrets));
+    if (transport === 'http')
+      instructions.push(connectionInfoInstructions(options.allowSecrets, options.readOnly));
 
     const serverOptions =
       instructions.length > 0 ? ([{ instructions: instructions.join(' ') }] as const) : ([] as const);
