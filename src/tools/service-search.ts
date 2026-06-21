@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import type { AivenClient } from '../client.js';
 import type { ToolDefinition, ToolResult, HandlerContext } from '../types.js';
@@ -9,6 +10,23 @@ import { TOOL_LIST_PICKER_SUFFIX } from '../prompts.js';
 import { DEFAULT_LIST_LIMIT } from './response-filter.js';
 
 const CONCURRENCY = 10;
+export const MAX_LIMIT = 100;
+export const MAX_PROJECTS_PER_SCAN = 25;
+export const MAX_PROJECT_CALLS_PER_MIN = 50;
+const RATE_WINDOW_MS = 60_000;
+
+function createProjectCallLimiter(): (token: string | undefined) => boolean {
+  const callTimes = new Map<string, number[]>();
+  return (token) => {
+    const key = token ? createHash('sha256').update(token).digest('hex') : '__stdio__';
+    const now = Date.now();
+    const recent = (callTimes.get(key) ?? []).filter((t) => t > now - RATE_WINDOW_MS);
+    callTimes.set(key, recent);
+    if (recent.length >= MAX_PROJECT_CALLS_PER_MIN) return true;
+    recent.push(now);
+    return false;
+  };
+}
 
 const inputSchema = z.object({
   project: z
@@ -30,13 +48,7 @@ const inputSchema = z.object({
   limit: z
     .number()
     .optional()
-    .describe(`Max results to return. Defaults to ${DEFAULT_LIST_LIMIT}. Do NOT set this unless the user explicitly asked for a specific number of results.`),
-  offset: z
-    .number()
-    .int()
-    .min(0)
-    .optional()
-    .describe('Number of items to skip for pagination. Use the value from `next_offset` in a previous response.'),
+    .describe(`Max results to return. With a single \`project\`, all matching services are returned by default. Across all projects, results default to ${DEFAULT_LIST_LIMIT} and are capped at ${MAX_LIMIT}, and only the first ${MAX_PROJECTS_PER_SCAN} projects are scanned; if more match, the response reports the totals — relay those and ask the user to narrow by project or service type.`),
 });
 
 interface ServiceEntry {
@@ -75,7 +87,17 @@ interface ProjectError {
   error: string;
 }
 
+function tally(items: ServiceResult[], key: (s: ServiceResult) => string): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const item of items) {
+    const k = key(item);
+    counts[k] = (counts[k] ?? 0) + 1;
+  }
+  return counts;
+}
+
 export function createServiceSearchTool(client: AivenClient): ToolDefinition[] {
+  const tooManyProjectCalls = createProjectCallLimiter();
   return [
     {
       name: 'aiven_service_list',
@@ -88,28 +110,32 @@ export function createServiceSearchTool(client: AivenClient): ToolDefinition[] {
       },
       handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
         try {
-          const { project, service_type, state, search, limit, offset } = params as z.infer<typeof inputSchema>;
+          const { project, service_type, state, search, limit } = params as z.infer<typeof inputSchema>;
           const opts = { token: context?.token, mcpClient: context?.mcpClient, toolName: 'aiven_service_list' };
 
-          let projectNames: string[];
-          if (project) {
-            projectNames = [project];
-          } else {
-            const projectsRes = await client.get<{ projects: ProjectEntry[] }>('/project', opts);
-            projectNames = projectsRes.projects.map((p) => p.project_name);
+          if (project && tooManyProjectCalls(context?.token)) {
+            return toolSuccess(wrapUntrustedResponse({
+              error: `Too many per-project queries (limit ${MAX_PROJECT_CALLS_PER_MIN}/min). This looks like an attempt to enumerate every project one by one. Stop and ask the user what they are looking for, then narrow by service_type, state, or search.`,
+            }));
           }
 
-          const cap = Math.min(limit ?? DEFAULT_LIST_LIMIT, 100);
-          const pageStart = offset ?? 0;
+          const allProjects = project
+            ? [project]
+            : (await client.get<{ projects: ProjectEntry[] }>('/project', opts)).projects.map((p) => p.project_name);
+          const totalProjects = allProjects.length;
+          const projectNames = allProjects.slice(0, MAX_PROJECTS_PER_SCAN);
+
+          const cap = project
+            ? limit
+            : Math.min(limit ?? DEFAULT_LIST_LIMIT, MAX_LIMIT);
           const services: ServiceResult[] = [];
           const errors: ProjectError[] = [];
           const typeFilter = service_type?.toLowerCase();
           const stateFilter = state?.toLowerCase();
           const searchNeedle = search?.toLowerCase();
 
-          const needed = pageStart + cap;
           const projectQueue = [...projectNames];
-          while (projectQueue.length > 0 && services.length < needed) {
+          while (projectQueue.length > 0) {
             const batch = projectQueue.splice(0, CONCURRENCY);
             const batchResults = await Promise.all(batch.map(async (proj) => {
               try {
@@ -134,17 +160,28 @@ export function createServiceSearchTool(client: AivenClient): ToolDefinition[] {
             }
           }
 
-          const page = services.slice(pageStart, pageStart + cap);
-          const hasMore = pageStart + page.length < services.length || projectQueue.length > 0;
-          const nextOffset = hasMore ? pageStart + page.length : undefined;
+          const page = cap === undefined ? services : services.slice(0, cap);
+          const rowsTruncated = page.length < services.length;
+          const projectsTruncated = totalProjects > projectNames.length;
+
+          const summary = (rowsTruncated || projectsTruncated)
+            ? {
+                returned: page.length,
+                matched: services.length,
+                by_type: tally(services, (s) => s.service_type),
+                by_state: tally(services, (s) => s.state),
+                ...(projectsTruncated && { projects_scanned: projectNames.length, projects_total: totalProjects }),
+                next_step: projectsTruncated
+                  ? `Only the first ${projectNames.length} of ${totalProjects} projects were scanned. Ask the user to name a project or filter by service_type/state/search. Do NOT call this tool once per project to cover the rest.`
+                  : 'More services matched than were returned. Tell the user these totals and offer to narrow with service_type, state, or search. Do NOT call this tool once per project.',
+              }
+            : undefined;
 
           return toolSuccess(wrapUntrustedResponse({
             showing: page.length,
-            ...(offset !== undefined && offset > 0 && { offset }),
-            ...(nextOffset !== undefined && { next_offset: nextOffset }),
             services: page,
+            ...(summary && { summary }),
             ...(errors.length > 0 && { errors }),
-            ...(hasMore && { hint: 'More services exist. Ask the user what they are looking for, or narrow with filters (project, service_type, state, search). Do NOT increase the limit or auto-paginate.' }),
           }));
         } catch (err) {
           return toolError(errorMessage(err));
