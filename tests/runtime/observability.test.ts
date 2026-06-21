@@ -27,10 +27,10 @@ describe('redactReasoningField', () => {
     );
   });
 
-  it('does not redact string with embedded URI (redaction is value-level, not substring)', () => {
+  it('redacts string with embedded sensitive URI', () => {
     const input = 'connect to postgres://admin:secret@host:5432/db';
     const result = redactReasoningField(input);
-    expect(result).toBe(input);
+    expect(result).toBe(REDACTED_PLACEHOLDER);
   });
 
   it('serializes object reasoning via JSON.stringify', () => {
