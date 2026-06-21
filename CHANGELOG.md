@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.1](https://github.com/Aiven-Open/mcp-aiven/compare/v1.11.0...v1.11.1) (2026-06-21)
+
+
+### Bug Fixes
+
+* redact mid-string credential URIs ([#123](https://github.com/Aiven-Open/mcp-aiven/issues/123)) ([0f14022](https://github.com/Aiven-Open/mcp-aiven/commit/0f1402208f0fc57875f72c8224a48e2c8b259665))
+
 ## [1.11.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.10.0...v1.11.0) (2026-06-18)
 
 
