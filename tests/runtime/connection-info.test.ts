@@ -49,7 +49,7 @@ describe('aiven_service_connection_info', () => {
     const { client, get } = createMockClient({
       service_uri_params: { host: 'h', port: '5432', user: 'u', password: 'p', dbname: 'defaultdb' },
     });
-    const [tool] = createConnectionInfoTool(client);
+    const [tool] = createConnectionInfoTool(client, false);
     await tool.handler({ project: 'proj', service_name: 'pg-1' });
 
     const serviceCall = get.mock.calls.find(([path]) => String(path).includes('/service/pg-1'));
@@ -63,7 +63,7 @@ describe('aiven_service_connection_info', () => {
       service_uri: 'postgres://u:p@h:5432/defaultdb',
       service_uri_params: { host: 'h', port: '5432', user: 'u', password: 'p', dbname: 'defaultdb' },
     });
-    const [tool] = createConnectionInfoTool(client);
+    const [tool] = createConnectionInfoTool(client, false);
     const parsed = parseResponse(await tool.handler({ project: 'proj', service_name: 'pg-1' }));
 
     expect(parsed['service_type']).toBe('pg');
@@ -85,7 +85,7 @@ describe('aiven_service_connection_info', () => {
         },
       ],
     });
-    const [tool] = createConnectionInfoTool(client);
+    const [tool] = createConnectionInfoTool(client, false);
     const parsed = parseResponse(await tool.handler({ project: 'proj', service_name: 'kafka-1' }));
 
     expect(parsed['service_type']).toBe('kafka');
@@ -107,7 +107,7 @@ describe('aiven_service_connection_info', () => {
         components: [{ component: 'pg' }],
       },
     });
-    const [tool] = createConnectionInfoTool(client);
+    const [tool] = createConnectionInfoTool(client, false);
     const parsed = parseResponse(await tool.handler({ project: 'proj', service_name: 'pg-1' }));
 
     expect(parsed['backups']).toBeUndefined();
@@ -133,7 +133,7 @@ describe('aiven_service_connection_info', () => {
         } as Record<string, unknown>,
       ],
     });
-    const [tool] = createConnectionInfoTool(client);
+    const [tool] = createConnectionInfoTool(client, false);
     const parsed = parseResponse(await tool.handler({ project: 'proj', service_name: 'kafka-1' }));
 
     const user = (parsed['users'] as Array<Record<string, unknown>>)[0];
@@ -142,9 +142,22 @@ describe('aiven_service_connection_info', () => {
     expect(user['password_updated_time']).toBeUndefined();
   });
 
+  it('errors without fetching the service when read_only is active', async () => {
+    const { client, get } = createMockClient({
+      service_uri_params: { host: 'h', port: '5432', user: 'u', password: 'p' },
+    });
+    const [tool] = createConnectionInfoTool(client, true);
+    const result = await tool.handler({ project: 'proj', service_name: 'pg-1' });
+
+    expect(isError(result)).toBe(true);
+    const text = (result.content as Array<{ text: string }>)[0].text;
+    expect(text).toContain('read_only');
+    expect(get).not.toHaveBeenCalled();
+  });
+
   it('errors when the service is not RUNNING', async () => {
     const { client } = createMockClient({ state: 'REBUILDING' });
-    const [tool] = createConnectionInfoTool(client);
+    const [tool] = createConnectionInfoTool(client, false);
     const result = await tool.handler({ project: 'proj', service_name: 'pg-1' });
 
     expect(isError(result)).toBe(true);
