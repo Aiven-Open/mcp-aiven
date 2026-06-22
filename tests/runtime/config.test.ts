@@ -171,7 +171,7 @@ describe('loadHttpMcpRateLimit', () => {
   });
 
   it('should use defaults when env is unset', () => {
-    expect(loadHttpMcpRateLimit()).toEqual({ windowMs: 60_000, limit: 100 });
+    expect(loadHttpMcpRateLimit()).toEqual({ windowMs: 60_000, limit: 1000 });
   });
 
   it('should read MCP_HTTP_RATE_LIMIT_WINDOW_MS and MCP_HTTP_RATE_LIMIT_MAX', () => {
@@ -185,7 +185,7 @@ describe('loadHttpMcpRateLimit', () => {
     process.env['MCP_HTTP_RATE_LIMIT_WINDOW_MS'] = '0';
     process.env['MCP_HTTP_RATE_LIMIT_MAX'] = '-1';
 
-    expect(loadHttpMcpRateLimit()).toEqual({ windowMs: 60_000, limit: 100 });
+    expect(loadHttpMcpRateLimit()).toEqual({ windowMs: 60_000, limit: 1000 });
   });
 });
 

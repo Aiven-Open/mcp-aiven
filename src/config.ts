@@ -25,7 +25,7 @@ function parsePositiveIntEnv(name: string, defaultValue: number): number {
 export function loadHttpMcpRateLimit(): HttpMcpRateLimitConfig {
   return {
     windowMs: parsePositiveIntEnv('MCP_HTTP_RATE_LIMIT_WINDOW_MS', 60_000),
-    limit: parsePositiveIntEnv('MCP_HTTP_RATE_LIMIT_MAX', 100),
+    limit: parsePositiveIntEnv('MCP_HTTP_RATE_LIMIT_MAX', 1000),
   };
 }
 

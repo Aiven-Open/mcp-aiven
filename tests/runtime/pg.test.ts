@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { AivenClient } from '../../src/client.js';
 import type { ToolDefinition } from '../../src/types.js';
+import { RATE_LIMIT_MAX } from '../../src/tools/pg/query.js';
 
 // Mock pg module — factory is re-invoked after each vi.resetModules()
 vi.mock('pg', () => {
@@ -780,13 +781,11 @@ describe('aiven_pg_read', () => {
     const tools = createPgCustomTools(client);
     const tool = getPgQueryTool(tools);
 
-    // Fire 100 queries (the limit; see RATE_LIMIT_MAX in query.ts)
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < RATE_LIMIT_MAX; i++) {
       const r = await tool.handler({ project: 'proj', service_name: 'svc', query: 'SELECT 1' });
       expect(r.isError).toBeUndefined();
     }
 
-    // The 101st should be rejected
     const result = await tool.handler({ project: 'proj', service_name: 'svc', query: 'SELECT 1' });
     expect(result.isError).toBe(true);
     expect(firstTextContent(result.content)).toContain('Rate limit exceeded');
@@ -799,8 +798,7 @@ describe('aiven_pg_read', () => {
     const tools = createPgCustomTools(client);
     const tool = getPgQueryTool(tools);
 
-    // Exhaust the limit
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < RATE_LIMIT_MAX; i++) {
       await tool.handler({ project: 'proj', service_name: 'svc', query: 'SELECT 1' });
     }
 
@@ -1396,28 +1394,25 @@ describe('aiven_pg_write', () => {
     const readTool = getPgQueryTool(tools);
     const writeTool = getPgExecuteQueryTool(tools);
 
-    // Fire 99 read queries
-    for (let i = 0; i < 99; i++) {
+    for (let i = 0; i < RATE_LIMIT_MAX - 1; i++) {
       const r = await readTool.handler({ project: 'proj', service_name: 'svc', query: 'SELECT 1' });
       expect(r.isError).toBeUndefined();
     }
 
-    // 1 write query (100th total)
-    const r100 = await writeTool.handler({
+    const atLimit = await writeTool.handler({
       project: 'proj',
       service_name: 'svc',
       query: "INSERT INTO users (name) VALUES ('test')",
     });
-    expect(r100.isError).toBeUndefined();
+    expect(atLimit.isError).toBeUndefined();
 
-    // 101st query (write) should be rate-limited
-    const r101 = await writeTool.handler({
+    const overLimit = await writeTool.handler({
       project: 'proj',
       service_name: 'svc',
       query: "INSERT INTO users (name) VALUES ('test2')",
     });
-    expect(r101.isError).toBe(true);
-    expect(firstTextContent(r101.content)).toContain('Rate limit exceeded');
+    expect(overLimit.isError).toBe(true);
+    expect(firstTextContent(overLimit.content)).toContain('Rate limit exceeded');
   });
 
   it('should handle errors and rollback', async () => {
