@@ -48,9 +48,9 @@ export const PG_WRITE_DESCRIPTION = `Execute a write SQL statement against an Ai
 **Assistant:** If you suggest enabling public DB access, include this line for the user:
 - ⚠️ WARNING: This makes the database reachable from the internet.
 
-Allows DML (INSERT, UPDATE, DELETE) and DDL (CREATE TABLE, ALTER TABLE, CREATE INDEX, etc.).
+Allows DML (INSERT, UPDATE, DELETE) and safe DDL (CREATE TABLE, CREATE TABLE AS, ALTER TABLE, CREATE INDEX, CREATE SCHEMA, CREATE VIEW, REFRESH MATERIALIZED VIEW, CREATE/ALTER SEQUENCE, COMMENT).
 
-**Blocked operations:** DROP, TRUNCATE, GRANT, REVOKE, REASSIGN, SECURITY LABEL, DO, CREATE FUNCTION, and CREATE PROCEDURE are rejected by this tool.
+**Blocked by default:** All other statement types are rejected, including CREATE EXTENSION, LOAD, ALTER ROLE, CREATE TRIGGER, CREATE FOREIGN TABLE, DROP, TRUNCATE, GRANT, REVOKE, SET, and transaction control statements.
 
 **IMPORTANT:** Only ONE statement per call. Multiple statements separated by semicolons are rejected. Call this tool once per statement.
 

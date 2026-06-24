@@ -953,16 +953,16 @@ describe('validateWriteQuery', () => {
     expect(r.stmtType).toBe('IndexStmt');
   });
 
-  it('should allow SELECT (for SELECT INTO, etc.)', async () => {
+  it('should block SELECT in write mode', async () => {
     const r = await validateWriteQuery('SELECT * FROM users');
-    expect(r.valid).toBe(true);
-    expect(r.stmtType).toBe('SelectStmt');
+    expect(r.valid).toBe(false);
+    expect(r.error).toContain('SelectStmt');
   });
 
-  it('should allow CREATE EXTENSION', async () => {
+  it('should block CREATE EXTENSION', async () => {
     const r = await validateWriteQuery('CREATE EXTENSION pgcrypto');
-    expect(r.valid).toBe(true);
-    expect(r.stmtType).toBe('CreateExtensionStmt');
+    expect(r.valid).toBe(false);
+    expect(r.error).toContain('CreateExtensionStmt');
   });
 
   it('should allow CREATE SCHEMA', async () => {
@@ -1065,6 +1065,42 @@ describe('validateWriteQuery', () => {
     const r = await validateWriteQuery('BEGIN');
     expect(r.valid).toBe(false);
     expect(r.error).toContain('TransactionStmt');
+  });
+
+  // --- Newly blocked by allowlist (previously bypassed the blocklist) ---
+
+  it('should block CREATE EXTENSION (SSRF vector)', async () => {
+    const r = await validateWriteQuery('CREATE EXTENSION dblink');
+    expect(r.valid).toBe(false);
+    expect(r.error).toContain('CreateExtensionStmt');
+  });
+
+  it('should block LOAD', async () => {
+    const r = await validateWriteQuery("LOAD 'auto_explain'");
+    expect(r.valid).toBe(false);
+    expect(r.error).toContain('LoadStmt');
+  });
+
+  it('should block ALTER ROLE', async () => {
+    const r = await validateWriteQuery('ALTER ROLE admin SUPERUSER');
+    expect(r.valid).toBe(false);
+    expect(r.error).toContain('AlterRoleStmt');
+  });
+
+  it('should block CREATE TRIGGER', async () => {
+    const r = await validateWriteQuery(
+      "CREATE TRIGGER trg BEFORE INSERT ON users FOR EACH ROW EXECUTE FUNCTION foo()"
+    );
+    expect(r.valid).toBe(false);
+    expect(r.error).toContain('CreateTrigStmt');
+  });
+
+  it('should block CREATE FOREIGN TABLE', async () => {
+    const r = await validateWriteQuery(
+      "CREATE FOREIGN TABLE ft (id int) SERVER srv OPTIONS (table_name 't')"
+    );
+    expect(r.valid).toBe(false);
+    expect(r.error).toContain('CreateForeignTableStmt');
   });
 
   // --- Multiple statements ---

@@ -4,7 +4,6 @@ interface PgAst {
   stmts: Array<{ stmt: Record<string, unknown> }>;
 }
 
-// WASM module must be loaded once before parseSync can be used
 let moduleLoaded = false;
 async function ensurePgQueryLoaded(): Promise<void> {
   if (!moduleLoaded) {
@@ -13,25 +12,45 @@ async function ensurePgQueryLoaded(): Promise<void> {
   }
 }
 
-// Read-only tool: only allow SELECT and EXPLAIN
 const READONLY_ALLOWED = new Set(['SelectStmt', 'ExplainStmt']);
 
-// Write tool: block dangerous DDL + SET/transaction injection
-const WRITE_BLOCKED = new Set([
-  'DropStmt',
-  'DropRoleStmt',
-  'DropdbStmt',
-  'DropTableSpaceStmt',
-  'DropSubscriptionStmt',
-  'DropOwnedStmt',
-  'TruncateStmt',
-  'GrantStmt', // also covers REVOKE
-  'ReassignOwnedStmt',
-  'SecLabelStmt',
-  'DoStmt',
-  'CreateFunctionStmt',
-  'VariableSetStmt',
-  'TransactionStmt',
+// Allowlist approach: only explicitly safe write operations are permitted.
+// This replaces the previous blocklist (WRITE_BLOCKED) which was incomplete.
+//
+// Rationale: A blocklist is inherently incomplete -- new statement types can be
+// added by PostgreSQL or pg_query at any time, and each unlisted type becomes an
+// implicit bypass. An allowlist inverts this: only known-safe DDL/DML operations
+// are permitted, and any unknown or dangerous statement type is rejected by default.
+//
+// Allowed operations are limited to standard data manipulation and schema changes
+// that cannot be used for:
+//   - Server-Side Request Forgery (SSRF) via dblink/postgres_fdw/foreign tables
+//   - Arbitrary code execution via CREATE FUNCTION, LOAD, or triggers
+//   - Privilege escalation via role or configuration modification
+//   - Authentication or security policy changes
+//
+// Note on AlterTableStmt: This covers all ALTER TABLE subcommands, including
+// ENABLE/DISABLE TRIGGER and ENABLE/DISABLE ROW LEVEL SECURITY. Subcommand-level
+// validation would require AST inspection and is a potential future hardening step.
+// For now, the security gain from blocking CREATE EXTENSION, LOAD, ALTER ROLE, etc.
+// is substantial compared to the previous blocklist approach.
+//
+// If you need to add a new statement type to this set, evaluate it against the
+// threat categories above and document the justification here.
+const WRITE_ALLOWED = new Set([
+  'InsertStmt',          // INSERT INTO ... VALUES/SELECT
+  'UpdateStmt',          // UPDATE ... SET
+  'DeleteStmt',          // DELETE FROM ...
+  'CreateStmt',          // CREATE TABLE
+  'CreateTableAsStmt',   // CREATE TABLE AS / CREATE MATERIALIZED VIEW ... AS
+  'IndexStmt',           // CREATE INDEX / CREATE UNIQUE INDEX
+  'AlterTableStmt',      // ALTER TABLE (column/constraint changes)
+  'CommentStmt',         // COMMENT ON (table, column, etc.)
+  'CreateSchemaStmt',    // CREATE SCHEMA
+  'ViewStmt',            // CREATE [OR REPLACE] VIEW
+  'RefreshMatViewStmt',  // REFRESH MATERIALIZED VIEW
+  'CreateSeqStmt',       // CREATE SEQUENCE
+  'AlterSeqStmt',        // ALTER SEQUENCE
 ]);
 
 export type SqlValidationResult =
@@ -45,16 +64,13 @@ function extractStmtType(query: string): string {
   } catch {
     throw new Error('SQL parse error: the query could not be parsed as valid PostgreSQL.');
   }
-
   if (ast.stmts.length !== 1) {
     throw new Error('Multiple SQL statements are not allowed. Please send one query at a time.');
   }
-
   const stmtType = Object.keys(ast.stmts[0]?.stmt ?? {})[0];
   if (!stmtType) {
     throw new Error('Empty statement.');
   }
-
   return stmtType;
 }
 
@@ -80,10 +96,10 @@ export async function validateWriteQuery(query: string): Promise<SqlValidationRe
   } catch (err) {
     return { valid: false, error: (err as Error).message };
   }
-  if (WRITE_BLOCKED.has(stmtType)) {
+  if (!WRITE_ALLOWED.has(stmtType)) {
     return {
       valid: false,
-      error: `Blocked statement type: ${stmtType}. DROP, TRUNCATE, GRANT, REVOKE, DO, CREATE FUNCTION, SET, and transaction control statements are not allowed through this tool.`,
+      error: `Blocked statement type: ${stmtType}. Only INSERT, UPDATE, DELETE, CREATE TABLE, CREATE TABLE AS, CREATE INDEX, ALTER TABLE, COMMENT, CREATE SCHEMA, CREATE VIEW, REFRESH MATERIALIZED VIEW, and CREATE/ALTER SEQUENCE statements are allowed through this tool.`,
     };
   }
   return { valid: true, stmtType };
