@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.11.2](https://github.com/Aiven-Open/mcp-aiven/compare/v1.11.1...v1.11.2) (2026-06-24)
+
+
+### Bug Fixes
+
+* allow_secrets in stdio mode ([#134](https://github.com/Aiven-Open/mcp-aiven/issues/134)) ([fa4111a](https://github.com/Aiven-Open/mcp-aiven/commit/fa4111a79221942e1178cfc361f20e3482610f43))
+* disable connection info tool in read-only mode ([#126](https://github.com/Aiven-Open/mcp-aiven/issues/126)) ([f31c3d7](https://github.com/Aiven-Open/mcp-aiven/commit/f31c3d7c3d8dc3a837f37b4bb3c120fbd55d4032))
+* increase rate limit ([#133](https://github.com/Aiven-Open/mcp-aiven/issues/133)) ([936765a](https://github.com/Aiven-Open/mcp-aiven/commit/936765a559a950497f2d559fdae3bb7b8c538ca0))
+
 ## [1.11.1](https://github.com/Aiven-Open/mcp-aiven/compare/v1.11.0...v1.11.1) (2026-06-21)
 
 
