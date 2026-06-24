@@ -17,6 +17,7 @@ export interface AivenConfig {
   readonly readOnly: boolean;
   readonly transport: 'stdio' | 'http';
   readonly categories: ReadonlySet<ServiceCategory> | undefined;
+  readonly allowSecrets: boolean;
 }
 
 export interface McpRequestOptions {
