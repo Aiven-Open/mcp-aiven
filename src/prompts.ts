@@ -12,12 +12,26 @@ export function readOnlyInstructions(transport: 'stdio' | 'http'): string {
   );
 }
 
-export function connectionInfoInstructions(allowSecrets: boolean, readOnly: boolean): string {
+export function connectionInfoInstructions(
+  allowSecrets: boolean,
+  readOnly: boolean,
+  transport: 'stdio' | 'http'
+): string {
+  const howToDisableReadOnly =
+    transport === 'http'
+      ? 'reconnect without `read_only=true`.'
+      : 'set AIVEN_READ_ONLY=false.';
+  const howToEnable =
+    transport === 'http'
+      ? 'reconfigure the connector with `allow_secrets=true`.'
+      : 'set AIVEN_ALLOW_SECRETS=true.';
+
   if (allowSecrets && readOnly) {
     return (
       'Connection info is redacted as `[REDACTED]`. `allow_secrets=true` was requested but is ' +
       'disabled because the server is in read-only mode — live credentials would let you bypass ' +
-      'read-only restrictions. To retrieve connection info, reconnect without `read_only=true`.'
+      'read-only restrictions. To retrieve connection info, ' +
+      howToDisableReadOnly
     );
   }
   return allowSecrets
@@ -25,7 +39,8 @@ export function connectionInfoInstructions(allowSecrets: boolean, readOnly: bool
         '`aiven_service_connection_info` — use that tool to get live credentials.'
     : 'Connection info is redacted as `[REDACTED]` and cannot be retrieved through ' +
         'this connector. This is expected — do not guess credentials or call tools not ' +
-        'in your tool list. To enable, reconfigure the connector with `allow_secrets=true`.';
+        'in your tool list. To enable, ' +
+        howToEnable;
 }
 
 export const TOOL_LIST_PICKER_SUFFIX =

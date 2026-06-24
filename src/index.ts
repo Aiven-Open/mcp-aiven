@@ -94,8 +94,7 @@ async function main(): Promise<void> {
 
     const instructions: string[] = [];
     if (options.readOnly) instructions.push(readOnlyInstructions(transport));
-    if (transport === 'http')
-      instructions.push(connectionInfoInstructions(options.allowSecrets, options.readOnly));
+    instructions.push(connectionInfoInstructions(options.allowSecrets, options.readOnly, transport));
 
     const serverOptions =
       instructions.length > 0 ? ([{ instructions: instructions.join(' ') }] as const) : ([] as const);
@@ -118,7 +117,11 @@ async function main(): Promise<void> {
     });
   } else {
     const server = instrumentServer(
-      createMcpServer({ readOnly: config.readOnly, categories: config.categories, allowSecrets: false })
+      createMcpServer({
+        readOnly: config.readOnly,
+        categories: config.categories,
+        allowSecrets: config.allowSecrets,
+      })
     );
     await server.connect(createStdioTransport());
     console.error('mcp-aiven: Server connected and ready');
