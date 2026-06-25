@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.11.2...v1.12.0) (2026-06-25)
+
+
+### Features
+
+* add server.json for mcp official registry ([#135](https://github.com/Aiven-Open/mcp-aiven/issues/135)) ([4c86c63](https://github.com/Aiven-Open/mcp-aiven/commit/4c86c63b3f12a434b0b5c4ddb5b00e34638fea03))
+
 ## [1.11.2](https://github.com/Aiven-Open/mcp-aiven/compare/v1.11.1...v1.11.2) (2026-06-24)
 
 
