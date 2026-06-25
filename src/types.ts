@@ -211,7 +211,6 @@ export enum ApplicationToolName {
   Redeploy = 'aiven_application_redeploy',
   VcsIntegrationList = 'aiven_vcs_integration_list',
   VcsIntegrationRepositoryList = 'aiven_vcs_integration_repository_list',
-  BuildLogsGet = 'aiven_application_build_logs_get',
 }
 
 // ---------- Kafka ----------
