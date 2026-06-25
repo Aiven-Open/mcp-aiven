@@ -1,0 +1,93 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.aiven/mcp",
+  "title": "Aiven MCP",
+  "description": "Provision PostgreSQL, manage Apache Kafka, and deploy apps with Aiven - all from your AI assistant.",
+  "repository": {
+    "url": "https://github.com/aiven-open/mcp-aiven",
+    "source": "github"
+  },
+  "version": "1.11.2",
+  "websiteUrl": "https://aiven.io/mcp",
+  "icons": [
+    {
+      "src": "https://aiven.io/favicons/favicon-16x16.png",
+      "mimeType": "image/png",
+      "sizes": ["16x16"]
+    },
+    {
+      "src": "https://aiven.io/favicons/favicon-32x32.png",
+      "mimeType": "image/png",
+      "sizes": ["32x32"]
+    },
+    {
+      "src": "https://aiven.io/favicons/favicon-64x64.png",
+      "mimeType": "image/png",
+      "sizes": ["64x64"]
+    },
+    {
+      "src": "https://aiven.io/favicons/apple-touch-icon.png",
+      "mimeType": "image/png",
+      "sizes": ["180x180"]
+    }
+  ],
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "mcp-aiven",
+      "version": "1.11.2",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "AIVEN_TOKEN",
+          "description": "Aiven API token (create one at https://console.aiven.io/profile/tokens)",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "AIVEN_READ_ONLY",
+          "description": "Set to true to expose only read-only tools",
+          "format": "boolean"
+        },
+        {
+          "name": "AIVEN_SERVICES_SCOPE",
+          "description": "Comma-separated scopes to expose (e.g. pg, kafka, pg,kafka, or all). Valid: all, core, pg, kafka, application, integrations.",
+          "format": "string"
+        },
+        {
+          "name": "AIVEN_ALLOW_SECRETS",
+          "description": "Set to true to let the connection-info tool return live credentials instead of [REDACTED].",
+          "format": "boolean"
+        }
+      ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.aiven.live/mcp?read_only={read_only}&services_scope={services_scope}&allow_secrets={allow_secrets}",
+      "variables": {
+        "read_only": {
+          "description": "Expose only read-only tools; all write operations are excluded.",
+          "default": "false",
+          "choices": ["true", "false"]
+        },
+        "services_scope": {
+          "description": "Comma-separated scopes to expose, e.g. pg, kafka, or pg,kafka. core (project/service discovery) is always included. all loads every tool and cannot be combined with other scopes.",
+          "default": "all",
+          "choices": ["all", "core", "pg", "kafka", "application", "integrations"]
+        },
+        "allow_secrets": {
+          "description": "Allow the connection-info tool to return live credentials instead of [REDACTED].",
+          "default": "false",
+          "choices": ["true", "false"]
+        }
+      }
+    }
+  ]
+}
