@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.12.0...v1.13.0) (2026-06-25)
+
+
+### Features
+
+* unify build logs into service logs tool via log_type param ([#137](https://github.com/Aiven-Open/mcp-aiven/issues/137)) ([8812ae0](https://github.com/Aiven-Open/mcp-aiven/commit/8812ae02e34a4ca2c557ee8cfed56c64dc4756cb))
+
 ## [1.12.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.11.2...v1.12.0) (2026-06-25)
 
 
