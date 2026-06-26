@@ -17,6 +17,9 @@ import { VERSION, API_ORIGIN, loadHttpMcpRateLimit } from './config.js';
 import { createObservabilityContext } from './observability.js';
 import { readOnlyInstructions, connectionInfoInstructions } from './prompts.js';
 import { instrumentServer, flushAndExit } from './instrumentation/index.js';
+import { scan } from './security/model-armor.js';
+import { unwrapUntrustedResponse } from './untrusted.js';
+import { toolError } from './types.js';
 
 /** Streamable HTTP: inbound `/mcp` `User-Agent` (SDK `requestInfo.headers`). */
 function mcpClientFromRequestInfo(requestInfo: unknown): string | undefined {
@@ -65,7 +68,28 @@ function registerTools(server: McpServer, tools: readonly ToolDefinition[]): voi
           toolReasoning: obsContext.toolReasoning,
         };
 
-        return tool.handler(params, context);
+        // Scan tool input for prompt injection / jailbreak before acting on it.
+        // Skip `reasoning` (model-generated metadata) and send plain text values,
+        // not JSON — structured JSON triggers false positives in the PI filter.
+        const inputText = Object.entries(paramsObj)
+          .filter(([key]) => key !== 'reasoning')
+          .map(([, value]) => String(value))
+          .join('\n');
+        const inputBlocked = await scan(inputText);
+        if (inputBlocked) return toolError(inputBlocked);
+
+        const result = await tool.handler(params, context);
+
+        // Scan tool output so poisoned Aiven data can't inject the user's LLM.
+        // Unwrap our own untrusted-data boundary first — its warning text would
+        // otherwise trip the prompt-injection filter.
+        const outputText = result.content
+          .map((c) => (c.type === 'text' ? unwrapUntrustedResponse(c.text) : ''))
+          .join('\n');
+        const outputBlocked = await scan(outputText, 'output');
+        if (outputBlocked) return toolError(outputBlocked);
+
+        return result;
       }
     );
   }
