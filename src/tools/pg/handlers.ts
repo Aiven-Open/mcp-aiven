@@ -71,7 +71,7 @@ export function createPgCustomTools(client: AivenClient): ToolDefinition[] {
         annotations: READ_ONLY_ANNOTATIONS,
       },
       handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
-        const { project, service_name, query, database, limit, offset } = params as z.infer<
+        const { project, service_name, query, database, schema, limit, offset } = params as z.infer<
           typeof pgQueryInput
         >;
         return executePgQuery(client, {
@@ -79,11 +79,13 @@ export function createPgCustomTools(client: AivenClient): ToolDefinition[] {
           service_name,
           query,
           database,
+          schema,
           mode: PgQueryMode.ReadOnly,
           limit,
           offset,
           token: context?.token,
           mcpClient: context?.mcpClient,
+          clientIp: context?.clientIp,
           toolName: PgToolName.Read,
           requestId: context?.requestId,
           toolReasoning: context?.toolReasoning,
@@ -101,7 +103,7 @@ export function createPgCustomTools(client: AivenClient): ToolDefinition[] {
         annotations: WRITE_DML_ANNOTATIONS,
       },
       handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
-        const { project, service_name, query, database, limit, offset } = params as z.infer<
+        const { project, service_name, query, database, schema, limit, offset } = params as z.infer<
           typeof pgExecuteQueryInput
         >;
 
@@ -110,11 +112,13 @@ export function createPgCustomTools(client: AivenClient): ToolDefinition[] {
           service_name,
           query,
           database,
+          schema,
           mode: PgQueryMode.ReadWrite,
           limit,
           offset,
           token: context?.token,
           mcpClient: context?.mcpClient,
+          clientIp: context?.clientIp,
           toolName: PgToolName.Write,
           requestId: context?.requestId,
           toolReasoning: context?.toolReasoning,
