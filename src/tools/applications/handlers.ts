@@ -299,10 +299,10 @@ CMD ["node", "dist/index.js"]
               plan: service['plan'],
               cloud_name: service['cloud_name'],
             };
-            return toolSuccess(wrapUntrustedResponse(redactSensitiveData(summary)));
+            return toolSuccess(wrapUntrustedResponse(redactSensitiveData(summary)), ApplicationToolName.Deploy);
           }
 
-          return toolSuccess(wrapUntrustedResponse(redactSensitiveData(result)));
+          return toolSuccess(wrapUntrustedResponse(redactSensitiveData(result)), ApplicationToolName.Deploy);
         } catch (err) {
           return toolErrorWithRequestId(errorMessage(err), context?.requestId);
         }
@@ -355,7 +355,8 @@ The rebuild pulls the latest commit from the configured branch and rebuilds the 
               service_name: serviceName,
               branch: branch ?? 'current',
               message: 'Redeploy triggered. The service will pull latest code, rebuild, and deploy.',
-            })
+            }),
+            ApplicationToolName.Redeploy
           );
         } catch (err) {
           return toolErrorWithRequestId(errorMessage(err), context?.requestId);
@@ -406,7 +407,8 @@ Returns each integration's \`vcs_integration_id\` (needed for \`aiven_vcs_integr
             wrapUntrustedResponse({
               organization_id: organizationId,
               vcs_integrations: result.vcs_integrations,
-            })
+            }),
+            ApplicationToolName.VcsIntegrationList
           );
         } catch (err) {
           return toolError(errorMessage(err));
@@ -470,7 +472,8 @@ Returns \`remote_repository_id\`, \`full_name\`, \`source_url\`, and \`default_b
                   repositories,
                   next: null,
                   truncated: false,
-                })
+                }),
+                ApplicationToolName.VcsIntegrationRepositoryList
               );
             }
             if (hitItemCap) {
@@ -479,7 +482,8 @@ Returns \`remote_repository_id\`, \`full_name\`, \`source_url\`, and \`default_b
                   repositories,
                   next,
                   truncated: true,
-                })
+                }),
+                ApplicationToolName.VcsIntegrationRepositoryList
               );
             }
             cursor = next;
@@ -491,7 +495,8 @@ Returns \`remote_repository_id\`, \`full_name\`, \`source_url\`, and \`default_b
               next: cursor ?? null,
               truncated: true,
               note: `Pagination stopped after ${MAX_VCS_REPOSITORY_LIST_PAGES} pages (safety limit).`,
-            })
+            }),
+            ApplicationToolName.VcsIntegrationRepositoryList
           );
         } catch (err) {
           return toolError(errorMessage(err));
