@@ -10,6 +10,8 @@ import { DEFAULT_LIST_LIMIT } from './response-filter.js';
 
 const CONCURRENCY = 10;
 
+const TOOL_NAME = 'aiven_service_list';
+
 const inputSchema = z.object({
   project: z
     .string()
@@ -78,7 +80,7 @@ interface ProjectError {
 export function createServiceSearchTool(client: AivenClient): ToolDefinition[] {
   return [
     {
-      name: 'aiven_service_list',
+      name: TOOL_NAME,
       category: ServiceCategory.Core,
       definition: {
         title: 'Search Services Across Projects',
@@ -145,7 +147,7 @@ export function createServiceSearchTool(client: AivenClient): ToolDefinition[] {
             services: page,
             ...(errors.length > 0 && { errors }),
             ...(hasMore && { hint: 'More services exist. Ask the user what they are looking for, or narrow with filters (project, service_type, state, search). Do NOT increase the limit or auto-paginate.' }),
-          }));
+          }), TOOL_NAME);
         } catch (err) {
           return toolError(errorMessage(err));
         }

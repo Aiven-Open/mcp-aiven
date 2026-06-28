@@ -106,9 +106,9 @@ function textContent(text: string): TextContent {
   return { type: 'text' as const, text };
 }
 
-export function toolSuccess(data: string | Record<string, unknown>): ToolResult {
+export function toolSuccess(data: string | Record<string, unknown>, toolName?: string): ToolResult {
   const text = typeof data === 'string' ? data : JSON.stringify(data);
-  const capped = applyToolResultCharCap(text);
+  const capped = applyToolResultCharCap(text, toolName);
   return {
     content: [textContent(capped)],
   };

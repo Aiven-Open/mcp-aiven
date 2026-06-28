@@ -49,7 +49,7 @@ export function createKafkaCustomTools(client: AivenClient): ToolDefinition[] {
             opts
           );
 
-          return toolSuccess(wrapUntrustedResponse(redactSensitiveData(data)));
+          return toolSuccess(wrapUntrustedResponse(redactSensitiveData(data)), KafkaToolName.ConnectCreateConnector);
         } catch (err) {
           return toolErrorWithRequestId(errorMessage(err), context?.requestId);
         }
@@ -85,7 +85,7 @@ export function createKafkaCustomTools(client: AivenClient): ToolDefinition[] {
             opts
           );
 
-          return toolSuccess(wrapUntrustedResponse(redactSensitiveData(data)));
+          return toolSuccess(wrapUntrustedResponse(redactSensitiveData(data)), KafkaToolName.ConnectEditConnector);
         } catch (err) {
           return toolErrorWithRequestId(errorMessage(err), context?.requestId);
         }

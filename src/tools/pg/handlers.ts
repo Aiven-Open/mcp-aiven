@@ -54,7 +54,7 @@ export function createPgCustomTools(client: AivenClient): ToolDefinition[] {
             opts
           );
 
-          return toolSuccess(wrapUntrustedResponse(redactSensitiveData(data)));
+          return toolSuccess(wrapUntrustedResponse(redactSensitiveData(data)), PgToolName.OptimizeQuery);
         } catch (err) {
           return toolError(errorMessage(err));
         }

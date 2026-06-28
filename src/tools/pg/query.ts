@@ -138,7 +138,7 @@ export async function executePgQuery(
       meta['command'] = result['command'];
     }
 
-    return toolSuccess(wrapInBoundary({ meta, rows: truncatedRows }));
+    return toolSuccess(wrapInBoundary({ meta, rows: truncatedRows }), options.toolName);
   } catch (err: unknown) {
     await pgClient.query('ROLLBACK').catch(() => {});
     return toolErrorWithRequestId(sanitizePgError(err), options.requestId);

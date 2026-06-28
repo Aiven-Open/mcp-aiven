@@ -9,9 +9,9 @@ export function getMaxToolResultChars(): number {
   return n;
 }
 
-function trimSuffix(originalLength: number, limit: number): string {
+function trimSuffix(originalLength: number, limit: number, toolName?: string): string {
   return (
-    `\n\n---\n**Trimmed:** This response was cut because it exceeded the maximum tool output size ` +
+    `\n\n---\n**Trimmed:** The ${toolName ?? 'tool'} response was cut because it exceeded the maximum tool output size ` +
     `(${originalLength} characters; cap ${limit} from MCP_MAX_TOOL_RESULT_CHARS). ` +
     `Only the beginning of the payload is included—the rest was omitted. ` +
     `If this was JSON, the tail may be incomplete. Narrow the request or raise the cap if needed.`
@@ -22,11 +22,11 @@ function trimSuffix(originalLength: number, limit: number): string {
  * If over cap, returns a prefix of `text` plus a trim notice so total length ≤ `limit`.
  * Logs to stderr (safe for stdio MCP: protocol uses stdout). No-op when under cap or uncapped.
  */
-export function applyToolResultCharCap(text: string): string {
+export function applyToolResultCharCap(text: string, toolName?: string): string {
   const limit = getMaxToolResultChars();
   if (limit <= 0 || text.length <= limit) return text;
 
-  const suffix = trimSuffix(text.length, limit);
+  const suffix = trimSuffix(text.length, limit, toolName);
   let headLen = limit - suffix.length;
 
   if (headLen < 0) {
@@ -34,17 +34,19 @@ export function applyToolResultCharCap(text: string): string {
     headLen = limit - minimal.length;
     if (headLen <= 0) {
       console.error(
-        'mcp-aiven: Tool result trim: cap %d too small for payload of %d chars; returning truncated notice only',
+        'mcp-aiven: Tool result trim: cap %d too small for payload of %d chars; returning truncated notice only (tool=%s)',
         limit,
-        text.length
+        text.length,
+        toolName ?? 'unknown'
       );
       return minimal.slice(0, limit);
     }
     const out = text.slice(0, headLen) + minimal;
     console.error(
-      'mcp-aiven: Tool result trimmed: %d -> %d chars (MCP_MAX_TOOL_RESULT_CHARS=%d)',
+      'mcp-aiven: Tool result trimmed: %d -> %d chars (tool=%s, MCP_MAX_TOOL_RESULT_CHARS=%d)',
       text.length,
       out.length,
+      toolName ?? 'unknown',
       limit
     );
     return out;
@@ -52,9 +54,10 @@ export function applyToolResultCharCap(text: string): string {
 
   const out = text.slice(0, headLen) + suffix;
   console.error(
-    'mcp-aiven: Tool result trimmed: %d -> %d chars (MCP_MAX_TOOL_RESULT_CHARS=%d)',
+    'mcp-aiven: Tool result trimmed: %d -> %d chars (tool=%s, MCP_MAX_TOOL_RESULT_CHARS=%d)',
     text.length,
     out.length,
+    toolName ?? 'unknown',
     limit
   );
   return out;
