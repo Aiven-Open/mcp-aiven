@@ -169,9 +169,10 @@ MCP_HOST=http://localhost:3000 node dist/index.js
 | `AIVEN_TOKEN` | stdio only | -- | Aiven API token ([create one here](https://console.aiven.io/profile/tokens)) |
 | `AIVEN_READ_ONLY` | No | `false` | Set to `true` to expose only read-only tools |
 | `AIVEN_SERVICES_SCOPE` | No | -- | Comma-separated scopes to expose (e.g. `kafka`, `pg,kafka`, or `all`). Valid: `all`, `core`, `pg`, `kafka`, `application`, `integrations`. `core` is always included. Omitting the var or setting `all` loads every tool. |
+| `AIVEN_ALLOW_SECRETS` | No | `false` | Set to `true` to expose the `aiven_service_connection_info` tool, which returns live credentials (passwords, connection URIs, certs) into the conversation. Disabled while `AIVEN_READ_ONLY=true`. |
 | `MCP_HOST` | No | `https://mcp.aiven.live` | Override the OAuth protected resource host |
 | `MCP_TRANSPORT` | No | `stdio` | Set to `http` to start an HTTP server instead of stdio |
-| `MCP_HTTP_RATE_LIMIT_MAX` | No | `100` | Max requests per window on `POST /mcp` (HTTP transport). Applies independently to a per-bearer-token bucket and a per-source-IP bucket; whichever fills first returns 429. |
+| `MCP_HTTP_RATE_LIMIT_MAX` | No | `1000` | Max requests per window on `POST /mcp` (HTTP transport). Applies independently to a per-bearer-token bucket and a per-source-IP bucket; whichever fills first returns 429. |
 | `MCP_HTTP_RATE_LIMIT_WINDOW_MS` | No | `60000` | Window length in milliseconds for `MCP_HTTP_RATE_LIMIT_MAX`. |
 
 In remote (HTTP) mode, `AIVEN_TOKEN` is not needed. Your MCP client sends your token as a Bearer token with each request.

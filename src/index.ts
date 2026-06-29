@@ -17,6 +17,9 @@ import { VERSION, API_ORIGIN, loadHttpMcpRateLimit } from './config.js';
 import { createObservabilityContext } from './observability.js';
 import { readOnlyInstructions, connectionInfoInstructions } from './prompts.js';
 import { instrumentServer, flushAndExit } from './instrumentation/index.js';
+import { scan } from './security/model-armor.js';
+import { unwrapUntrustedResponse } from './untrusted.js';
+import { toolError } from './types.js';
 
 /** Streamable HTTP: inbound `/mcp` `User-Agent` (SDK `requestInfo.headers`). */
 function mcpClientFromRequestInfo(requestInfo: unknown): string | undefined {
@@ -65,7 +68,28 @@ function registerTools(server: McpServer, tools: readonly ToolDefinition[]): voi
           toolReasoning: obsContext.toolReasoning,
         };
 
-        return tool.handler(params, context);
+        // Scan tool input for prompt injection / jailbreak before acting on it.
+        // Skip `reasoning` (model-generated metadata) and send plain text values,
+        // not JSON — structured JSON triggers false positives in the PI filter.
+        const inputText = Object.entries(paramsObj)
+          .filter(([key]) => key !== 'reasoning')
+          .map(([, value]) => String(value))
+          .join('\n');
+        const inputBlocked = await scan(inputText);
+        if (inputBlocked) return toolError(inputBlocked);
+
+        const result = await tool.handler(params, context);
+
+        // Scan tool output so poisoned Aiven data can't inject the user's LLM.
+        // Unwrap our own untrusted-data boundary first — its warning text would
+        // otherwise trip the prompt-injection filter.
+        const outputText = result.content
+          .map((c) => (c.type === 'text' ? unwrapUntrustedResponse(c.text) : ''))
+          .join('\n');
+        const outputBlocked = await scan(outputText, 'output');
+        if (outputBlocked) return toolError(outputBlocked);
+
+        return result;
       }
     );
   }
@@ -89,12 +113,12 @@ async function main(): Promise<void> {
     }
 
     if (options.allowSecrets) {
-      tools = [...tools, ...createConnectionInfoTool(client)];
+      tools = [...tools, ...createConnectionInfoTool(client, options.readOnly)];
     }
 
     const instructions: string[] = [];
     if (options.readOnly) instructions.push(readOnlyInstructions(transport));
-    if (transport === 'http') instructions.push(connectionInfoInstructions(options.allowSecrets));
+    instructions.push(connectionInfoInstructions(options.allowSecrets, options.readOnly, transport));
 
     const serverOptions =
       instructions.length > 0 ? ([{ instructions: instructions.join(' ') }] as const) : ([] as const);
@@ -117,7 +141,11 @@ async function main(): Promise<void> {
     });
   } else {
     const server = instrumentServer(
-      createMcpServer({ readOnly: config.readOnly, categories: config.categories, allowSecrets: false })
+      createMcpServer({
+        readOnly: config.readOnly,
+        categories: config.categories,
+        allowSecrets: config.allowSecrets,
+      })
     );
     await server.connect(createStdioTransport());
     console.error('mcp-aiven: Server connected and ready');

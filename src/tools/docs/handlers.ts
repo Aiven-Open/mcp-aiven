@@ -79,7 +79,8 @@ export function createDocsTools(): ToolDefinition[] {
             wrapUntrustedResponse({
               answer: result.answer,
               sources: result.relevant_sources?.map((s) => ({ title: s.title, url: s.source_url })),
-            })
+            }),
+            DocsToolName.Search
           );
         } catch (err) {
           return toolError(errorMessage(err));

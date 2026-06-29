@@ -1,5 +1,35 @@
 # Changelog
 
+## [1.13.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.12.0...v1.13.0) (2026-06-25)
+
+
+### Features
+
+* unify build logs into service logs tool via log_type param ([#137](https://github.com/Aiven-Open/mcp-aiven/issues/137)) ([8812ae0](https://github.com/Aiven-Open/mcp-aiven/commit/8812ae02e34a4ca2c557ee8cfed56c64dc4756cb))
+
+## [1.12.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.11.2...v1.12.0) (2026-06-25)
+
+
+### Features
+
+* add server.json for mcp official registry ([#135](https://github.com/Aiven-Open/mcp-aiven/issues/135)) ([4c86c63](https://github.com/Aiven-Open/mcp-aiven/commit/4c86c63b3f12a434b0b5c4ddb5b00e34638fea03))
+
+## [1.11.2](https://github.com/Aiven-Open/mcp-aiven/compare/v1.11.1...v1.11.2) (2026-06-24)
+
+
+### Bug Fixes
+
+* allow_secrets in stdio mode ([#134](https://github.com/Aiven-Open/mcp-aiven/issues/134)) ([fa4111a](https://github.com/Aiven-Open/mcp-aiven/commit/fa4111a79221942e1178cfc361f20e3482610f43))
+* disable connection info tool in read-only mode ([#126](https://github.com/Aiven-Open/mcp-aiven/issues/126)) ([f31c3d7](https://github.com/Aiven-Open/mcp-aiven/commit/f31c3d7c3d8dc3a837f37b4bb3c120fbd55d4032))
+* increase rate limit ([#133](https://github.com/Aiven-Open/mcp-aiven/issues/133)) ([936765a](https://github.com/Aiven-Open/mcp-aiven/commit/936765a559a950497f2d559fdae3bb7b8c538ca0))
+
+## [1.11.1](https://github.com/Aiven-Open/mcp-aiven/compare/v1.11.0...v1.11.1) (2026-06-21)
+
+
+### Bug Fixes
+
+* redact mid-string credential URIs ([#123](https://github.com/Aiven-Open/mcp-aiven/issues/123)) ([0f14022](https://github.com/Aiven-Open/mcp-aiven/commit/0f1402208f0fc57875f72c8224a48e2c8b259665))
+
 ## [1.11.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.10.0...v1.11.0) (2026-06-18)
 
 

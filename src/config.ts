@@ -25,7 +25,7 @@ function parsePositiveIntEnv(name: string, defaultValue: number): number {
 export function loadHttpMcpRateLimit(): HttpMcpRateLimitConfig {
   return {
     windowMs: parsePositiveIntEnv('MCP_HTTP_RATE_LIMIT_WINDOW_MS', 60_000),
-    limit: parsePositiveIntEnv('MCP_HTTP_RATE_LIMIT_MAX', 100),
+    limit: parsePositiveIntEnv('MCP_HTTP_RATE_LIMIT_MAX', 1000),
   };
 }
 
@@ -95,11 +95,12 @@ export function loadConfig(transport: 'stdio' | 'http' = 'stdio'): AivenConfig {
   }
 
   const readOnly = process.env['AIVEN_READ_ONLY'] === 'true';
+  const allowSecrets = process.env['AIVEN_ALLOW_SECRETS'] === 'true';
 
   const parsed = parseScopes(process.env['AIVEN_SERVICES_SCOPE']);
   if ('error' in parsed) {
     throw new Error(`AIVEN_SERVICES_SCOPE: ${parsed.error}`);
   }
 
-  return { token, readOnly, transport, categories: parsed.categories };
+  return { token, readOnly, transport, categories: parsed.categories, allowSecrets };
 }

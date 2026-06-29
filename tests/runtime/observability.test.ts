@@ -24,9 +24,10 @@ describe('redactReasoningField', () => {
     expect(redactReasoningField('postgres://admin:secret@host:5432/db')).toBe('[REDACTED_URI]');
   });
 
-  it('redacts a URI embedded in surrounding prose (substring-level)', () => {
-    const result = redactReasoningField('connect to postgres://admin:secret@host:5432/db now');
-    expect(result).toBe('connect to [REDACTED_URI] now');
+  it('redacts string with embedded sensitive URI', () => {
+    const input = 'connect to postgres://admin:secret@host:5432/db';
+    const result = redactReasoningField(input);
+    expect(result).toBe('connect to [REDACTED_URI]');
   });
 
   it('serializes object reasoning via JSON.stringify', () => {

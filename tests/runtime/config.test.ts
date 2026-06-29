@@ -77,6 +77,34 @@ describe('loadConfig', () => {
     expect(config.readOnly).toBe(false);
   });
 
+  it('should disable allowSecrets by default when AIVEN_ALLOW_SECRETS is unset', () => {
+    process.env['AIVEN_TOKEN'] = 'test-token';
+    delete process.env['AIVEN_ALLOW_SECRETS'];
+
+    const config = loadConfig();
+
+    expect(config.allowSecrets).toBe(false);
+  });
+
+  it('should enable allowSecrets when AIVEN_ALLOW_SECRETS is "true"', () => {
+    process.env['AIVEN_TOKEN'] = 'test-token';
+    process.env['AIVEN_ALLOW_SECRETS'] = 'true';
+
+    const config = loadConfig();
+
+    expect(config.allowSecrets).toBe(true);
+  });
+
+  it('should disable allowSecrets for non-exact values like "TRUE" or "1"', () => {
+    process.env['AIVEN_TOKEN'] = 'test-token';
+
+    process.env['AIVEN_ALLOW_SECRETS'] = 'TRUE';
+    expect(loadConfig().allowSecrets).toBe(false);
+
+    process.env['AIVEN_ALLOW_SECRETS'] = '1';
+    expect(loadConfig().allowSecrets).toBe(false);
+  });
+
   it('should leave categories undefined when AIVEN_SERVICES_SCOPE is unset', () => {
     process.env['AIVEN_TOKEN'] = 'test-token';
     delete process.env['AIVEN_SERVICES_SCOPE'];
@@ -171,7 +199,7 @@ describe('loadHttpMcpRateLimit', () => {
   });
 
   it('should use defaults when env is unset', () => {
-    expect(loadHttpMcpRateLimit()).toEqual({ windowMs: 60_000, limit: 100 });
+    expect(loadHttpMcpRateLimit()).toEqual({ windowMs: 60_000, limit: 1000 });
   });
 
   it('should read MCP_HTTP_RATE_LIMIT_WINDOW_MS and MCP_HTTP_RATE_LIMIT_MAX', () => {
@@ -185,7 +213,7 @@ describe('loadHttpMcpRateLimit', () => {
     process.env['MCP_HTTP_RATE_LIMIT_WINDOW_MS'] = '0';
     process.env['MCP_HTTP_RATE_LIMIT_MAX'] = '-1';
 
-    expect(loadHttpMcpRateLimit()).toEqual({ windowMs: 60_000, limit: 100 });
+    expect(loadHttpMcpRateLimit()).toEqual({ windowMs: 60_000, limit: 1000 });
   });
 });
 

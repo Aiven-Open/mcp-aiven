@@ -6,6 +6,8 @@ import { errorMessage } from '../errors.js';
 import { wrapUntrustedResponse } from '../untrusted.js';
 import { getProjectCaCert, getServiceWithSecrets } from '../shared/service-info.js';
 
+const TOOL_NAME = 'aiven_service_connection_info';
+
 const inputSchema = z.object({
   project: z.string().describe('Aiven project name (from `aiven_project_list`).'),
   service_name: z.string().describe('Service name (from `aiven_service_list`).'),
@@ -47,10 +49,10 @@ function toConnectionUser(user: ServiceUser): ServiceUser {
   };
 }
 
-export function createConnectionInfoTool(client: AivenClient): ToolDefinition[] {
+export function createConnectionInfoTool(client: AivenClient, readOnly: boolean): ToolDefinition[] {
   return [
     {
-      name: 'aiven_service_connection_info',
+      name: TOOL_NAME,
       category: ServiceCategory.Core,
       definition: {
         title: 'Get Service Connection Info (live credentials)',
@@ -60,11 +62,18 @@ export function createConnectionInfoTool(client: AivenClient): ToolDefinition[] 
       },
       handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
         try {
+          if (readOnly) {
+            return toolError(
+              'Disabled while read_only is active. Connection info grants live credentials ' +
+                'that would bypass read-only restrictions. Disable read_only to retrieve connection info.'
+            );
+          }
+
           const { project, service_name } = params as z.infer<typeof inputSchema>;
           const opts = {
             token: context?.token,
             mcpClient: context?.mcpClient,
-            toolName: 'aiven_service_connection_info',
+            toolName: TOOL_NAME,
             requestId: context?.requestId,
           };
 
@@ -87,7 +96,7 @@ export function createConnectionInfoTool(client: AivenClient): ToolDefinition[] 
             tls: { required: true, verify_with: 'ca_cert' },
           };
 
-          return toolSuccess(wrapUntrustedResponse(connectionInfo));
+          return toolSuccess(wrapUntrustedResponse(connectionInfo), TOOL_NAME);
         } catch (err) {
           return toolError(errorMessage(err));
         }

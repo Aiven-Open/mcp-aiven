@@ -116,7 +116,7 @@ export function createApiTool(config: ApiToolConfig, client: AivenClient): ToolD
           ? applyResponseFilter(redacted, config.responseFilter, search, limit, offset)
           : redacted;
 
-        return toolSuccess(wrapUntrustedResponse(filtered));
+        return toolSuccess(wrapUntrustedResponse(filtered), config.name);
       } catch (err) {
         return toolErrorWithRequestId(errorMessage(err), context?.requestId);
       }

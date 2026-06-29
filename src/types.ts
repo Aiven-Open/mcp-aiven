@@ -17,6 +17,7 @@ export interface AivenConfig {
   readonly readOnly: boolean;
   readonly transport: 'stdio' | 'http';
   readonly categories: ReadonlySet<ServiceCategory> | undefined;
+  readonly allowSecrets: boolean;
 }
 
 export interface McpRequestOptions {
@@ -105,9 +106,9 @@ function textContent(text: string): TextContent {
   return { type: 'text' as const, text };
 }
 
-export function toolSuccess(data: string | Record<string, unknown>): ToolResult {
+export function toolSuccess(data: string | Record<string, unknown>, toolName?: string): ToolResult {
   const text = typeof data === 'string' ? data : JSON.stringify(data);
-  const capped = applyToolResultCharCap(text);
+  const capped = applyToolResultCharCap(text, toolName);
   return {
     content: [textContent(capped)],
   };
@@ -210,7 +211,6 @@ export enum ApplicationToolName {
   Redeploy = 'aiven_application_redeploy',
   VcsIntegrationList = 'aiven_vcs_integration_list',
   VcsIntegrationRepositoryList = 'aiven_vcs_integration_repository_list',
-  BuildLogsGet = 'aiven_application_build_logs_get',
 }
 
 // ---------- Kafka ----------

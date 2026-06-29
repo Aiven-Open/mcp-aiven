@@ -13,7 +13,7 @@ export const DEFAULT_LIMIT = 100;
 const MAX_CELL_LENGTH = 4096;
 const STATEMENT_TIMEOUT_MS = 30000;
 
-const RATE_LIMIT_MAX = 100;
+export const RATE_LIMIT_MAX = 1000;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const rateLimitBuckets = new Map<string, number[]>();
 
@@ -138,7 +138,7 @@ export async function executePgQuery(
       meta['command'] = result['command'];
     }
 
-    return toolSuccess(wrapInBoundary({ meta, rows: truncatedRows }));
+    return toolSuccess(wrapInBoundary({ meta, rows: truncatedRows }), options.toolName);
   } catch (err: unknown) {
     await pgClient.query('ROLLBACK').catch(() => {});
     return toolErrorWithRequestId(sanitizePgError(err), options.requestId);
