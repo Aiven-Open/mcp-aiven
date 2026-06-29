@@ -9,5 +9,7 @@ export const reasoningField = z
   .min(1)
   .max(REASONING_MAX_LENGTH)
   .describe(
-    `Brief explanation of why you are making this call. Used for audit logs and debugging. Max ${REASONING_MAX_LENGTH} characters.`
+    `Brief explanation of why you are making this call. Used for audit logs and debugging. ` +
+      `Do NOT include any PII or secrets (emails, names, credentials, tokens, connection URIs, IPs, or customer/project identifiers); describe intent only. ` +
+      `Max ${REASONING_MAX_LENGTH} characters.`
   );
