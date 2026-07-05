@@ -6,7 +6,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import type { Request, Response, NextFunction } from 'express';
-import { HOST, parseScopes, isMaintenanceMode } from './config.js';
+import { HOST, parseScopes, parseWriteAllowlist, isMaintenanceMode } from './config.js';
 import type { HttpMcpRateLimitConfig } from './config.js';
 import type { McpServerFactory, McpRequestOptions } from './types.js';
 import { isCloudflareAddress, normalizePeerIp } from './cloudflare-ips.js';
@@ -117,7 +117,12 @@ export function bearerOrIpKey(req: Request): string {
   return clientIpKey(req);
 }
 
-const ALLOWED_MCP_QUERY_PARAMS = new Set(['read_only', 'services_scope', 'allow_secrets']);
+const ALLOWED_MCP_QUERY_PARAMS = new Set([
+  'read_only',
+  'services_scope',
+  'allow_secrets',
+  'write_allowlist',
+]);
 
 export function parseMcpQueryParams(
   query: Record<string, unknown>,
@@ -167,7 +172,19 @@ export function parseMcpQueryParams(
 
   const allowSecrets = rawAllowSecrets === 'true';
 
-  return { options: { readOnly, categories: parsed.categories, allowSecrets } };
+  const rawWriteAllowlist = query['write_allowlist'];
+
+  if (Array.isArray(rawWriteAllowlist)) {
+    return { error: 'Duplicate query parameter: write_allowlist' };
+  }
+
+  if (rawWriteAllowlist !== undefined && typeof rawWriteAllowlist !== 'string') {
+    return { error: 'Invalid value for write_allowlist: must be a comma-separated string' };
+  }
+
+  const writeAllowlist = readOnly ? parseWriteAllowlist(rawWriteAllowlist) : undefined;
+
+  return { options: { readOnly, categories: parsed.categories, allowSecrets, writeAllowlist } };
 }
 
 export function startHttpServer(

@@ -169,6 +169,60 @@ describe('parseMcpQueryParams', () => {
     });
   });
 
+  describe('write_allowlist', () => {
+    it('is undefined by default', () => {
+      const result = parseMcpQueryParams({}, false);
+      expect(result).toMatchObject({ options: { writeAllowlist: undefined } });
+    });
+
+    it('is ignored when read_only is not enabled', () => {
+      const result = parseMcpQueryParams({ write_allowlist: 'aiven_kafka_topic_create' }, false);
+      expect(result).toMatchObject({ options: { readOnly: false, writeAllowlist: undefined } });
+    });
+
+    it('parses a single tool name when read_only=true', () => {
+      const result = parseMcpQueryParams(
+        { read_only: 'true', write_allowlist: 'aiven_kafka_topic_create' },
+        false
+      );
+      expect(result).toEqual({
+        options: {
+          readOnly: true,
+          categories: undefined,
+          allowSecrets: false,
+          writeAllowlist: new Set(['aiven_kafka_topic_create']),
+        },
+      });
+    });
+
+    it('parses comma-separated tool names with whitespace', () => {
+      const result = parseMcpQueryParams(
+        { read_only: 'true', write_allowlist: 'aiven_kafka_topic_create, aiven_kafka_topic_update' },
+        false
+      );
+      expect(result).toMatchObject({
+        options: {
+          writeAllowlist: new Set(['aiven_kafka_topic_create', 'aiven_kafka_topic_update']),
+        },
+      });
+    });
+
+    it('applies when server-level readOnly is enforced via env, even without ?read_only in the query', () => {
+      const result = parseMcpQueryParams({ write_allowlist: 'aiven_kafka_topic_create' }, true);
+      expect(result).toMatchObject({
+        options: { readOnly: true, writeAllowlist: new Set(['aiven_kafka_topic_create']) },
+      });
+    });
+
+    it('rejects array values (duplicate param injection)', () => {
+      const result = parseMcpQueryParams(
+        { read_only: 'true', write_allowlist: ['a', 'b'] },
+        false
+      );
+      expect(result).toEqual({ error: 'Duplicate query parameter: write_allowlist' });
+    });
+  });
+
   describe('tenant isolation', () => {
     it('produces independent results for different inputs (no shared state)', () => {
       const orgA = parseMcpQueryParams({ read_only: 'true' }, false);
