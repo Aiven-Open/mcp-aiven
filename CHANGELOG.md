@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.2](https://github.com/Aiven-Open/mcp-aiven/compare/v1.14.1...v1.14.2) (2026-07-09)
+
+
+### Bug Fixes
+
+* revert npm version ([#143](https://github.com/Aiven-Open/mcp-aiven/issues/143)) ([11b33ca](https://github.com/Aiven-Open/mcp-aiven/commit/11b33ca9fe614f3d72b36b3460057f57b7d01337))
+
 ## [1.14.1](https://github.com/Aiven-Open/mcp-aiven/compare/v1.14.0...v1.14.1) (2026-07-09)
 
 
