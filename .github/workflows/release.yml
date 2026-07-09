@@ -57,7 +57,10 @@ jobs:
           node-version: 22
           check-latest: true
           registry-url: https://registry.npmjs.org
-      - run: npm install -g npm@latest
+      # Pin npm to the 11.x line: OIDC trusted publishing needs >= 11.5.1, but
+      # npm@latest (12.0.0) ships a broken global self-install (missing 'sigstore'
+      # -> MODULE_NOT_FOUND in libnpmpublish provenance).
+      - run: npm install -g npm@11
       - run: pnpm install --frozen-lockfile
       # Auth via npm trusted publishers (OIDC) — no NPM_TOKEN needed.
       # Requires id-token: write permission on this job.
