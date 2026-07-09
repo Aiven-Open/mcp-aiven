@@ -80,6 +80,17 @@ export function parseScopes(
   return { categories: set };
 }
 
+export function parseWriteAllowlist(raw: string | undefined): ReadonlySet<string> | undefined {
+  if (raw === undefined) return undefined;
+
+  const parts = raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
+  return parts.length > 0 ? new Set(parts) : undefined;
+}
+
 export function isMaintenanceMode(): boolean {
   return process.env['MAINTENANCE_MODE'] === 'true';
 }
@@ -96,11 +107,12 @@ export function loadConfig(transport: 'stdio' | 'http' = 'stdio'): AivenConfig {
 
   const readOnly = process.env['AIVEN_READ_ONLY'] === 'true';
   const allowSecrets = process.env['AIVEN_ALLOW_SECRETS'] === 'true';
+  const writeAllowlist = parseWriteAllowlist(process.env['AIVEN_WRITE_ALLOWLIST']);
 
   const parsed = parseScopes(process.env['AIVEN_SERVICES_SCOPE']);
   if ('error' in parsed) {
     throw new Error(`AIVEN_SERVICES_SCOPE: ${parsed.error}`);
   }
 
-  return { token, readOnly, transport, categories: parsed.categories, allowSecrets };
+  return { token, readOnly, transport, categories: parsed.categories, allowSecrets, writeAllowlist };
 }

@@ -105,7 +105,8 @@ async function main(): Promise<void> {
   function createMcpServer(options: McpRequestOptions): McpServer {
     let tools: readonly ToolDefinition[] = allTools;
     if (options.readOnly) {
-      tools = tools.filter((t) => t.definition.annotations.readOnlyHint);
+      const allowlist = options.writeAllowlist;
+      tools = tools.filter((t) => t.definition.annotations.readOnlyHint || allowlist?.has(t.name));
     }
     if (options.categories) {
       const allowed = options.categories;
@@ -145,6 +146,7 @@ async function main(): Promise<void> {
         readOnly: config.readOnly,
         categories: config.categories,
         allowSecrets: config.allowSecrets,
+        writeAllowlist: config.writeAllowlist,
       })
     );
     await server.connect(createStdioTransport());

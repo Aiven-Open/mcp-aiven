@@ -4,6 +4,7 @@ import {
   loadHttpMcpRateLimit,
   isMaintenanceMode,
   parseScopes,
+  parseWriteAllowlist,
 } from '../../src/config.js';
 import { ServiceCategory } from '../../src/types.js';
 
@@ -128,6 +129,54 @@ describe('loadConfig', () => {
     process.env['AIVEN_SERVICES_SCOPE'] = 'postgres';
 
     expect(() => loadConfig()).toThrow(/AIVEN_SERVICES_SCOPE.*Unknown scope/);
+  });
+
+  it('leaves writeAllowlist undefined when AIVEN_WRITE_ALLOWLIST is unset', () => {
+    process.env['AIVEN_TOKEN'] = 'test-token';
+    delete process.env['AIVEN_WRITE_ALLOWLIST'];
+
+    const config = loadConfig();
+
+    expect(config.writeAllowlist).toBeUndefined();
+  });
+
+  it('parses AIVEN_WRITE_ALLOWLIST into a set of tool names', () => {
+    process.env['AIVEN_TOKEN'] = 'test-token';
+    process.env['AIVEN_WRITE_ALLOWLIST'] = 'aiven_kafka_topic_create, aiven_kafka_topic_update';
+
+    const config = loadConfig();
+
+    expect(config.writeAllowlist).toEqual(
+      new Set(['aiven_kafka_topic_create', 'aiven_kafka_topic_update'])
+    );
+  });
+});
+
+describe('parseWriteAllowlist', () => {
+  it('returns undefined when input is undefined', () => {
+    expect(parseWriteAllowlist(undefined)).toBeUndefined();
+  });
+
+  it('returns undefined for an empty string', () => {
+    expect(parseWriteAllowlist('')).toBeUndefined();
+  });
+
+  it('parses a single tool name', () => {
+    expect(parseWriteAllowlist('aiven_kafka_topic_create')).toEqual(
+      new Set(['aiven_kafka_topic_create'])
+    );
+  });
+
+  it('parses comma-separated tool names and trims whitespace', () => {
+    expect(parseWriteAllowlist(' aiven_kafka_topic_create , aiven_kafka_topic_update ')).toEqual(
+      new Set(['aiven_kafka_topic_create', 'aiven_kafka_topic_update'])
+    );
+  });
+
+  it('drops empty entries from trailing/duplicate commas', () => {
+    expect(parseWriteAllowlist('aiven_kafka_topic_create,,')).toEqual(
+      new Set(['aiven_kafka_topic_create'])
+    );
   });
 });
 

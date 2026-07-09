@@ -18,12 +18,14 @@ export interface AivenConfig {
   readonly transport: 'stdio' | 'http';
   readonly categories: ReadonlySet<ServiceCategory> | undefined;
   readonly allowSecrets: boolean;
+  readonly writeAllowlist: ReadonlySet<string> | undefined;
 }
 
 export interface McpRequestOptions {
   readonly readOnly: boolean;
   readonly categories: ReadonlySet<ServiceCategory> | undefined;
   readonly allowSecrets: boolean;
+  readonly writeAllowlist: ReadonlySet<string> | undefined;
 }
 
 export type McpServerFactory = (options: McpRequestOptions) => import('@modelcontextprotocol/sdk/server/mcp.js').McpServer;

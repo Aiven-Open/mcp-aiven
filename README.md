@@ -92,6 +92,17 @@ You can also combine with `read_only`:
 https://mcp.aiven.live/mcp?services_scope=pg&read_only=true
 ```
 
+#### Write Exceptions in Read-Only Mode (Remote)
+
+When `read_only=true`, add `?write_allowlist=` to re-enable specific write tools while keeping
+everything else read-only. Useful when you want mostly-read access but still need to allow one
+write action, for example creating Kafka topics. Combine multiple tool names with commas. Ignored
+when `read_only` is not enabled.
+
+```
+https://mcp.aiven.live/mcp?read_only=true&write_allowlist=aiven_kafka_topic_create
+```
+
 #### Marketplace Customers (Remote)
 
 If you subscribed to Aiven through a cloud marketplace, add your marketplace as a path segment so sign-in uses the correct console:
@@ -170,6 +181,7 @@ MCP_HOST=http://localhost:3000 node dist/index.js
 | `AIVEN_READ_ONLY` | No | `false` | Set to `true` to expose only read-only tools |
 | `AIVEN_SERVICES_SCOPE` | No | -- | Comma-separated scopes to expose (e.g. `kafka`, `pg,kafka`, or `all`). Valid: `all`, `core`, `pg`, `kafka`, `application`, `integrations`. `core` is always included. Omitting the var or setting `all` loads every tool. |
 | `AIVEN_ALLOW_SECRETS` | No | `false` | Set to `true` to expose the `aiven_service_connection_info` tool, which returns live credentials (passwords, connection URIs, certs) into the conversation. Disabled while `AIVEN_READ_ONLY=true`. |
+| `AIVEN_WRITE_ALLOWLIST` | No | -- | Comma-separated tool names to re-enable while `AIVEN_READ_ONLY=true` (e.g. `aiven_kafka_topic_create`). Ignored when read-only mode is not enabled. |
 | `MCP_HOST` | No | `https://mcp.aiven.live` | Override the OAuth protected resource host |
 | `MCP_TRANSPORT` | No | `stdio` | Set to `http` to start an HTTP server instead of stdio |
 | `MCP_HTTP_RATE_LIMIT_MAX` | No | `1000` | Max requests per window on `POST /mcp` (HTTP transport). Applies independently to a per-bearer-token bucket and a per-source-IP bucket; whichever fills first returns 429. |
