@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.1](https://github.com/Aiven-Open/mcp-aiven/compare/v1.14.0...v1.14.1) (2026-07-09)
+
+
+### Bug Fixes
+
+* bound aiven_service_list fan-out and drop broken pagination ([#130](https://github.com/Aiven-Open/mcp-aiven/issues/130)) ([fd52727](https://github.com/Aiven-Open/mcp-aiven/commit/fd5272738655490752993e155ef6e75553e28c19))
+
 ## [1.14.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.13.0...v1.14.0) (2026-07-09)
 
 
