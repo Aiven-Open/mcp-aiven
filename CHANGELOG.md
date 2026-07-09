@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.14.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.13.0...v1.14.0) (2026-07-09)
+
+
+### Features
+
+* add write_allowlist to re-enable specific write tools in read-only mode ([#141](https://github.com/Aiven-Open/mcp-aiven/issues/141)) ([2120184](https://github.com/Aiven-Open/mcp-aiven/commit/21201847a91be8bfa307572c92ffa939a3cbb7cf))
+* integrate security scan tool for inputs and outputs ([#131](https://github.com/Aiven-Open/mcp-aiven/issues/131)) ([093195f](https://github.com/Aiven-Open/mcp-aiven/commit/093195f70a55984217008b07cae1413664d28812))
+
+
+### Bug Fixes
+
+* improve logging for output trim warnings ([#139](https://github.com/Aiven-Open/mcp-aiven/issues/139)) ([771f4be](https://github.com/Aiven-Open/mcp-aiven/commit/771f4be4c046785a010a0b0c5363d0e28d142946))
+* redact PII and secrets from reasoning field before egress ([#127](https://github.com/Aiven-Open/mcp-aiven/issues/127)) ([9a66603](https://github.com/Aiven-Open/mcp-aiven/commit/9a666032ab28c87f703cdf09ab75283f4431c2b2))
+
 ## [1.13.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.12.0...v1.13.0) (2026-06-25)
 
 
