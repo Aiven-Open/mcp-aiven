@@ -118,7 +118,7 @@ async function main(): Promise<void> {
     }
 
     const instructions: string[] = [];
-    if (options.readOnly) instructions.push(readOnlyInstructions(transport));
+    if (options.readOnly) instructions.push(readOnlyInstructions(transport, options.writeAllowlist));
     instructions.push(connectionInfoInstructions(options.allowSecrets, options.readOnly, transport));
 
     const serverOptions =
