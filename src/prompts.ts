@@ -1,8 +1,23 @@
-export function readOnlyInstructions(transport: 'stdio' | 'http'): string {
+export function readOnlyInstructions(
+  transport: 'stdio' | 'http',
+  writeAllowlist?: ReadonlySet<string>
+): string {
   const howToDisable =
     transport === 'http'
       ? 'they need to reconnect without the `read_only=true` query parameter to enable write operations.'
       : 'they need to set AIVEN_READ_ONLY=false to enable write operations.';
+
+  if (writeAllowlist && writeAllowlist.size > 0) {
+    const allowed = [...writeAllowlist].sort().join(', ');
+    return (
+      'This server is running in READ-ONLY mode with a write allowlist. ' +
+      'Only read/query tools are available, EXCEPT these explicitly re-enabled write tools, ' +
+      `which you CAN use: ${allowed}. ` +
+      'Any other create, update, or delete operation is unavailable. ' +
+      'If the user asks for a change outside the allowlist, inform them that ' +
+      howToDisable
+    );
+  }
 
   return (
     'This server is running in READ-ONLY mode. Only read/query tools are available. ' +
