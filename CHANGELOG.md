@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.14.3](https://github.com/Aiven-Open/mcp-aiven/compare/v1.14.2...v1.14.3) (2026-07-14)
+
+
+### Bug Fixes
+
+* aiven mcp submission to codex ([#147](https://github.com/Aiven-Open/mcp-aiven/issues/147)) ([b45dd2b](https://github.com/Aiven-Open/mcp-aiven/commit/b45dd2b08fd3100e9958f040e092b55861216fa8))
+* reflect write_allowlist in read-only mode instructions ([#145](https://github.com/Aiven-Open/mcp-aiven/issues/145)) ([2e4596c](https://github.com/Aiven-Open/mcp-aiven/commit/2e4596c1d7ace1c1ec6d3bb2dcee2c726b30310a))
+
 ## [1.14.2](https://github.com/Aiven-Open/mcp-aiven/compare/v1.14.1...v1.14.2) (2026-07-09)
 
 
