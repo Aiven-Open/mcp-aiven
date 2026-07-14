@@ -78,7 +78,7 @@ describe('Tool annotations', () => {
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
-      openWorldHint: true,
+      openWorldHint: false,
     });
   });
 
@@ -87,7 +87,7 @@ describe('Tool annotations', () => {
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: false,
-      openWorldHint: true,
+      openWorldHint: false,
     });
   });
 
@@ -96,7 +96,7 @@ describe('Tool annotations', () => {
       readOnlyHint: false,
       destructiveHint: true,
       idempotentHint: true,
-      openWorldHint: true,
+      openWorldHint: false,
     });
   });
 });

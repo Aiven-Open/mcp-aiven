@@ -34,6 +34,7 @@ interface ManifestEntry {
   append_list_picker_hint?: boolean;
   readOnly?: boolean;
   destructive?: boolean;
+  openWorld?: boolean;
   defaults?: Record<string, unknown>;
   response_filter?: ResponseFilterConfig;
 }
@@ -72,9 +73,10 @@ function toCategory(cat: string): ServiceCategory {
 function deriveAnnotations(
   method: string,
   readOnly?: boolean,
-  destructive?: boolean
+  destructive?: boolean,
+  openWorld?: boolean
 ): ToolAnnotations {
-  if (readOnly) return READ_ONLY_ANNOTATIONS;
+  if (readOnly) return { ...READ_ONLY_ANNOTATIONS, openWorldHint: openWorld ?? false };
   const base = ((): ToolAnnotations => {
     switch (method.toUpperCase()) {
       case 'GET':
@@ -88,10 +90,11 @@ function deriveAnnotations(
         return CREATE_ANNOTATIONS;
     }
   })();
-  if (destructive && !base.destructiveHint) {
-    return { ...base, destructiveHint: true };
-  }
-  return base;
+  return {
+    ...base,
+    ...(destructive && !base.destructiveHint ? { destructiveHint: true } : {}),
+    openWorldHint: openWorld ?? false,
+  };
 }
 
 function loadManifests(): ManifestEntry[] {
@@ -177,7 +180,7 @@ export function loadApiTools(client: AivenClient): ToolDefinition[] {
         method: entry.method as HttpMethod,
         path: entry.path,
         inputSchema,
-        annotations: deriveAnnotations(entry.method, entry.readOnly, entry.destructive),
+        annotations: deriveAnnotations(entry.method, entry.readOnly, entry.destructive, entry.openWorld),
         defaults: entry.defaults,
         responseFilter: entry.response_filter,
       },
