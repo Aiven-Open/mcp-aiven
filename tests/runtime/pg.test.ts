@@ -1141,7 +1141,7 @@ describe('aiven_pg_write', () => {
     expect(tool.definition.annotations.readOnlyHint).toBe(false);
     expect(tool.definition.annotations.destructiveHint).toBe(true);
     expect(tool.definition.annotations.idempotentHint).toBe(false);
-    expect(tool.definition.annotations.openWorldHint).toBe(true);
+    expect(tool.definition.annotations.openWorldHint).toBe(false);
   });
 
   it('should reject DROP TABLE', async () => {

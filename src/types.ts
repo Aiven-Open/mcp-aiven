@@ -51,35 +51,35 @@ export const READ_ONLY_ANNOTATIONS: ToolAnnotations = {
   readOnlyHint: true,
   destructiveHint: false,
   idempotentHint: true,
-  openWorldHint: true,
+  openWorldHint: false,
 };
 
 export const CREATE_ANNOTATIONS: ToolAnnotations = {
   readOnlyHint: false,
   destructiveHint: false,
   idempotentHint: false,
-  openWorldHint: true,
+  openWorldHint: false,
 };
 
 export const UPDATE_ANNOTATIONS: ToolAnnotations = {
   readOnlyHint: false,
   destructiveHint: false,
   idempotentHint: true,
-  openWorldHint: true,
+  openWorldHint: false,
 };
 
 export const DELETE_ANNOTATIONS: ToolAnnotations = {
   readOnlyHint: false,
   destructiveHint: true,
   idempotentHint: true,
-  openWorldHint: true,
+  openWorldHint: false,
 };
 
 export const WRITE_DML_ANNOTATIONS: ToolAnnotations = {
   readOnlyHint: false,
   destructiveHint: true,
   idempotentHint: false,
-  openWorldHint: true,
+  openWorldHint: false,
 };
 
 export type ToolResult = CallToolResult;
@@ -227,4 +227,3 @@ export enum KafkaToolName {
 export enum DocsToolName {
   Search = 'aiven_docs_search',
 }
-

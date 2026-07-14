@@ -192,6 +192,13 @@ export function startHttpServer(
   config: HttpServerConfig
 ): void {
   const app = express();
+  const openAiAppsChallengeToken = process.env['OPENAI_APPS_CHALLENGE_TOKEN'];
+
+  if (openAiAppsChallengeToken) {
+    app.get('/.well-known/openai-apps-challenge', (_req: Request, res: Response) => {
+      res.type('text/plain').set('Cache-Control', 'no-store').send(openAiAppsChallengeToken);
+    });
+  }
 
   app.use((req: Request, res: Response, next: NextFunction) => {
     if (!isMaintenanceMode()) {
