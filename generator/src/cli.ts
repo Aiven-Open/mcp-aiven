@@ -28,6 +28,7 @@ interface ManifestEntry {
   manual_schema?: Record<string, unknown>;
   /** Defaults to true when manual_schema is set */
   manual_strict?: boolean;
+  schema_overrides?: { properties?: Record<string, unknown> };
 }
 
 const OUTPUT_FILE = path.join(process.cwd(), 'generator', 'schemas', 'api-schemas.json');
@@ -102,6 +103,10 @@ async function main(): Promise<void> {
       ? op.parameters.filter((p) => !entry.exclude_params?.includes(p.name))
       : op.parameters;
     const { schema, strict } = buildInputJsonSchema(params, op.requestBody);
+
+    if (entry.schema_overrides?.properties) {
+      schema.properties = { ...schema.properties, ...entry.schema_overrides.properties };
+    }
 
     // Description: prefer manifest override, fall back to OpenAPI summary + description
     let description: string;

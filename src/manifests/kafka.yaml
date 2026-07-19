@@ -87,7 +87,19 @@ tools:
     path: /project/{project}/service/{service_name}/kafka/rest/topics/{topic_name}/messages
     category: kafka
     readOnly: true
-
+    schema_overrides:
+      properties:
+        partitions:
+          type: object
+          description: 'Map of partition number (string key) to start offset, e.g. {"0": {"offset": 0}}.'
+          additionalProperties:
+            type: object
+            properties:
+              offset:
+                type: integer
+                minimum: 0
+                description: Offset to start consuming from.
+            required: [offset]
     description: |
       Consume messages from a Kafka topic.
 
@@ -115,7 +127,29 @@ tools:
     path: /project/{project}/service/{service_name}/kafka/rest/topics/{topic_name}/produce
     category: kafka
     destructive: true
-
+    schema_overrides:
+      properties:
+        records:
+          type: array
+          description: 'Records to produce (max 32 per call).'
+          items:
+            type: object
+            properties:
+              key:
+                oneOf:
+                  - type: string
+                  - type: object
+                description: 'Optional key. base64 string for binary/avro/protobuf format; JSON object for json format.'
+              value:
+                oneOf:
+                  - type: string
+                  - type: object
+                description: 'Value. base64 string for binary/avro/protobuf format; JSON object for json format.'
+              partition:
+                type: integer
+                minimum: 0
+                maximum: 10000
+                description: Optional partition to produce to.
     description: |
       Produce messages into a Kafka topic.
 

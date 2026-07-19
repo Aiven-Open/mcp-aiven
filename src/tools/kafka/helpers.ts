@@ -2,14 +2,6 @@ import type { AivenClient } from '../../client.js';
 import type { RequestOptions, ServiceConnectionInfo } from '../../types.js';
 import { getServiceConnectionInfo } from '../../shared/service-info.js';
 
-const ROUTING_KEYS = new Set([
-  'project',
-  'service_name',
-  'connector_name',
-  'source_service',
-  'connector_class',
-]);
-
 const CONNECTOR_DB_FIELD_MAP: Record<string, Record<string, string>> = {
   postgres: {
     'database.hostname': 'host',
@@ -59,14 +51,9 @@ export async function buildConnectorConfig(
   const connectorClass = String(params['connector_class']);
   const sourceService = params['source_service'] as string | undefined;
 
-  const config: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(params)) {
-    if (!ROUTING_KEYS.has(key)) {
-      config[key] = value;
-    }
-  }
-  // Map connector_class back to connector.class for the Kafka Connect API
+  const config: Record<string, unknown> = { ...(params['config'] as Record<string, unknown> | undefined) };
   config['connector.class'] = connectorClass;
+  config['name'] = String(params['name']);
 
   if (sourceService) {
     const connInfo = await getServiceConnectionInfo(client, project, sourceService, opts);

@@ -205,12 +205,11 @@ export const deployApplicationInput = z
       .array(serviceIntegrationItem)
       .optional()
       .describe(
-        'Aiven services to connect to this application. The platform automatically injects credentials ' +
-          'as environment variables — no manual connection strings needed, and your app code does not need to change. ' +
-          'Set env var names to match what your application already reads.\n\n' +
-          'Supported service types: "pg", "valkey", "opensearch", "kafka".\n' +
-          'Each service must already exist in the same project and be in RUNNING state (verify with aiven_service_get).\n\n' +
-          'Example — connect to Postgres and Kafka:\n' +
+        'An ARRAY of integrations; each element is ONE object selected by its `service_type` ' +
+          '("pg", "valkey", "opensearch", or "kafka") — never a single bare object. ' +
+          'Credentials are auto-injected as env vars; set env var names to match what your app reads. ' +
+          'Each service must already exist in the project and be RUNNING.\n\n' +
+          'Example:\n' +
           '  service_integrations: [\n' +
           '    { service_type: "pg", service_name: "my-pg", env_key: "DATABASE_URL" },\n' +
           '    { service_type: "kafka", service_name: "my-kafka", bootstrap_servers_env: "KAFKA_BROKERS" }\n' +

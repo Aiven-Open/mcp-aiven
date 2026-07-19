@@ -31,12 +31,14 @@ aiven_kafka_connect_create_connector(
   source_service="my-pg",
   name="pg-cdc",
   connector_class="io.debezium.connector.postgresql.PostgresConnector",
-  topic.prefix="cdc",
-  table.include.list="public.orders,public.users",
-  plugin.name="pgoutput",
-  slot.name="debezium_slot",
-  database.sslmode="require",
-  publication.autocreate.mode="filtered"
+  config={
+    "topic.prefix": "cdc",
+    "table.include.list": "public.orders,public.users",
+    "plugin.name": "pgoutput",
+    "slot.name": "debezium_slot",
+    "database.sslmode": "require",
+    "publication.autocreate.mode": "filtered"
+  }
 )
 \`\`\``;
 
