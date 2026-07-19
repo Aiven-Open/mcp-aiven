@@ -88,7 +88,9 @@ function buildArray(schema: JsonSchema, strict: boolean): z.ZodType {
 
 function buildObject(schema: JsonSchema, strict: boolean, isRoot: boolean): z.ZodType {
   if (!schema.properties || Object.keys(schema.properties).length === 0) {
-    return z.record(z.unknown());
+    const ap = schema.additionalProperties;
+    const values = ap && typeof ap === 'object' ? convert(ap, true, false) : z.unknown();
+    return withDescription(z.record(values), schema.description);
   }
 
   const requiredSet = new Set(schema.required ?? []);

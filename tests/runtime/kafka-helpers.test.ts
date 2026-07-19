@@ -18,22 +18,23 @@ function createMockClient(): AivenClient {
 }
 
 describe('buildConnectorConfig', () => {
-  it('passes through extra config and maps connector_class', async () => {
+  it('forwards config map entries and maps connector_class', async () => {
     const config = await buildConnectorConfig(createMockClient(), {
       project: 'p',
       service_name: 'kafka',
       connector_class: 'io.aiven.kafka.connect.s3.AivenKafkaConnectS3SinkConnector',
       name: 'sink',
-      'topic.prefix': 'cdc',
-      'flush.size': '1000',
+      config: { 'topic.prefix': 'cdc', 'flush.size': '1000' },
     });
 
     expect(config['connector.class']).toBe('io.aiven.kafka.connect.s3.AivenKafkaConnectS3SinkConnector');
+    expect(config['name']).toBe('sink');
     expect(config['topic.prefix']).toBe('cdc');
     expect(config['flush.size']).toBe('1000');
     // Routing keys are not forwarded to the connector config
     expect(config['project']).toBeUndefined();
     expect(config['connector_class']).toBeUndefined();
+    expect(config['reasoning']).toBeUndefined();
   });
 
   it('injects connection fields from source_service for postgres connectors', async () => {
@@ -61,7 +62,7 @@ describe('buildConnectorConfig', () => {
         name: 'cdc',
         source_service: 'my-pg',
         // Attacker-supplied host — must not be combined with injected credentials
-        'database.hostname': 'evil.attacker.com',
+        config: { 'database.hostname': 'evil.attacker.com' },
       })
     ).rejects.toThrow(/database\.hostname/);
   });
@@ -74,7 +75,7 @@ describe('buildConnectorConfig', () => {
         connector_class: 'io.aiven.connect.jdbc.JdbcSourceConnector',
         name: 'jdbc',
         source_service: 'my-pg',
-        'connection.url': 'jdbc:postgresql://evil.attacker.com:5432/db',
+        config: { 'connection.url': 'jdbc:postgresql://evil.attacker.com:5432/db' },
       })
     ).rejects.toThrow(/connection\.url/);
   });
@@ -85,8 +86,7 @@ describe('buildConnectorConfig', () => {
       service_name: 'kafka',
       connector_class: 'io.debezium.connector.postgresql.PostgresConnector',
       name: 'cdc',
-      'database.hostname': 'my-own-host.example.com',
-      'database.password': 'my-own-password',
+      config: { 'database.hostname': 'my-own-host.example.com', 'database.password': 'my-own-password' },
     });
 
     expect(config['database.hostname']).toBe('my-own-host.example.com');
