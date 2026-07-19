@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.4](https://github.com/Aiven-Open/mcp-aiven/compare/v1.14.3...v1.14.4) (2026-07-19)
+
+
+### Bug Fixes
+
+* align with openaid review requests ([#148](https://github.com/Aiven-Open/mcp-aiven/issues/148)) ([8fabdb5](https://github.com/Aiven-Open/mcp-aiven/commit/8fabdb5dd7909d68f7913df14723973ca00dfd93))
+
 ## [1.14.3](https://github.com/Aiven-Open/mcp-aiven/compare/v1.14.2...v1.14.3) (2026-07-14)
 
 
