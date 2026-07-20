@@ -69,12 +69,11 @@ function registerTools(server: McpServer, tools: readonly ToolDefinition[]): voi
         };
 
         // Scan tool input for prompt injection / jailbreak before acting on it.
-        // Skip `reasoning` (model-generated metadata) and send plain text values,
-        // not JSON — structured JSON triggers false positives in the PI filter.
-        const inputText = Object.entries(paramsObj)
-          .filter(([key]) => key !== 'reasoning')
-          .map(([, value]) => String(value))
-          .join('\n');
+        // Skip `reasoning` (model-generated metadata) and send the raw JSON params.
+        const scanParams = Object.fromEntries(
+          Object.entries(paramsObj).filter(([key]) => key !== 'reasoning')
+        );
+        const inputText = JSON.stringify(scanParams);
         const inputBlocked = await scan(inputText);
         if (inputBlocked) return toolError(inputBlocked);
 
