@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.14.5](https://github.com/Aiven-Open/mcp-aiven/compare/v1.14.4...v1.14.5) (2026-07-20)
+
+
+### Bug Fixes
+
+* enhance model armor input scanning ([#150](https://github.com/Aiven-Open/mcp-aiven/issues/150)) ([527c5f3](https://github.com/Aiven-Open/mcp-aiven/commit/527c5f3d148e8ce47be43b10cf9ec40c97553364))
+* model armor security scanning tests ([#151](https://github.com/Aiven-Open/mcp-aiven/issues/151)) ([a04a1fe](https://github.com/Aiven-Open/mcp-aiven/commit/a04a1fe635dbe147f03de1f1cb5681b194b9e77d))
+
 ## [1.14.4](https://github.com/Aiven-Open/mcp-aiven/compare/v1.14.3...v1.14.4) (2026-07-19)
 
 
