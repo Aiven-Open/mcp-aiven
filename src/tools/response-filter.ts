@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { ResponseFilterConfig } from '../types.js';
 
-const SEARCH_PARAMS = new Set(['search', 'limit', 'offset']);
+export const SEARCH_PARAMS = ['search', 'limit', 'offset'] as const;
 export const DEFAULT_LIST_LIMIT = 15;
 const AUTO_RETURN_ALL_THRESHOLD = 30;
 
@@ -39,11 +39,6 @@ export function extendSchemaWithSearch(
   return baseSchema.extend(extra).passthrough();
 }
 
-export function stripSearchParams(args: Record<string, unknown>): Record<string, unknown> {
-  return Object.fromEntries(
-    Object.entries(args).filter(([key]) => !SEARCH_PARAMS.has(key))
-  );
-}
 
 function pickFields(
   item: Record<string, unknown>,
