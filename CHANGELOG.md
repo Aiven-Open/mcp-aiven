@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.6](https://github.com/Aiven-Open/mcp-aiven/compare/v1.14.5...v1.14.6) (2026-07-22)
+
+
+### Bug Fixes
+
+* remove assistant-directed instructions from tool descriptions ([#153](https://github.com/Aiven-Open/mcp-aiven/issues/153)) ([e6d4a8d](https://github.com/Aiven-Open/mcp-aiven/commit/e6d4a8df7a0486ac248f89580e2fdde312a18312))
+
 ## [1.14.5](https://github.com/Aiven-Open/mcp-aiven/compare/v1.14.4...v1.14.5) (2026-07-20)
 
 
