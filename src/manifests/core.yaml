@@ -9,7 +9,7 @@ tools:
       key: projects
       fields: [project_name, default_cloud, organization_id, tags]
     description: |
-      List all Aiven projects. ALWAYS call this first to get valid `project` names — never guess project names.
+      List all Aiven projects. Returns the valid `project` names used by other tools.
       This tool returns a list of projects with the following fields:
       - project_name: The name of the project
       - default_cloud: The default cloud for the project
@@ -165,8 +165,6 @@ tools:
 
       Max **500 per call**; default `limit` 100. Built-in service logs are retained for **4 days**.
 
-      **Local file (required when the user asks for logs):** Do **not** leave large log payloads only in the chat. Write fetched log lines to a **local file** in the workspace (create parent directories if needed). **Default:** one file per investigation, e.g. `logs/{project}-{service_name}-{YYYYMMDD-HHMMSS}.log` — create it on the first batch and **append** every later page to that same path when paginating. Format each line with timestamp and message when available (e.g. `{time} {unit} {msg}`). Use separate files (e.g. `…-page2.log`, `…-page3.log`) **only** if the user explicitly asks for split output. In your reply, give the **file path** (unchanged across pages when appending), a short summary (time range, errors, line count), and offer the next page — do **not** paste hundreds of log lines into the message.
-
       **Severity filter:** Use `severity` when the user asks for a specific log level. Allowed values: `emerg`, `alert`, `crit`, `err`, `warning`, `notice`, `info`, `debug`. Omit to return all severities. Keep the same `severity` when paginating.
 
       **Sort order:** Use `sort_order: "desc"` (API default) for newest-first troubleshooting. Use `"asc"` only when the user explicitly wants oldest-first.
@@ -202,13 +200,9 @@ tools:
 
       Use `period` to control the time window: `hour`, `day`, `week`, `month`, or `year`. **Default to `day`** for general overview requests; use `hour` only when the user is investigating something that just happened, and longer windows only when explicitly asked.
 
-      **Before calling with a granular period**, warn the user if you expect a large payload and ask them to confirm. Rough point counts per host per metric: `hour` ≈ 120, `day` ≈ 1440, `week` ≈ 2016, `month` ≈ 720, `year` ≈ 1460. Multi-host services (e.g. HA Postgres) and Kafka topic-level queries multiply this. If the user asks for `day` or finer on a multi-host service, or `week`/finer on anything, say something like "this will return a lot of data points — I'll summarize it, but want to confirm before fetching?" and wait for confirmation.
+      **Response modes:** With `metrics` omitted, returns an overview: the list of available metric names plus min/avg/max/latest per series. With `metrics` set to one or more names from that list (e.g. `["cpu_usage"]`), returns the complete per-point time series for those metrics, so individual spikes are visible.
 
       For Kafka services, optionally pass `kafka_topic_name` to get topic-level metrics.
-
-      **Display format:** Render as a compact ASCII dashboard using box-drawing characters (┌─┐│└┘) and progress bars (█░). One section per metric group. For each metric series, show a one-line summary: **min / avg / max / latest** (plus units and host/node when multi-host). Do NOT echo every data point by default. Do NOT use markdown tables or bullet points. Do NOT generate scripts. Render directly as text.
-
-      **Raw data:** After the dashboard, add a short line telling the user they can ask for raw data points for any specific metric. Only dump raw series when the user explicitly asks, and only for the specific metric they named.
 
   # Not in public OpenAPI — schema is maintained here (see generator manual_schema).
   - name: aiven_service_application_metrics_get

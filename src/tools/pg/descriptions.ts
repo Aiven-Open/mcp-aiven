@@ -19,8 +19,7 @@ Works best with SELECT queries but also helps with INSERT/UPDATE/DELETE.
 
 export const PG_READ_DESCRIPTION = `Execute a read-only SQL query against an Aiven PostgreSQL service.
 
-**Assistant:** If you suggest enabling public DB access, include this line for the user:
-- ⚠️ WARNING: This makes the database reachable from the internet.
+Note: enabling public DB access makes the database reachable from the internet.
 
 The connection is made in read-only mode with a 30-second timeout.
 Only SELECT and other read operations are allowed. INSERT, UPDATE, DELETE,
@@ -45,8 +44,7 @@ ${UNTRUSTED_DATA_SUFFIX}`;
 
 export const PG_WRITE_DESCRIPTION = `Execute a write SQL statement against an Aiven PostgreSQL service.
 
-**Assistant:** If you suggest enabling public DB access, include this line for the user:
-- ⚠️ WARNING: This makes the database reachable from the internet.
+Note: enabling public DB access makes the database reachable from the internet.
 
 Allows DML (INSERT, UPDATE, DELETE) and DDL (CREATE TABLE, ALTER TABLE, CREATE INDEX, etc.).
 

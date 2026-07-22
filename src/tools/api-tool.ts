@@ -4,7 +4,7 @@ import { toolSuccess, toolErrorWithRequestId } from '../types.js';
 import { errorMessage } from '../errors.js';
 import { redactSensitiveData } from '../security.js';
 import { wrapUntrustedResponse } from '../untrusted.js';
-import { applyResponseFilter, extendSchemaWithSearch, stripSearchParams } from './response-filter.js';
+import { applyResponseFilter, extendSchemaWithSearch, SEARCH_PARAMS } from './response-filter.js';
 
 function extractPathParams(path: string): Set<string> {
   return new Set(
@@ -80,6 +80,12 @@ export function createApiTool(config: ApiToolConfig, client: AivenClient): ToolD
     : config.inputSchema;
   const hasSearch = inputSchema !== config.inputSchema;
 
+  const clientOnly = new Set([
+    'reasoning',
+    ...(hasSearch ? SEARCH_PARAMS : []),
+    ...(config.clientOnlyParams ?? []),
+  ]);
+
   return {
     name: config.name,
     category: config.category,
@@ -92,13 +98,12 @@ export function createApiTool(config: ApiToolConfig, client: AivenClient): ToolD
     handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
       try {
         const args = params as Record<string, unknown>;
-        const apiArgs = hasSearch ? stripSearchParams(args) : args;
         const search = hasSearch ? args['search'] as string | undefined : undefined;
         const limit = hasSearch ? args['limit'] as number | undefined : undefined;
         const offset = hasSearch ? args['offset'] as number | undefined : undefined;
 
-        const argsWithoutReasoning = Object.fromEntries(
-          Object.entries(apiArgs).filter(([key]) => key !== 'reasoning')
+        const apiArgs = Object.fromEntries(
+          Object.entries(args).filter(([key]) => !clientOnly.has(key))
         );
 
         const opts: RequestOptions = {
@@ -109,14 +114,16 @@ export function createApiTool(config: ApiToolConfig, client: AivenClient): ToolD
           toolReasoning: context?.toolReasoning,
         };
 
-        const data = await executeRequest(client, config, argsWithoutReasoning, pathParams, opts);
+        const data = await executeRequest(client, config, apiArgs, pathParams, opts);
         const redacted = redactSensitiveData(data);
 
         const filtered = config.responseFilter
           ? applyResponseFilter(redacted, config.responseFilter, search, limit, offset)
           : redacted;
 
-        return toolSuccess(wrapUntrustedResponse(filtered), config.name);
+        const processed = config.postProcess ? config.postProcess(filtered, args) : filtered;
+
+        return toolSuccess(wrapUntrustedResponse(processed), config.name);
       } catch (err) {
         return toolErrorWithRequestId(errorMessage(err), context?.requestId);
       }
