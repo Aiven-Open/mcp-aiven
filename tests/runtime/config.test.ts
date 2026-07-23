@@ -3,6 +3,8 @@ import {
   loadConfig,
   loadHttpMcpRateLimit,
   isMaintenanceMode,
+  isExtraProtectionEnabled,
+  loadEdgeAuthSecret,
   parseScopes,
   parseWriteAllowlist,
 } from '../../src/config.js';
@@ -298,5 +300,54 @@ describe('isMaintenanceMode', () => {
 
     process.env['MAINTENANCE_MODE'] = '1';
     expect(isMaintenanceMode()).toBe(false);
+  });
+});
+
+describe('isExtraProtectionEnabled', () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    process.env = { ...originalEnv };
+    delete process.env['EXTRA_PROTECTION'];
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it('should be false when EXTRA_PROTECTION is unset', () => {
+    expect(isExtraProtectionEnabled()).toBe(false);
+  });
+
+  it('should be true only when EXTRA_PROTECTION is exactly "true"', () => {
+    process.env['EXTRA_PROTECTION'] = 'true';
+    expect(isExtraProtectionEnabled()).toBe(true);
+
+    process.env['EXTRA_PROTECTION'] = 'TRUE';
+    expect(isExtraProtectionEnabled()).toBe(false);
+  });
+});
+
+describe('loadEdgeAuthSecret', () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    process.env = { ...originalEnv };
+    delete process.env['MCP_EDGE_AUTH_SECRET'];
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it('should return undefined when MCP_EDGE_AUTH_SECRET is unset or empty', () => {
+    expect(loadEdgeAuthSecret()).toBeUndefined();
+    process.env['MCP_EDGE_AUTH_SECRET'] = '';
+    expect(loadEdgeAuthSecret()).toBeUndefined();
+  });
+
+  it('should return MCP_EDGE_AUTH_SECRET when set', () => {
+    process.env['MCP_EDGE_AUTH_SECRET'] = 'cf-rule-secret';
+    expect(loadEdgeAuthSecret()).toBe('cf-rule-secret');
   });
 });

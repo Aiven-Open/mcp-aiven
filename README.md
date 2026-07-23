@@ -184,10 +184,29 @@ MCP_HOST=http://localhost:3000 node dist/index.js
 | `AIVEN_WRITE_ALLOWLIST` | No | -- | Comma-separated tool names to re-enable while `AIVEN_READ_ONLY=true` (e.g. `aiven_kafka_topic_create`). Ignored when read-only mode is not enabled. |
 | `MCP_HOST` | No | `https://mcp.aiven.live` | Override the OAuth protected resource host |
 | `MCP_TRANSPORT` | No | `stdio` | Set to `http` to start an HTTP server instead of stdio |
-| `MCP_HTTP_RATE_LIMIT_MAX` | No | `1000` | Max requests per window on `POST /mcp` (HTTP transport). Applies independently to a per-bearer-token bucket and a per-source-IP bucket; whichever fills first returns 429. |
+| `MCP_HTTP_RATE_LIMIT_MAX` | No | `1000` | Max requests per window on `POST /mcp` (HTTP transport), per bearer token. Client IP rate limiting is expected at Cloudflare. |
 | `MCP_HTTP_RATE_LIMIT_WINDOW_MS` | No | `60000` | Window length in milliseconds for `MCP_HTTP_RATE_LIMIT_MAX`. |
+| `EXTRA_PROTECTION` | No | `false` | Set to `true` on HTTP deployments to require a valid `X-Edge-Auth` header on every request except `GET /health`. See [Edge protection rollout](#edge-protection-rollout) below. |
+| `MCP_EDGE_AUTH_SECRET` | When `EXTRA_PROTECTION=true` | -- | Shared secret; must match the value Cloudflare injects as `X-Edge-Auth` via Transform Rules. |
 
 In remote (HTTP) mode, `AIVEN_TOKEN` is not needed. Your MCP client sends your token as a Bearer token with each request.
+
+Production HTTP traffic is rate-limited in two layers: Cloudflare enforces a per-client-IP limit (configured in the Cloudflare dashboard), and this server enforces `MCP_HTTP_RATE_LIMIT_*` per bearer token on `POST /mcp`.
+
+### Edge protection rollout
+
+When `EXTRA_PROTECTION=true`, any mismatch between `MCP_EDGE_AUTH_SECRET` and the value Cloudflare injects as `X-Edge-Auth` causes **every request to return 403** (except `GET /health`). Both values are environment/config on opposite sides of the wire, so the only recovery path is to fix the secret and redeploy or update Cloudflare.
+
+**Enable in this order:**
+
+1. **Cloudflare Transform Rule** — Add a rule that sets `X-Edge-Auth` (and, if used for PG tools, `X-Client-IP`) on traffic to the MCP origin. Note the secret value you configure.
+2. **`MCP_EDGE_AUTH_SECRET`** — Deploy the server with this env var set to the **same** secret as the Transform Rule. Leave `EXTRA_PROTECTION` unset or `false` for now; verify the origin still accepts traffic.
+3. **`EXTRA_PROTECTION=true`** — Enable only after steps 1–2 are live and matched. Confirm a normal MCP request succeeds and direct origin access without `X-Edge-Auth` is rejected.
+4. **Secret rotation** — Update Cloudflare and `MCP_EDGE_AUTH_SECRET` together (or briefly set `EXTRA_PROTECTION=false`), redeploy, then re-enable. Never rotate one side alone while the flag is on.
+
+If `EXTRA_PROTECTION=true` at startup and `MCP_EDGE_AUTH_SECRET` is missing, the process exits immediately with an error.
+
+While rejections continue, the server logs a misconfig warning at most once every 15 minutes (reset after a request with valid `X-Edge-Auth`), so a secret mismatch is visible in logs without one line per rejected request.
 
 ## Tools
 

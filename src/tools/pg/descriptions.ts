@@ -19,11 +19,9 @@ Works best with SELECT queries but also helps with INSERT/UPDATE/DELETE.
 
 export const PG_READ_DESCRIPTION = `Execute a read-only SQL query against an Aiven PostgreSQL service.
 
-Note: enabling public DB access makes the database reachable from the internet.
+Queries run via the PG Editor API (\`POST …/pg-editor/run-query\`) on Aiven's side (same path as Console PG Studio). When using remote HTTP MCP, your client IP must be allowed on the service IP filter.
 
-The connection is made in read-only mode with a 30-second timeout.
-Only SELECT and other read operations are allowed. INSERT, UPDATE, DELETE,
-CREATE, DROP, and other write operations will be rejected by PostgreSQL.
+Only SELECT and EXPLAIN are allowed. INSERT, UPDATE, DELETE, CREATE, DROP, and other write operations are rejected before the API is called.
 
 Results are capped at ${MAX_ROWS} rows. Large cell values are truncated.
 Supports pagination via \`limit\` (default ${DEFAULT_LIMIT}) and \`offset\` (default 0).
@@ -37,12 +35,14 @@ SELECT column_name, data_type FROM information_schema.columns WHERE table_name =
 
 **Example:**
 \`\`\`
-aiven_pg_read(project="my-project", service_name="my-pg", query="SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
+aiven_pg_read(project="my-project", service_name="my-pg", database="defaultdb", schema="public", query="SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
 \`\`\`
 
 ${UNTRUSTED_DATA_SUFFIX}`;
 
 export const PG_WRITE_DESCRIPTION = `Execute a write SQL statement against an Aiven PostgreSQL service.
+
+Queries run via the PG Editor API (\`POST …/pg-editor/run-query\`) on Aiven's side (same path as Console PG Studio). When using remote HTTP MCP, your client IP must be allowed on the service IP filter.
 
 Note: enabling public DB access makes the database reachable from the internet.
 
@@ -52,13 +52,13 @@ Allows DML (INSERT, UPDATE, DELETE) and DDL (CREATE TABLE, ALTER TABLE, CREATE I
 
 **IMPORTANT:** Only ONE statement per call. Multiple statements separated by semicolons are rejected. Call this tool once per statement.
 
-A 30-second statement timeout is enforced. Results are capped at ${MAX_ROWS} rows.
+Results are capped at ${MAX_ROWS} rows.
 Supports pagination via \`limit\` (default ${DEFAULT_LIMIT}) and \`offset\` (default 0).
 Response metadata includes \`hasMore\`, \`offset\`, and \`limit\` to assist with paging.
 
 **Examples:**
 \`\`\`
-aiven_pg_write(project="my-project", service_name="my-pg", query="CREATE TABLE orders (id serial PRIMARY KEY, status text, created_at timestamptz DEFAULT now())")
+aiven_pg_write(project="my-project", service_name="my-pg", database="defaultdb", schema="public", query="CREATE TABLE orders (id serial PRIMARY KEY, status text, created_at timestamptz DEFAULT now())")
 aiven_pg_write(project="my-project", service_name="my-pg", query="INSERT INTO users (name) VALUES ('Alice') RETURNING id, name")
 aiven_pg_write(project="my-project", service_name="my-pg", query="ALTER TABLE orders ADD COLUMN total numeric")
 \`\`\`
