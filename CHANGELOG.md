@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.14.6...v1.15.0) (2026-07-23)
+
+
+### Features
+
+* move pg read and write to use pg-editor/run-query ([28ef835](https://github.com/Aiven-Open/mcp-aiven/commit/28ef8351c10ceef1018092efd2769914d37806d6))
+
 ## [1.14.6](https://github.com/Aiven-Open/mcp-aiven/compare/v1.14.5...v1.14.6) (2026-07-22)
 
 
