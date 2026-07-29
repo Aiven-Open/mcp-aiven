@@ -239,9 +239,9 @@ tools:
     description: |
       List VPCs for a project. Returns each VPC's ID, cloud, state, and network CIDR.
 
-      Use this when deploying an application service fails with "please specify project_vpc_id" (i.e. the project has multiple active VPCs). List them, show the user the options, and let them pick which VPC to deploy into.
+      Use this when the user explicitly asks to deploy an application into a VPC. List them, show the user the options, and let them pick which VPC to deploy into.
 
-      VPCs with state `ACTIVE` are ready to use. Pass the chosen `project_vpc_id` to `aiven_application_deploy`.
+      VPCs with state `ACTIVE` are ready to use. Pass the chosen `project_vpc_id` to `aiven_application_deploy`. If the user did not request VPC, do not call this tool for deploy — `aiven_application_deploy` sends `project_vpc_id: null` by default.
 
       This tool returns a list of VPCs with the following fields:
       - project_vpc_id: The ID of the VPC

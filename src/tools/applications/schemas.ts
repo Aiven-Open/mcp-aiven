@@ -237,11 +237,10 @@ export const deployApplicationInput = z
       .string()
       .optional()
       .describe(
-        'VPC to deploy this application into. Normally omit this — the backend auto-selects the VPC ' +
-          'when the project has exactly one active VPC in the target cloud. ' +
-          'Only provide this if the API returns a CONFLICT error saying the project has multiple VPCs ' +
-          'and you must specify one. In that case, call aiven_project_vpc_list to list available VPCs ' +
-          'and ask the user which to use.'
+        'VPC to deploy this application into. Only set when the user explicitly asks to deploy into a VPC. ' +
+          'Call aiven_project_vpc_list to list available VPCs, confirm the choice with the user, then pass the ' +
+          'project_vpc_id here. If omitted, the deploy sends project_vpc_id: null so the app is not auto-placed ' +
+          'into a project VPC.'
       ),
 
     reasoning: reasoningField,

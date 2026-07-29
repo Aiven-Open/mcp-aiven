@@ -152,7 +152,7 @@ Inspect the local project files and confirm each applicable item. Report finding
 - \`repository_url\` → ask the user to provide the repo URL and confirm code is pushed to \`branch\`
 - \`.gitignore\` → verify \`node_modules/\` and \`dist/\` are listed so they are not pushed to the repo
 - Dockerfile → use \`npm install\` (not \`npm ci\`) and only \`COPY package.json\` — lockfiles may not be in the repo
-- \`project_vpc_id\` → normally not needed — the backend auto-selects the VPC when the project has exactly one. Only required if the project has multiple VPCs (the API will return a CONFLICT error asking you to specify); in that case call \`aiven_project_vpc_list\` to list VPCs and ask the user which to use
+- \`project_vpc_id\` → only when the user explicitly asks to deploy into a VPC. Call \`aiven_project_vpc_list\`, show options, and pass the chosen ID. Do NOT set this unless the user requested VPC — default deploys omit it and the tool sends \`project_vpc_id: null\` to avoid auto-VPC placement
 
 Example Dockerfile for a TypeScript Node.js app:
 \`\`\`dockerfile
@@ -271,7 +271,7 @@ CMD ["node", "dist/index.js"]
           service_type: 'application',
           plan,
           cloud,
-          ...(projectVpcId !== undefined ? { project_vpc_id: projectVpcId } : {}),
+          project_vpc_id: projectVpcId ?? null,
           service_integrations: serviceIntegrations.length > 0 ? serviceIntegrations : undefined,
           user_config: {
             application: applicationConfig,
