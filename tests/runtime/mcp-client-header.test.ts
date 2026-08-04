@@ -35,7 +35,7 @@ describe('sanitizeMcpClient', () => {
   });
 
   it('falls back to the original value when no token can be extracted', () => {
-    expect(sanitizeMcpClient('日本語クライアント')).toBe('日本語クライアント');
+    expect(sanitizeMcpClient('@#$%')).toBe('@#$%');
     expect(sanitizeMcpClient('(comment only)')).toBe('(comment only)');
   });
 });
