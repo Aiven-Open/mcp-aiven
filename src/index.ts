@@ -20,6 +20,7 @@ import { instrumentServer, flushAndExit } from './instrumentation/index.js';
 import { scan } from './security/model-armor.js';
 import { unwrapUntrustedResponse } from './untrusted.js';
 import { toolError } from './types.js';
+import { sanitizeMcpClient } from './mcp-client-header.js';
 
 /** Streamable HTTP: inbound `/mcp` `User-Agent` (SDK `requestInfo.headers`). */
 function mcpClientFromRequestInfo(requestInfo: unknown): string | undefined {
@@ -63,7 +64,9 @@ function registerTools(server: McpServer, tools: readonly ToolDefinition[], requ
 
         const context = {
           token: extra.authInfo?.token,
-          mcpClient: mcpClientFromRequestInfo(extra.requestInfo) ?? server.server.getClientVersion()?.name,
+          mcpClient: sanitizeMcpClient(
+            mcpClientFromRequestInfo(extra.requestInfo) ?? server.server.getClientVersion()?.name
+          ),
           clientIp: requestOptions.clientIp,
           requestId: obsContext.requestId,
           toolReasoning: obsContext.toolReasoning,
