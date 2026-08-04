@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.15.1](https://github.com/Aiven-Open/mcp-aiven/compare/v1.15.0...v1.15.1) (2026-08-04)
+
+
+### Bug Fixes
+
+* sanitize X-MCP-Client header to first product token ([#160](https://github.com/Aiven-Open/mcp-aiven/issues/160)) ([c0ae532](https://github.com/Aiven-Open/mcp-aiven/commit/c0ae53218eea1c7d11c7868a98f04de8b6b51f24))
+* send project_vpc_id null on app deploy unless user requests VPC ([#158](https://github.com/Aiven-Open/mcp-aiven/issues/158)) ([19b9eb7](https://github.com/Aiven-Open/mcp-aiven/commit/19b9eb73f3361b937cb7359e0e6af253fadfd19d))
+
 ## [1.15.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.14.6...v1.15.0) (2026-07-23)
 
 
