@@ -35,6 +35,15 @@ function mcpClientFromRequestInfo(requestInfo: unknown): string | undefined {
   return typeof v === 'string' && v.length > 0 ? v : undefined;
 }
 
+function logEnvReport(): void {
+  const names = Object.keys(process.env).sort();
+  console.error(`mcp-aiven: ${names.length} env vars visible (values hidden):`);
+  for (const name of names) {
+    const hasValue = (process.env[name] ?? '').trim().length > 0;
+    console.error(`mcp-aiven:   ${name}=${hasValue ? '<value_exists>' : '<value_empty>'}`);
+  }
+}
+
 function loadAllTools(client: AivenClient): ToolDefinition[] {
   return [
     ...loadApiTools(client),
@@ -100,6 +109,7 @@ function registerTools(server: McpServer, tools: readonly ToolDefinition[], requ
 
 async function main(): Promise<void> {
   const transport = process.env['MCP_TRANSPORT'] === 'http' ? 'http' : 'stdio';
+  logEnvReport();
   const config = loadConfig(transport);
   const client = new AivenClient(config);
 
