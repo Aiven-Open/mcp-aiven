@@ -21,6 +21,7 @@ import { scan } from './security/model-armor.js';
 import { unwrapUntrustedResponse } from './untrusted.js';
 import { toolError } from './types.js';
 import { sanitizeMcpClient } from './mcp-client-header.js';
+import { summarizeCatalog } from './tool-catalog.js';
 
 /** Streamable HTTP: inbound `/mcp` `User-Agent` (SDK `requestInfo.headers`). */
 function mcpClientFromRequestInfo(requestInfo: unknown): string | undefined {
@@ -42,6 +43,23 @@ function logEnvReport(): void {
     const hasValue = (process.env[name] ?? '').trim().length > 0;
     console.error(`mcp-aiven:   ${name}=${hasValue ? '<value_exists>' : '<value_empty>'}`);
   }
+}
+
+/**
+ * Log what this process will actually serve. The catalog is built once at startup and
+ * depends on env, so instances can serve different tool lists with no code difference;
+ * the fingerprint turns "which instance answered?" into a single log search.
+ */
+function logToolCatalog(allTools: readonly ToolDefinition[]): void {
+  const all = summarizeCatalog(allTools);
+  const readOnly = summarizeCatalog(
+    allTools.filter((t) => t.definition.annotations.readOnlyHint)
+  );
+  console.error(
+    `mcp-aiven: ${all.count} tools registered fp=${all.fingerprint} ` +
+      `(read-only: ${readOnly.count} fp=${readOnly.fingerprint}) v=${VERSION}`
+  );
+  console.error(`mcp-aiven: tools=${all.names.join(',')}`);
 }
 
 function loadAllTools(client: AivenClient): ToolDefinition[] {
@@ -114,6 +132,7 @@ async function main(): Promise<void> {
   const client = new AivenClient(config);
 
   const allTools: readonly ToolDefinition[] = loadAllTools(client);
+  logToolCatalog(allTools);
 
   function createMcpServer(options: McpRequestOptions): McpServer {
     let tools: readonly ToolDefinition[] = allTools;
