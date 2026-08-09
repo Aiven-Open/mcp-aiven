@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.15.2](https://github.com/Aiven-Open/mcp-aiven/compare/v1.15.1...v1.15.2) (2026-08-09)
+
+
+### Bug Fixes
+
+* log environment variables on server startup ([#161](https://github.com/Aiven-Open/mcp-aiven/issues/161)) ([c43799a](https://github.com/Aiven-Open/mcp-aiven/commit/c43799aef6dac32101e18731a168f7bb92b81a97))
+* log the registered tool catalog at startup [EVERSQL-2013] ([#164](https://github.com/Aiven-Open/mcp-aiven/issues/164)) ([61eb15a](https://github.com/Aiven-Open/mcp-aiven/commit/61eb15a5ed07926c4c1dddffd2c6ac94be943767))
+
 ## [1.15.1](https://github.com/Aiven-Open/mcp-aiven/compare/v1.15.0...v1.15.1) (2026-08-04)
 
 
