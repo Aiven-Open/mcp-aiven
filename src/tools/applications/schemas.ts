@@ -73,10 +73,10 @@ export const serviceIntegrationItem = z.discriminatedUnion('service_type', [
       .describe('Name of the existing Aiven Kafka service in the same project (must be RUNNING).'),
     bootstrap_servers_env: z
       .string()
-      .default('KAFKA_BOOTSTRAP_SERVER')
+      .default('KAFKA_BOOTSTRAP_SERVERS')
       .describe(
         'Env var your app reads for Kafka bootstrap servers (comma-separated host:port). ' +
-          'Set to match your app. Default: "KAFKA_BOOTSTRAP_SERVER".'
+          'Set to match your app. Default: "KAFKA_BOOTSTRAP_SERVERS".'
       ),
     security_protocol_env: z
       .string()
