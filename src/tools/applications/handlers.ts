@@ -342,11 +342,20 @@ The rebuild pulls the latest commit from the configured branch and rebuilds the 
             toolReasoning: context?.toolReasoning,
           };
 
-          // PUT with user_config sets the branch (and triggers rebuild when branch changes)
-          // or triggers a rebuild from the current branch when body is empty.
-          await client.put<Record<string, unknown>>(
-            `/project/${encodeURIComponent(project)}/service/${encodeURIComponent(serviceName)}`,
-            branch ? { user_config: { application: { source: { branch } } } } : {},
+          // Switching branch is a service-config change, so PUT user_config first.
+          // An empty PUT does NOT rebuild — only the dedicated redeploy endpoint does.
+          if (branch) {
+            await client.put<Record<string, unknown>>(
+              `/project/${encodeURIComponent(project)}/service/${encodeURIComponent(serviceName)}`,
+              { user_config: { application: { source: { branch } } } },
+              opts
+            );
+          }
+
+          // Triggers the actual pull + rebuild + deploy. Returns 204 No Content.
+          await client.post<Record<string, unknown>>(
+            `/project/${encodeURIComponent(project)}/service/${encodeURIComponent(serviceName)}/application/redeploy`,
+            {},
             opts
           );
 
