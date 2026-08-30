@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.3](https://github.com/Aiven-Open/mcp-aiven/compare/v1.15.2...v1.15.3) (2026-08-27)
+
+
+### Bug Fixes
+
+* trigger application redeploy via the redeploy endpoint ([#166](https://github.com/Aiven-Open/mcp-aiven/issues/166)) ([76a4666](https://github.com/Aiven-Open/mcp-aiven/commit/76a4666976ad7eb5a28e3aa1ea49f09041e03580))
+
 ## [1.15.2](https://github.com/Aiven-Open/mcp-aiven/compare/v1.15.1...v1.15.2) (2026-08-09)
 
 
