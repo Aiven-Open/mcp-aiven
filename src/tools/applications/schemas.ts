@@ -282,10 +282,60 @@ export const vcsIntegrationRepositoryListInput = z
       ),
     vcs_integration_id: z
       .string()
-      .describe(
-        'VCS integration ID returned by aiven_vcs_integration_list (e.g. "vcs-abc123").'
-      ),
+      .describe('VCS integration ID returned by aiven_vcs_integration_list (e.g. "vcs-abc123").'),
     reasoning: reasoningField,
   })
   .strict();
 
+const vcsIntegrationRepositoryInput = {
+  organization_id: z
+    .string()
+    .describe(
+      'Organization ID returned by aiven_vcs_integration_list. Use that tool first to obtain this value.'
+    ),
+  vcs_integration_id: z
+    .string()
+    .describe('VCS integration ID returned by aiven_vcs_integration_list (e.g. "vcs-abc123").'),
+  remote_repository_id: z
+    .string()
+    .describe('Repository ID returned by aiven_vcs_integration_repository_list.'),
+};
+
+export const vcsIntegrationRepositoryBranchListInput = z
+  .object({
+    ...vcsIntegrationRepositoryInput,
+    reasoning: reasoningField,
+  })
+  .strict();
+
+const vcsIntegrationRepositoryRefInput = {
+  ...vcsIntegrationRepositoryInput,
+  commit_sha: z
+    .string()
+    .describe(
+      'Commit SHA returned for the selected branch by aiven_vcs_integration_repository_branch_list.'
+    ),
+};
+
+export const vcsIntegrationRepositoryContainerManifestFilesListInput = z
+  .object({
+    ...vcsIntegrationRepositoryRefInput,
+    reasoning: reasoningField,
+  })
+  .strict();
+
+export const vcsIntegrationRepositoryScanContainerManifestInput = z
+  .object({
+    ...vcsIntegrationRepositoryRefInput,
+    repository_url: z
+      .string()
+      .describe('Repository source URL returned by aiven_vcs_integration_repository_list.'),
+    branch: z.string().describe('Branch containing the selected commit.'),
+    file_path: z
+      .string()
+      .describe(
+        'Candidate path returned by aiven_vcs_integration_repository_container_manifest_files_list.'
+      ),
+    reasoning: reasoningField,
+  })
+  .strict();

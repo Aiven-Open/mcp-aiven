@@ -19,7 +19,10 @@ import {
   deployApplicationInput,
   redeployApplicationInput,
   vcsIntegrationListInput,
+  vcsIntegrationRepositoryBranchListInput,
+  vcsIntegrationRepositoryContainerManifestFilesListInput,
   vcsIntegrationRepositoryListInput,
+  vcsIntegrationRepositoryScanContainerManifestInput,
   type ServiceIntegrationInput,
 } from './schemas.js';
 
@@ -27,6 +30,49 @@ import {
 const MAX_VCS_REPOSITORY_LIST_ITEMS = 1000;
 /** Safety cap on HTTP pages if the API keeps returning data. */
 const MAX_VCS_REPOSITORY_LIST_PAGES = 100;
+/** Max branches returned in one call. */
+const MAX_VCS_BRANCH_LIST_ITEMS = 1000;
+/** Safety cap on branch-list HTTP pages. */
+const MAX_VCS_BRANCH_LIST_PAGES = 100;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function prepareManifestScanResult(result: Record<string, unknown>): Record<string, unknown> {
+  const summarizedResult = { ...result };
+  const fileScan = summarizedResult['file_scan'];
+  if (!isRecord(fileScan)) {
+    return summarizedResult;
+  }
+
+  // Source contents can be large. The detected attributes and service
+  // suggestions are the actionable scan output.
+  const summarizedFileScan = { ...fileScan };
+  delete summarizedFileScan['raw_contents'];
+
+  if (summarizedFileScan['container_manifest_type'] === 'compose') {
+    summarizedFileScan['deployment_guidance'] = {
+      workflow: 'review_service_suggestions',
+      message:
+        'The repository scanner produced candidate Aiven service configurations from this Compose file. The suggestions may omit services or settings the scanner cannot map. Review them before creating services, and do not pass the Compose file itself to aiven_application_deploy.',
+      next_tool: 'aiven_service_create',
+      limitations: [
+        'Suggestions cover only Compose services recognized by the repository scanner.',
+        'Image-only services that do not map to a supported Aiven service may be omitted.',
+      ],
+      steps: [
+        'Present the returned suggestions and these limitations to the user.',
+        'Confirm which suggested services to create, including their plan and cloud.',
+        'Create dependency services before applications whose service_integrations reference them.',
+        'Preserve each suggestion’s user_config and service_integrations when creating it.',
+      ],
+    };
+  }
+
+  summarizedResult['file_scan'] = summarizedFileScan;
+  return summarizedResult;
+}
 
 interface ServiceResponse {
   service: {
@@ -126,7 +172,9 @@ export function createApplicationTools(client: AivenClient): ToolDefinition[] {
       category: ServiceCategory.Application,
       definition: {
         title: 'Deploy Application to Aiven',
-        description: `Deploy a Dockerized application to Aiven. Creates an Aiven app service that pulls, builds, and runs the Docker image.
+        description: `Deploy one Dockerized application to Aiven from a Containerfile or Dockerfile. Creates an Aiven app service that pulls, builds, and runs the Docker image.
+
+This tool does not accept a Compose file directly. To derive candidate Aiven service configurations from a Compose file, use \`aiven_vcs_integration_repository_container_manifest_files_list\`, then \`aiven_vcs_integration_repository_scan_container_manifest\`. The scanner recognizes application services with a build configuration and selected Aiven-compatible data services; it may omit services or settings it cannot map. Review its \`service_suggestions\` before creating accepted services with \`aiven_service_create\`.
 
 ## Mandatory pre-deploy verification (read-only checks — do NOT create, push, or modify anything)
 
@@ -509,6 +557,170 @@ Returns \`remote_repository_id\`, \`full_name\`, \`source_url\`, and \`default_b
           );
         } catch (err) {
           return toolError(errorMessage(err));
+        }
+      },
+    },
+    {
+      name: ApplicationToolName.VcsIntegrationRepositoryBranchList,
+      category: ServiceCategory.Application,
+      definition: {
+        title: 'List VCS Repository Branches',
+        description: `List branches in a repository accessible through a VCS integration.
+
+Use this after \`aiven_vcs_integration_repository_list\` to select a branch and obtain its current \`commit_sha\`. Pass the commit SHA to the repository manifest tools to inspect that revision, and pass the branch name when scanning so it is included in the resulting service suggestions.
+
+The tool follows pagination until there are no more pages, or until ${MAX_VCS_BRANCH_LIST_ITEMS} branches have been collected. If \`truncated\` is true, the repository has more than ${MAX_VCS_BRANCH_LIST_ITEMS} branches and the requested branch may exist outside the returned set. Do not conclude that the branch does not exist; ask the user for its current head commit SHA or use another trusted source to resolve it.`,
+        inputSchema: vcsIntegrationRepositoryBranchListInput,
+        annotations: READ_ONLY_ANNOTATIONS,
+      },
+      handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
+        const {
+          organization_id: organizationId,
+          vcs_integration_id: vcsIntegrationId,
+          remote_repository_id: remoteRepositoryId,
+        } = params as z.infer<typeof vcsIntegrationRepositoryBranchListInput>;
+        const opts = {
+          token: context?.token,
+          requestId: context?.requestId,
+          toolReasoning: context?.toolReasoning,
+        };
+        const path = `/organization/${encodeURIComponent(organizationId)}/application/vcs-integrations/${encodeURIComponent(vcsIntegrationId)}/repositories/${encodeURIComponent(remoteRepositoryId)}/branches`;
+
+        try {
+          type BranchRow = { name: string; commit_sha: string };
+          type Page = { branches: BranchRow[]; next: string | null };
+          const branches: BranchRow[] = [];
+          let cursor: string | undefined;
+
+          for (let page = 0; page < MAX_VCS_BRANCH_LIST_PAGES; page++) {
+            const result = await client.get<Page>(path, {
+              ...opts,
+              query: cursor ? { cursor } : { limit: 100 },
+            });
+            const next = result.next ?? null;
+            const room = MAX_VCS_BRANCH_LIST_ITEMS - branches.length;
+            branches.push(...result.branches.slice(0, Math.max(0, room)));
+
+            if (!next) {
+              return toolSuccess(
+                wrapUntrustedResponse({ branches, next: null, truncated: false }),
+                ApplicationToolName.VcsIntegrationRepositoryBranchList
+              );
+            }
+            if (branches.length >= MAX_VCS_BRANCH_LIST_ITEMS) {
+              return toolSuccess(
+                wrapUntrustedResponse({ branches, next, truncated: true }),
+                ApplicationToolName.VcsIntegrationRepositoryBranchList
+              );
+            }
+            cursor = next;
+          }
+
+          return toolSuccess(
+            wrapUntrustedResponse({
+              branches,
+              next: cursor ?? null,
+              truncated: true,
+              note: `Pagination stopped after ${MAX_VCS_BRANCH_LIST_PAGES} pages (safety limit).`,
+            }),
+            ApplicationToolName.VcsIntegrationRepositoryBranchList
+          );
+        } catch (err) {
+          return toolErrorWithRequestId(errorMessage(err), context?.requestId);
+        }
+      },
+    },
+    {
+      name: ApplicationToolName.VcsIntegrationRepositoryContainerManifestFilesList,
+      category: ServiceCategory.Application,
+      definition: {
+        title: 'List Repository Container Manifest Candidates',
+        description: `Find repository files whose names match recognized Containerfile, Dockerfile, or Compose naming patterns at a specific commit. Discovery does not validate file contents.
+
+Use \`aiven_vcs_integration_repository_branch_list\` first and pass the selected branch's current \`commit_sha\`. The result contains each candidate's \`file_path\`, \`file_sha\`, and filename-derived \`container_manifest_type\`.
+
+Files larger than 1 MiB are omitted by the repository scanner. If an expected manifest is missing, do not conclude that it does not exist until its filename and size have been checked.
+
+Pass a selected \`file_path\` to \`aiven_vcs_integration_repository_scan_container_manifest\` to validate and inspect its suggested service configuration.`,
+        inputSchema: vcsIntegrationRepositoryContainerManifestFilesListInput,
+        annotations: READ_ONLY_ANNOTATIONS,
+      },
+      handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
+        const {
+          organization_id: organizationId,
+          vcs_integration_id: vcsIntegrationId,
+          remote_repository_id: remoteRepositoryId,
+          commit_sha: commitSha,
+        } = params as z.infer<typeof vcsIntegrationRepositoryContainerManifestFilesListInput>;
+        const opts: RequestOptions = {
+          token: context?.token,
+          requestId: context?.requestId,
+          toolReasoning: context?.toolReasoning,
+        };
+
+        try {
+          const result = await client.get<Record<string, unknown>>(
+            `/organization/${encodeURIComponent(organizationId)}/application/vcs-integrations/${encodeURIComponent(vcsIntegrationId)}/repositories/${encodeURIComponent(remoteRepositoryId)}/refs/${encodeURIComponent(commitSha)}/container-manifest-files`,
+            opts
+          );
+
+          return toolSuccess(
+            wrapUntrustedResponse(redactSensitiveData(result)),
+            ApplicationToolName.VcsIntegrationRepositoryContainerManifestFilesList
+          );
+        } catch (err) {
+          return toolErrorWithRequestId(errorMessage(err), context?.requestId);
+        }
+      },
+    },
+    {
+      name: ApplicationToolName.VcsIntegrationRepositoryScanContainerManifest,
+      category: ServiceCategory.Application,
+      definition: {
+        title: 'Scan Repository Container Manifest',
+        description: `Analyze a selected container manifest at a specific repository commit.
+
+Use \`aiven_vcs_integration_repository_container_manifest_files_list\` first and pass one of its \`file_path\` values. The scanner accepts Containerfile/Dockerfile and Compose manifests.
+
+The result includes the manifest type, detected ports and environment variables, and candidate \`service_suggestions\`. For Compose, the scanner recognizes application services with a \`build\` configuration and image-based PostgreSQL, Valkey, OpenSearch, and Kafka services. It may omit image-only services it cannot map and does not implement general Compose deployment. Do not pass a Compose file to \`aiven_application_deploy\`.
+
+To use scan results, present the returned suggestions and scanner limitations to the user. After the user confirms which services to create, resolve and confirm the required plan and cloud for each accepted suggestion, then call \`aiven_service_create\`. Preserve its \`service_type\`, \`service_name\`, \`user_config\`, and \`service_integrations\`; add \`project\`, \`plan\`, and \`cloud\`. Create dependency services before applications that reference them. This scan operation itself does not deploy or modify services.`,
+        inputSchema: vcsIntegrationRepositoryScanContainerManifestInput,
+        annotations: READ_ONLY_ANNOTATIONS,
+      },
+      handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
+        const {
+          organization_id: organizationId,
+          vcs_integration_id: vcsIntegrationId,
+          remote_repository_id: remoteRepositoryId,
+          commit_sha: commitSha,
+          repository_url: repositoryUrl,
+          branch,
+          file_path: filePath,
+        } = params as z.infer<typeof vcsIntegrationRepositoryScanContainerManifestInput>;
+        const opts: RequestOptions = {
+          token: context?.token,
+          requestId: context?.requestId,
+          toolReasoning: context?.toolReasoning,
+        };
+
+        try {
+          const result = await client.post<Record<string, unknown>>(
+            `/organization/${encodeURIComponent(organizationId)}/application/vcs-integrations/${encodeURIComponent(vcsIntegrationId)}/repositories/${encodeURIComponent(remoteRepositoryId)}/refs/${encodeURIComponent(commitSha)}/scan-container-manifest`,
+            {
+              repository_url: repositoryUrl,
+              branch,
+              file_path: filePath,
+            },
+            opts
+          );
+
+          return toolSuccess(
+            wrapUntrustedResponse(prepareManifestScanResult(result)),
+            ApplicationToolName.VcsIntegrationRepositoryScanContainerManifest
+          );
+        } catch (err) {
+          return toolErrorWithRequestId(errorMessage(err), context?.requestId);
         }
       },
     },

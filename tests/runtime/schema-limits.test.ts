@@ -16,7 +16,10 @@ import {
 import {
   redeployApplicationInput,
   vcsIntegrationListInput,
+  vcsIntegrationRepositoryBranchListInput,
+  vcsIntegrationRepositoryContainerManifestFilesListInput,
   vcsIntegrationRepositoryListInput,
+  vcsIntegrationRepositoryScanContainerManifestInput,
 } from '../../src/tools/applications/schemas.js';
 
 const validReasoning = 'because tests';
@@ -126,6 +129,40 @@ describe('reasoning enforcement across schemas', () => {
     expect(result.success).toBe(false);
   });
 
+  it('vcsIntegrationRepositoryBranchListInput rejects over-limit reasoning', () => {
+    const result = vcsIntegrationRepositoryBranchListInput.safeParse({
+      organization_id: 'org-1',
+      vcs_integration_id: 'vcs-1',
+      remote_repository_id: 'repo-1',
+      reasoning: overLimitReasoning,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('vcsIntegrationRepositoryContainerManifestFilesListInput rejects over-limit reasoning', () => {
+    const result = vcsIntegrationRepositoryContainerManifestFilesListInput.safeParse({
+      organization_id: 'org-1',
+      vcs_integration_id: 'vcs-1',
+      remote_repository_id: 'repo-1',
+      commit_sha: 'abc123',
+      reasoning: overLimitReasoning,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('vcsIntegrationRepositoryScanContainerManifestInput rejects over-limit reasoning', () => {
+    const result = vcsIntegrationRepositoryScanContainerManifestInput.safeParse({
+      organization_id: 'org-1',
+      vcs_integration_id: 'vcs-1',
+      remote_repository_id: 'repo-1',
+      commit_sha: 'abc123',
+      repository_url: 'https://github.com/aiven/example',
+      branch: 'main',
+      file_path: 'Dockerfile',
+      reasoning: overLimitReasoning,
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe('SQL query length enforcement', () => {

@@ -270,10 +270,13 @@ While rejections continue, the server logs a misconfig warning at most once ever
 
 | Tool | Description |
 |---|---|
-| `aiven_application_deploy` | Deploy a Dockerized application to Aiven |
+| `aiven_application_deploy` | Deploy one Containerfile/Dockerfile application to Aiven |
 | `aiven_application_redeploy` | Rebuild and redeploy an existing application |
 | `aiven_vcs_integration_list` | List connected VCS (GitHub) accounts |
 | `aiven_vcs_integration_repository_list` | List repositories for a VCS integration |
+| `aiven_vcs_integration_repository_branch_list` | List repository branches and their current commit SHAs |
+| `aiven_vcs_integration_repository_container_manifest_files_list` | Find candidate Containerfile, Dockerfile, and Compose manifests |
+| `aiven_vcs_integration_repository_scan_container_manifest` | Derive candidate Aiven service configurations from a Containerfile, Dockerfile, or supported parts of a Compose file |
 
 ### Documentation
 
