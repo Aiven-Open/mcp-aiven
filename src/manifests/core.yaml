@@ -87,6 +87,8 @@ tools:
 
       **Compose repository-scan workflow:** This tool does not accept a Compose file. `aiven_vcs_integration_repository_scan_container_manifest` can derive candidate `service_suggestions` for application services with a build configuration and recognized Aiven-compatible data services. It may omit Compose services or settings it cannot map. Present the returned suggestions and these limitations to the user. After they confirm which services to create, resolve and confirm each accepted service's plan and cloud, then create dependencies before applications that reference them. Preserve each suggestion's `service_type`, `service_name`, `user_config`, and `service_integrations`, and add `project`, `plan`, and `cloud`.
 
+      **Temporary TLS limitation for scanned Compose applications:** Platform-provided CA certificate file mounts for integrated PostgreSQL and Valkey services are planned but not yet available through this service-create workflow. Until then, the application client can keep TLS enabled while disabling server-certificate validation. Explain that this preserves encryption but does not authenticate the server, and get the user's approval before changing their application. Do not disable TLS itself. Remove the workaround once CA certificate file mounts are available.
+
       For PostgreSQL, set `user_config: {"pg_version": "17"}`. After creation, tell the user the service is provisioning (takes a few minutes) and ask them to tell you when to check the status. Do NOT poll `aiven_service_get` in a loop.
 
       **Read replica:** set `service_to_fork_from` to the primary and `user_config.pg_read_replica: true`.

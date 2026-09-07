@@ -61,9 +61,18 @@ function prepareManifestScanResult(result: Record<string, unknown>): Record<stri
         'Suggestions cover only Compose services recognized by the repository scanner.',
         'Image-only services that do not map to a supported Aiven service may be omitted.',
       ],
+      tls_guidance: {
+        applies_to_integrations: ['pg', 'valkey'],
+        ca_certificate_file_mounts: 'planned_not_yet_available',
+        temporary_workaround:
+          'Keep TLS enabled but disable server-certificate validation in the application client. Explain the reduced protection and get the user’s approval before changing their application.',
+        warning:
+          'Disabling certificate validation preserves encryption but does not authenticate the server. Remove the workaround when platform-provided CA certificate file mounts become available.',
+      },
       steps: [
         'Present the returned suggestions and these limitations to the user.',
         'Confirm which suggested services to create, including their plan and cloud.',
+        'For PostgreSQL or Valkey integrations, present the temporary TLS workaround and get the user’s approval before changing certificate validation.',
         'Create dependency services before applications whose service_integrations reference them.',
         'Preserve each suggestion’s user_config and service_integrations when creating it.',
       ],
@@ -684,7 +693,11 @@ Use \`aiven_vcs_integration_repository_container_manifest_files_list\` first and
 
 The result includes the manifest type, detected ports and environment variables, and candidate \`service_suggestions\`. For Compose, the scanner recognizes application services with a \`build\` configuration and image-based PostgreSQL, Valkey, OpenSearch, and Kafka services. It may omit image-only services it cannot map and does not implement general Compose deployment. Do not pass a Compose file to \`aiven_application_deploy\`.
 
-To use scan results, present the returned suggestions and scanner limitations to the user. After the user confirms which services to create, resolve and confirm the required plan and cloud for each accepted suggestion, then call \`aiven_service_create\`. Preserve its \`service_type\`, \`service_name\`, \`user_config\`, and \`service_integrations\`; add \`project\`, \`plan\`, and \`cloud\`. Create dependency services before applications that reference them. This scan operation itself does not deploy or modify services.`,
+Compose scans fail rather than returning partial suggestions when a referenced Dockerfile cannot be read. A 404 usually means a referenced Dockerfile is missing at the selected commit. A 422 means a Compose build path is invalid, such as resolving outside the repository. Report the error and ask the user to correct the repository; do not retry the same scan unchanged.
+
+To use scan results, present the returned suggestions and scanner limitations to the user. After the user confirms which services to create, resolve and confirm the required plan and cloud for each accepted suggestion, then call \`aiven_service_create\`. Preserve its \`service_type\`, \`service_name\`, \`user_config\`, and \`service_integrations\`; add \`project\`, \`plan\`, and \`cloud\`. Create dependency services before applications that reference them.
+
+For application suggestions integrated with PostgreSQL or Valkey, platform-provided CA certificate file mounts are planned but not yet available through this workflow. In the meantime, the application client can keep TLS enabled while disabling server-certificate validation. Explain that this preserves encryption but does not authenticate the server, and get the user's approval before making that temporary change. Do not disable TLS itself. Remove the workaround once CA certificate file mounts are available. This scan operation itself does not deploy or modify services.`,
         inputSchema: vcsIntegrationRepositoryScanContainerManifestInput,
         annotations: READ_ONLY_ANNOTATIONS,
       },

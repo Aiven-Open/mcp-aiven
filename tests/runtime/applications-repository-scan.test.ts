@@ -363,6 +363,12 @@ describe('application repository scan tools', () => {
     );
     expect(tool.definition.description).toContain('may omit image-only services');
     expect(tool.definition.description).toContain('aiven_service_create');
+    expect(tool.definition.description).toContain(
+      'A 404 usually means a referenced Dockerfile is missing'
+    );
+    expect(tool.definition.description).toContain(
+      'keep TLS enabled while disabling server-certificate validation'
+    );
     expect(
       getTool(tools, ApplicationToolName.Deploy).definition.description
     ).toContain('does not accept a Compose file directly');
@@ -374,6 +380,13 @@ describe('application repository scan tools', () => {
         limitations: expect.arrayContaining([
           expect.stringContaining('may be omitted'),
         ]),
+        tls_guidance: expect.objectContaining({
+          applies_to_integrations: ['pg', 'valkey'],
+          ca_certificate_file_mounts: 'planned_not_yet_available',
+          temporary_workaround: expect.stringContaining(
+            'disable server-certificate validation'
+          ),
+        }),
       })
     );
     expect(payload.file_scan['scanned_attributes']).toEqual([
