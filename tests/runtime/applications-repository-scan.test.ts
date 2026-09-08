@@ -231,6 +231,35 @@ describe('application repository scan tools', () => {
     );
   });
 
+  it('does not append a Git suffix to non-GitHub repository URLs', async () => {
+    const client = createMockClient({ postResponse: {} });
+    const tool = getTool(createApplicationTools(client), ApplicationToolName.Create);
+    const params = deployApplicationInput.parse({
+      project: 'test-project',
+      service_name: 'example-app',
+      repository_url: 'https://gitlab.com/aiven/example',
+      branch: 'main',
+      port: 3000,
+      reasoning: 'Deploy the selected application',
+    });
+
+    await tool.handler(params);
+
+    expect(client.post).toHaveBeenCalledWith(
+      '/project/test-project/service',
+      expect.objectContaining({
+        user_config: {
+          application: expect.objectContaining({
+            source: expect.objectContaining({
+              repository_url: 'https://gitlab.com/aiven/example',
+            }),
+          }),
+        },
+      }),
+      expect.any(Object)
+    );
+  });
+
   it('reports application creation as asynchronous without replacing the API state', async () => {
     const client = createMockClient({
       postResponse: {

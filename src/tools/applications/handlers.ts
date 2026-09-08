@@ -39,6 +39,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
+function ensureGitHubSuffix(repositoryUrl: string): string {
+  if (repositoryUrl.startsWith('https://github.com/') && !repositoryUrl.endsWith('.git')) {
+    return `${repositoryUrl}.git`;
+  }
+  return repositoryUrl;
+}
+
 function withAsyncDeploymentGuidance(
   result: Record<string, unknown>,
   message: string
@@ -309,10 +316,8 @@ CMD ["node", "dist/index.js"]
           }
         }
 
-        // Ensure repository URL ends with .git for proper cloning
-        const repoUrl = repositoryUrl.endsWith('.git')
-          ? repositoryUrl
-          : `${repositoryUrl}.git`;
+        // Match the API's canonicalization: only GitHub HTTPS URLs gain a .git suffix.
+        const repoUrl = ensureGitHubSuffix(repositoryUrl);
 
         // Ensure build_path has ./ prefix
         const normalizedBuildPath = buildPath.startsWith('./')
