@@ -160,8 +160,17 @@ export const deployApplicationInput = z
       .string()
       .default('')
       .describe(
-        'Path within the repository where the Dockerfile is located. ' +
-          'Default: "." (repository root). Use a subdirectory if the Dockerfile is not at the root (e.g. "./backend").'
+        'Repository-root-relative image build context, equivalent to the final argument in ' +
+          '`podman build -f <containerfile_path> <build_path>`. Default: ".".'
+      ),
+
+    containerfile_path: z
+      .string()
+      .optional()
+      .describe(
+        'Repository-root-relative path passed as `-f` in ' +
+          '`podman build -f <containerfile_path> <build_path>`. It is independent of build_path ' +
+          'and does not need to be inside it (e.g. "./docker/Dockerfile.prod").'
       ),
 
     port: z.coerce

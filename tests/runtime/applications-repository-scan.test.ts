@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AivenClient } from '../../src/client.js';
 import {
+  deployApplicationInput,
   vcsIntegrationRepositoryBranchListInput,
   vcsIntegrationRepositoryContainerManifestFilesListInput,
   vcsIntegrationRepositoryScanContainerManifestInput,
@@ -65,6 +66,40 @@ describe('application repository scan tools', () => {
       `Use \`${ApplicationToolName.Create}\` instead`
     );
     expect(deployAlias.handler).toBe(createTool.handler);
+  });
+
+  it('passes an explicit containerfile path when creating an application', async () => {
+    const client = createMockClient({ postResponse: {} });
+    const tool = getTool(createApplicationTools(client), ApplicationToolName.Create);
+    const params = deployApplicationInput.parse({
+      project: 'test-project',
+      service_name: 'example-app',
+      repository_url: 'https://github.com/aiven/example',
+      branch: 'main',
+      build_path: 'backend',
+      containerfile_path: 'docker/Dockerfile.prod',
+      port: 3000,
+      reasoning: 'Deploy the selected application',
+    });
+
+    await tool.handler(params);
+
+    expect(client.post).toHaveBeenCalledWith(
+      '/project/test-project/service',
+      expect.objectContaining({
+        user_config: {
+          application: expect.objectContaining({
+            source: {
+              repository_url: 'https://github.com/aiven/example.git',
+              branch: 'main',
+              build_path: './backend',
+              containerfile_path: './docker/Dockerfile.prod',
+            },
+          }),
+        },
+      }),
+      expect.any(Object)
+    );
   });
 
   it('defines strict input schemas for manifest discovery and scanning', () => {

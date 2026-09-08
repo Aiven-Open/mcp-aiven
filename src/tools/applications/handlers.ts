@@ -190,7 +190,7 @@ Inspect the local project files and confirm each applicable item. Report finding
 
 - \`repository_url\` visibility → fetch repository metadata and check the \`private\` field. Do not infer from file access — being able to read files tells you nothing about visibility. If you cannot determine it, ask the user.
 - VCS credentials (private repos only) → if the repo is private, call \`aiven_vcs_integration_list\` (project), then for each integration call \`aiven_vcs_integration_repository_list\` and find the repo whose \`source_url\` matches (strip trailing \`.git\`, lowercase both sides). If matched, use the resolved \`vcs_integration_id\` and \`remote_repository_id\` — do NOT ask the user for these. If no match found, continue remaining checks but do NOT call this tool; after all checks, tell the user: "⚠️ This repository is private but is not connected to Aiven. Please connect your GitHub account via the Aiven Console and grant access to this repo, then try again."
-- \`build_path\` → verify Dockerfile exists, contains \`EXPOSE\` matching \`port\` param, has \`CMD\`/\`ENTRYPOINT\`
+- \`build_path\` and \`containerfile_path\` → verify the build context and Containerfile/Dockerfile paths are correct; verify the file contains \`EXPOSE\` matching \`port\` and has \`CMD\`/\`ENTRYPOINT\`
 - \`port\` → verify app source binds to \`0.0.0.0\`, not \`localhost\`/\`127.0.0.1\`
 - \`service_integrations\` → for each entry, verify the source service is RUNNING (\`aiven_service_get\`); verify app reads the configured env var names
 - PostgreSQL/Valkey SSL → the deploy tool injects \`PROJECT_CA_CERT\` (base64-encoded Aiven CA cert). App code MUST strip \`sslmode\` from the connection URL (pg v8 ignores the \`ssl\` option when \`sslmode\` is in the URL) and use the CA cert for proper TLS. Required pattern for Node.js pg client:
@@ -234,6 +234,7 @@ CMD ["node", "dist/index.js"]
           remote_repository_id: remoteRepositoryId,
           branch,
           build_path: buildPath,
+          containerfile_path: containerfilePath,
           port,
           port_name: portName,
           plan,
@@ -307,6 +308,12 @@ CMD ["node", "dist/index.js"]
           branch,
           build_path: normalizedBuildPath,
         };
+
+        if (containerfilePath) {
+          sourceConfig['containerfile_path'] = containerfilePath.startsWith('./')
+            ? containerfilePath
+            : `./${containerfilePath}`;
+        }
 
         // Add VCS integration IDs if provided (required for private repos)
         if (vcsIntegrationId) {
