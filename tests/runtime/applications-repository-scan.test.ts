@@ -54,6 +54,19 @@ const refParams = {
 };
 
 describe('application repository scan tools', () => {
+  it('exposes create as the primary application creation tool and keeps deploy as an alias', () => {
+    const tools = createApplicationTools(createMockClient({}));
+    const createTool = getTool(tools, ApplicationToolName.Create);
+    const deployAlias = getTool(tools, ApplicationToolName.Deploy);
+
+    expect(createTool.definition.title).toBe('Create Application on Aiven');
+    expect(deployAlias.definition.title).toContain('Deprecated');
+    expect(deployAlias.definition.description).toContain(
+      `Use \`${ApplicationToolName.Create}\` instead`
+    );
+    expect(deployAlias.handler).toBe(createTool.handler);
+  });
+
   it('defines strict input schemas for manifest discovery and scanning', () => {
     expect(
       vcsIntegrationRepositoryBranchListInput.safeParse({
@@ -369,9 +382,9 @@ describe('application repository scan tools', () => {
     expect(tool.definition.description).toContain(
       'keep TLS enabled while disabling server-certificate validation'
     );
-    expect(
-      getTool(tools, ApplicationToolName.Deploy).definition.description
-    ).toContain('does not accept a Compose file directly');
+    expect(getTool(tools, ApplicationToolName.Create).definition.description).toContain(
+      'does not accept a Compose file directly'
+    );
     expect(payload.file_scan).not.toHaveProperty('raw_contents');
     expect(payload.file_scan['deployment_guidance']).toEqual(
       expect.objectContaining({

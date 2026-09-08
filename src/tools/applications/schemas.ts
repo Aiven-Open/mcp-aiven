@@ -10,6 +10,15 @@ const environmentVariableItem = z.object({
     .describe('variable = visible in UI, secret = masked in UI. Use secret for tokens, passwords, URIs.'),
 });
 
+const integrationEnvironmentVariableKey = z
+  .string()
+  .min(1)
+  .max(512)
+  .regex(
+    /^[a-zA-Z][a-zA-Z0-9_]*$/,
+    'Environment variable names must start with a letter and contain only letters, numbers, and underscores'
+  );
+
 /**
  * One entry in service_integrations. The platform uses these to automatically inject
  * credentials into the running container as environment variables — no manual copy-paste
@@ -19,7 +28,7 @@ const environmentVariableItem = z.object({
  *
  * Supported service_type values (must be an existing service in the same project):
  *   - "pg"          → injects a postgres:// connection URI
- *   - "valkey"      → injects a redis:// connection URI
+ *   - "valkey"      → injects a rediss:// connection URI
  *   - "opensearch"  → injects an https:// connection URI
  *   - "kafka"       → injects bootstrap servers + SSL certificates (raw PEM strings)
  */
@@ -29,8 +38,7 @@ export const serviceIntegrationItem = z.discriminatedUnion('service_type', [
     service_name: z
       .string()
       .describe('Name of the existing Aiven PostgreSQL service in the same project (must be RUNNING).'),
-    env_key: z
-      .string()
+    env_key: integrationEnvironmentVariableKey
       .default('DATABASE_URL')
       .describe(
         'Env var your app reads for the PostgreSQL connection URI (full postgres:// URI with SSL params). ' +
@@ -43,12 +51,12 @@ export const serviceIntegrationItem = z.discriminatedUnion('service_type', [
     service_name: z
       .string()
       .describe('Name of the existing Aiven Valkey service in the same project (must be RUNNING).'),
-    env_key: z
-      .string()
+    env_key: integrationEnvironmentVariableKey
       .default('REDIS_URL')
       .describe(
-        'Env var your app reads for the Valkey connection URI (redis:// URI). ' +
-          'Set to match your app — do not change your app code to fit the default. Default: "REDIS_URL".'
+        'Env var your app reads for the Valkey connection URI (rediss:// URI). ' +
+          'Set to match your app — do not change your app code to fit the default. ' +
+          'Default used by this MCP: "REDIS_URL" (the API schema default is "DATABASE_URL").'
       ),
   }),
 
@@ -57,12 +65,12 @@ export const serviceIntegrationItem = z.discriminatedUnion('service_type', [
     service_name: z
       .string()
       .describe('Name of the existing Aiven OpenSearch service in the same project (must be RUNNING).'),
-    env_key: z
-      .string()
+    env_key: integrationEnvironmentVariableKey
       .default('OPENSEARCH_URL')
       .describe(
         'Env var your app reads for the OpenSearch connection URI (https:// URI). ' +
-          'Set to match your app — do not change your app code to fit the default. Default: "OPENSEARCH_URL".'
+          'Set to match your app — do not change your app code to fit the default. ' +
+          'Default used by this MCP: "OPENSEARCH_URL" (the API schema default is "OPENSEARCH_URI").'
       ),
   }),
 
@@ -71,36 +79,31 @@ export const serviceIntegrationItem = z.discriminatedUnion('service_type', [
     service_name: z
       .string()
       .describe('Name of the existing Aiven Kafka service in the same project (must be RUNNING).'),
-    bootstrap_servers_env: z
-      .string()
+    bootstrap_servers_env: integrationEnvironmentVariableKey
       .default('KAFKA_BOOTSTRAP_SERVER')
       .describe(
         'Env var your app reads for Kafka bootstrap servers (comma-separated host:port). ' +
           'Set to match your app. Default: "KAFKA_BOOTSTRAP_SERVER".'
       ),
-    security_protocol_env: z
-      .string()
+    security_protocol_env: integrationEnvironmentVariableKey
       .default('KAFKA_SECURITY_PROTOCOL')
       .describe(
         'Env var your app reads for the security protocol (value will be "SSL"). ' +
           'Set to match your app. Default: "KAFKA_SECURITY_PROTOCOL".'
       ),
-    access_key_env: z
-      .string()
+    access_key_env: integrationEnvironmentVariableKey
       .default('KAFKA_ACCESS_KEY')
       .describe(
         'Env var your app reads for the SSL client private key (raw PEM string, NOT base64). ' +
           'Set to match your app. Default: "KAFKA_ACCESS_KEY".'
       ),
-    access_cert_env: z
-      .string()
+    access_cert_env: integrationEnvironmentVariableKey
       .default('KAFKA_ACCESS_CERT')
       .describe(
         'Env var your app reads for the SSL client certificate (raw PEM string, NOT base64). ' +
           'Set to match your app. Default: "KAFKA_ACCESS_CERT".'
       ),
-    ca_cert_env: z
-      .string()
+    ca_cert_env: integrationEnvironmentVariableKey
       .default('KAFKA_CA_CERT')
       .describe(
         'Env var your app reads for the CA certificate (raw PEM string, NOT base64). ' +

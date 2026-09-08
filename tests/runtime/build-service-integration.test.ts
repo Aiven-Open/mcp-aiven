@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildServiceIntegration } from '../../src/tools/applications/handlers.js';
+import { serviceIntegrationItem } from '../../src/tools/applications/schemas.js';
 
 describe('buildServiceIntegration', () => {
   describe('pg', () => {
@@ -181,5 +182,40 @@ describe('buildServiceIntegration', () => {
       expect(kafka.user_config).not.toHaveProperty('access_cert_environment_variable_name');
       expect(kafka.user_config).not.toHaveProperty('ca_cert_environment_variable_name');
     });
+  });
+});
+
+describe('serviceIntegrationItem', () => {
+  it('accepts environment variable names allowed by the API', () => {
+    const result = serviceIntegrationItem.safeParse({
+      service_type: 'pg',
+      service_name: 'my-pg',
+      env_key: `A${'0_'.repeat(255)}B`,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it.each(['_DATABASE_URL', '1DATABASE_URL', 'DATABASE-URL', 'DATABASE.URL'])(
+    'rejects invalid environment variable name %s',
+    (envKey) => {
+      const result = serviceIntegrationItem.safeParse({
+        service_type: 'pg',
+        service_name: 'my-pg',
+        env_key: envKey,
+      });
+
+      expect(result.success).toBe(false);
+    }
+  );
+
+  it('rejects environment variable names longer than 512 characters', () => {
+    const result = serviceIntegrationItem.safeParse({
+      service_type: 'kafka',
+      service_name: 'my-kafka',
+      bootstrap_servers_env: `A${'B'.repeat(512)}`,
+    });
+
+    expect(result.success).toBe(false);
   });
 });

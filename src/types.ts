@@ -223,6 +223,7 @@ export interface ExecutePgQueryOptions {
 // ---------- Application ----------
 
 export enum ApplicationToolName {
+  Create = 'aiven_application_create',
   Deploy = 'aiven_application_deploy',
   Redeploy = 'aiven_application_redeploy',
   VcsIntegrationList = 'aiven_vcs_integration_list',

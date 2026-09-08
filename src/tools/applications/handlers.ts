@@ -55,7 +55,7 @@ function prepareManifestScanResult(result: Record<string, unknown>): Record<stri
     summarizedFileScan['deployment_guidance'] = {
       workflow: 'review_service_suggestions',
       message:
-        'The repository scanner produced candidate Aiven service configurations from this Compose file. The suggestions may omit services or settings the scanner cannot map. Review them before creating services, and do not pass the Compose file itself to aiven_application_deploy.',
+        'The repository scanner produced candidate Aiven service configurations from this Compose file. The suggestions may omit services or settings the scanner cannot map. Review them before creating services, and do not pass the Compose file itself to aiven_application_create.',
       next_tool: 'aiven_service_create',
       limitations: [
         'Suggestions cover only Compose services recognized by the repository scanner.',
@@ -175,13 +175,12 @@ export function buildServiceIntegration(integration: ServiceIntegrationInput): A
 }
 
 export function createApplicationTools(client: AivenClient): ToolDefinition[] {
-  return [
-    {
-      name: ApplicationToolName.Deploy,
-      category: ServiceCategory.Application,
-      definition: {
-        title: 'Deploy Application to Aiven',
-        description: `Create and initially deploy one Dockerized application to Aiven from a Containerfile or Dockerfile. This tool is create-only: the application service must not already exist, and the API returns 409 if it does. For an existing application, use \`aiven_application_redeploy\` to rebuild from its configured repository without changing its service configuration, or \`aiven_service_update\` to change its configuration.
+  const createTool: ToolDefinition = {
+    name: ApplicationToolName.Create,
+    category: ServiceCategory.Application,
+    definition: {
+      title: 'Create Application on Aiven',
+      description: `Create and initially deploy one Dockerized application to Aiven from a Containerfile or Dockerfile. The application service must not already exist, and the API returns 409 if it does. For an existing application, use \`aiven_application_redeploy\` to rebuild from its configured repository without changing its service configuration, or \`aiven_service_update\` to change its configuration.
 
 This tool does not accept a Compose file directly. To derive candidate Aiven service configurations from a Compose file, use \`aiven_vcs_integration_repository_container_manifest_files_list\`, then \`aiven_vcs_integration_repository_scan_container_manifest\`. The scanner recognizes application services with a build configuration and selected Aiven-compatible data services; it may omit services or settings it cannot map. Review its \`service_suggestions\` before creating accepted services with \`aiven_service_create\`.
 
@@ -223,11 +222,11 @@ RUN npm prune --production
 EXPOSE 3000
 CMD ["node", "dist/index.js"]
 \`\`\``,
-        inputSchema: deployApplicationInput,
-        annotations: { ...CREATE_ANNOTATIONS, destructiveHint: true },
-      },
-      handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
-        const {
+      inputSchema: deployApplicationInput,
+      annotations: { ...CREATE_ANNOTATIONS, destructiveHint: true },
+    },
+    handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
+      const {
           project,
           service_name: serviceName,
           repository_url: repositoryUrl,
@@ -244,7 +243,7 @@ CMD ["node", "dist/index.js"]
           app_service_name: appServiceName,
           app_env_key: appEnvKey,
           project_vpc_id: projectVpcId,
-        } = params as z.infer<typeof deployApplicationInput>;
+      } = params as z.infer<typeof deployApplicationInput>;
 
         // Build environment variables list (user-provided only)
         const allEnvVars: { key: string; kind: string; value: string }[] = [];
@@ -356,15 +355,32 @@ CMD ["node", "dist/index.js"]
               plan: service['plan'],
               cloud_name: service['cloud_name'],
             };
-            return toolSuccess(wrapUntrustedResponse(redactSensitiveData(summary)), ApplicationToolName.Deploy);
+            return toolSuccess(wrapUntrustedResponse(redactSensitiveData(summary)), ApplicationToolName.Create);
           }
 
-          return toolSuccess(wrapUntrustedResponse(redactSensitiveData(result)), ApplicationToolName.Deploy);
+          return toolSuccess(wrapUntrustedResponse(redactSensitiveData(result)), ApplicationToolName.Create);
         } catch (err) {
           return toolErrorWithRequestId(errorMessage(err), context?.requestId);
         }
-      },
     },
+  };
+
+  const deprecatedDeployAlias: ToolDefinition = {
+    ...createTool,
+    name: ApplicationToolName.Deploy,
+    definition: {
+      ...createTool.definition,
+      title: 'Deprecated: Deploy Application to Aiven',
+      description:
+        `DEPRECATED: Use \`${ApplicationToolName.Create}\` instead. ` +
+        `This compatibility alias is create-only and may be removed in a future major release.\n\n` +
+        createTool.definition.description,
+    },
+  };
+
+  return [
+    createTool,
+    deprecatedDeployAlias,
     {
       name: ApplicationToolName.Redeploy,
       category: ServiceCategory.Application,
@@ -373,14 +389,14 @@ CMD ["node", "dist/index.js"]
         description: `Rebuild and redeploy an existing Aiven application service after new code has been pushed to its repository.
 
 Use this ONLY when:
-- The application service already exists and was previously deployed successfully with \`aiven_application_deploy\`
+- The application service already exists and was previously created successfully with \`aiven_application_create\`
 - The user has pushed a code change to the same repository and branch the service was deployed from
 - Everything else stays the same: same repo, same port, same service configuration
 
 Do NOT use this tool:
-- When the Aiven service itself was never created (e.g. \`aiven_application_deploy\` returned an API error and no service exists) — call \`aiven_application_deploy\` again instead.
+- When the Aiven service itself was never created (e.g. \`aiven_application_create\` returned an API error and no service exists) — call \`aiven_application_create\` again instead.
 - To change service configuration (plan, cloud, env vars, integrations) — use \`aiven_service_update\`.
-- To update an existing application via \`aiven_application_deploy\` — that tool is create-only and returns 409 when the service already exists.
+- To update an existing application via \`aiven_application_create\` — it is create-only and returns 409 when the service already exists.
 
 Runtime errors in the app (500s, crashes, SSL errors) are NOT deploy failures — the service exists and is running. Use this tool to pick up a code fix in those cases.
 
@@ -437,7 +453,7 @@ The rebuild pulls the latest commit from the configured branch and rebuilds the 
         title: 'List VCS Integrations',
         description: `List connected VCS (GitHub) accounts for the organization that owns a project.
 
-Use this as the first step when deploying from a repository — run it silently before \`aiven_application_deploy\` to discover available VCS integrations and their IDs. The organization_id is resolved internally from the project name.
+Use this as the first step when deploying from a repository — run it silently before \`aiven_application_create\` to discover available VCS integrations and their IDs. The organization_id is resolved internally from the project name.
 
 Returns each integration's \`vcs_integration_id\` (needed for \`aiven_vcs_integration_repository_list\`) and \`vcs_account_name\` (the GitHub org or user name).`,
         inputSchema: vcsIntegrationListInput,
@@ -692,7 +708,7 @@ Pass a selected \`file_path\` to \`aiven_vcs_integration_repository_scan_contain
 
 Use \`aiven_vcs_integration_repository_container_manifest_files_list\` first and pass one of its \`file_path\` values. The scanner accepts Containerfile/Dockerfile and Compose manifests.
 
-The result includes the manifest type, detected ports and environment variables, and candidate \`service_suggestions\`. For Compose, the scanner recognizes application services with a \`build\` configuration and image-based PostgreSQL, Valkey, OpenSearch, and Kafka services. It may omit image-only services it cannot map and does not implement general Compose deployment. Do not pass a Compose file to \`aiven_application_deploy\`.
+The result includes the manifest type, detected ports and environment variables, and candidate \`service_suggestions\`. For Compose, the scanner recognizes application services with a \`build\` configuration and image-based PostgreSQL, Valkey, OpenSearch, and Kafka services. It may omit image-only services it cannot map and does not implement general Compose deployment. Do not pass a Compose file to \`aiven_application_create\`.
 
 Compose scans fail rather than returning partial suggestions when a referenced Dockerfile cannot be read. A 404 usually means a referenced Dockerfile is missing at the selected commit. A 422 means a Compose build path is invalid, such as resolving outside the repository. Report the error and ask the user to correct the repository; do not retry the same scan unchanged.
 

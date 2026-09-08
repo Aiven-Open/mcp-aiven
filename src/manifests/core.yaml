@@ -245,7 +245,7 @@ tools:
 
       Use this when the user explicitly asks to deploy an application into a VPC. List them, show the user the options, and let them pick which VPC to deploy into.
 
-      VPCs with state `ACTIVE` are ready to use. Pass the chosen `project_vpc_id` to `aiven_application_deploy`. If the user did not request VPC, do not call this tool for deploy — `aiven_application_deploy` sends `project_vpc_id: null` by default.
+      VPCs with state `ACTIVE` are ready to use. Pass the chosen `project_vpc_id` to `aiven_application_create`. If the user did not request VPC, do not call this tool for application creation — `aiven_application_create` sends `project_vpc_id: null` by default.
 
       This tool returns a list of VPCs with the following fields:
       - project_vpc_id: The ID of the VPC
