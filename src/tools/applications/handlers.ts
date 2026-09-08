@@ -181,7 +181,7 @@ export function createApplicationTools(client: AivenClient): ToolDefinition[] {
       category: ServiceCategory.Application,
       definition: {
         title: 'Deploy Application to Aiven',
-        description: `Deploy one Dockerized application to Aiven from a Containerfile or Dockerfile. Creates an Aiven app service that pulls, builds, and runs the Docker image.
+        description: `Create and initially deploy one Dockerized application to Aiven from a Containerfile or Dockerfile. This tool is create-only: the application service must not already exist, and the API returns 409 if it does. For an existing application, use \`aiven_application_redeploy\` to rebuild from its configured repository without changing its service configuration, or \`aiven_service_update\` to change its configuration.
 
 This tool does not accept a Compose file directly. To derive candidate Aiven service configurations from a Compose file, use \`aiven_vcs_integration_repository_container_manifest_files_list\`, then \`aiven_vcs_integration_repository_scan_container_manifest\`. The scanner recognizes application services with a build configuration and selected Aiven-compatible data services; it may omit services or settings it cannot map. Review its \`service_suggestions\` before creating accepted services with \`aiven_service_create\`.
 
@@ -379,7 +379,8 @@ Use this ONLY when:
 
 Do NOT use this tool:
 - When the Aiven service itself was never created (e.g. \`aiven_application_deploy\` returned an API error and no service exists) — call \`aiven_application_deploy\` again instead.
-- To change service configuration (plan, cloud, env vars, integrations) — use \`aiven_service_update\` or redeploy via \`aiven_application_deploy\` with updated parameters.
+- To change service configuration (plan, cloud, env vars, integrations) — use \`aiven_service_update\`.
+- To update an existing application via \`aiven_application_deploy\` — that tool is create-only and returns 409 when the service already exists.
 
 Runtime errors in the app (500s, crashes, SSL errors) are NOT deploy failures — the service exists and is running. Use this tool to pick up a code fix in those cases.
 
