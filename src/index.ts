@@ -88,6 +88,7 @@ function registerTools(server: McpServer, tools: readonly ToolDefinition[], requ
         const paramsObj = params as Record<string, unknown>;
         const reasoning = paramsObj['reasoning'] as string | undefined;
         const obsContext = createObservabilityContext(reasoning);
+        console.error(`YONATAN TEST LOG: tool=${tool.name} requestId=${obsContext.requestId}`);
 
         const context = {
           token: extra.authInfo?.token,

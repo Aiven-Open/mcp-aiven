@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { isIP } from 'node:net';
 import express from 'express';
 import rateLimit, { type Options } from 'express-rate-limit';
@@ -295,6 +295,8 @@ export function startHttpServer(
 
   app.post(['/mcp', '/mcp/:tenant'], mcpPostBearerRateLimit, authMiddleware, mcpJsonParser, (req: Request, res: Response) => {
     void (async (): Promise<void> => {
+      const mcpRequestId = randomUUID();
+      console.error(`YONATAN TEST LOG: POST /mcp requestId=${mcpRequestId} path=${req.path}`);
       const parsed = parseMcpQueryParams(req.query as Record<string, unknown>, config.readOnly);
       if ('error' in parsed) {
         res.status(400).json({ error: parsed.error });
