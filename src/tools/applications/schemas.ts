@@ -257,6 +257,9 @@ export const deployApplicationInput = z
 
     reasoning: reasoningField,
   })
+  // MCP SDK tool inputs must remain root ZodObject schemas. Wrapping this in
+  // refine/superRefine turns it into ZodEffects, which tools/list advertises
+  // as an empty object. Cross-field VCS validation is done in the handler.
   .strict();
 
 export const redeployApplicationInput = z

@@ -259,6 +259,10 @@ CMD ["node", "dist/index.js"]
           project_vpc_id: projectVpcId,
       } = params as z.infer<typeof deployApplicationInput>;
 
+        if (Boolean(vcsIntegrationId) !== Boolean(remoteRepositoryId)) {
+          return toolError('vcs_integration_id and remote_repository_id must be provided together');
+        }
+
         // Build environment variables list (user-provided only)
         const allEnvVars: { key: string; kind: string; value: string }[] = [];
 

@@ -1,4 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { AivenClient } from '../../src/client.js';
 import {
   deployApplicationInput,
@@ -68,6 +71,77 @@ describe('application repository scan tools', () => {
     expect(deployAlias.handler).toBe(createTool.handler);
   });
 
+  it('advertises application create arrays and Kafka integrations through MCP tools/list', async () => {
+    const tool = getTool(createApplicationTools(createMockClient({})), ApplicationToolName.Create);
+    const server = new McpServer({ name: 'application-schema-test', version: '1.0.0' });
+    server.registerTool(
+      tool.name,
+      {
+        title: tool.definition.title,
+        description: tool.definition.description,
+        inputSchema: tool.definition.inputSchema,
+        annotations: tool.definition.annotations,
+      },
+      (params) => tool.handler(params)
+    );
+
+    const client = new Client({ name: 'application-schema-test-client', version: '1.0.0' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+
+    try {
+      await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+      const result = await client.listTools();
+      const listedTool = result.tools.find(({ name }) => name === tool.name);
+      const properties = listedTool?.inputSchema.properties;
+
+      expect(properties).toHaveProperty('environment_variables');
+      expect(properties).toHaveProperty('service_integrations');
+      expect(properties?.['environment_variables']).toMatchObject({ type: 'array' });
+      expect(properties?.['service_integrations']).toMatchObject({ type: 'array' });
+      expect(JSON.stringify(properties?.['service_integrations'])).toContain('"kafka"');
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
+  it('requires VCS integration and repository IDs together without wrapping the tool schema', async () => {
+    const client = createMockClient({});
+    const tool = getTool(createApplicationTools(client), ApplicationToolName.Create);
+    const baseParams = {
+      project: 'test-project',
+      service_name: 'example-app',
+      repository_url: 'https://github.com/aiven/example',
+      branch: 'main',
+      port: 3000,
+      reasoning: 'Deploy the selected application',
+    };
+
+    const missingRepositoryId = deployApplicationInput.parse({
+      ...baseParams,
+      vcs_integration_id: 'vcs-example',
+    });
+    const missingIntegrationId = deployApplicationInput.parse({
+      ...baseParams,
+      remote_repository_id: '123456',
+    });
+
+    expect(await tool.handler(missingRepositoryId)).toEqual(
+      expect.objectContaining({ isError: true })
+    );
+    expect(await tool.handler(missingIntegrationId)).toEqual(
+      expect.objectContaining({ isError: true })
+    );
+    expect(
+      deployApplicationInput.safeParse({
+        ...baseParams,
+        vcs_integration_id: 'vcs-example',
+        remote_repository_id: '123456',
+      }).success
+    ).toBe(true);
+    expect(client.post).not.toHaveBeenCalled();
+  });
+
   it('passes an explicit containerfile path when creating an application', async () => {
     const client = createMockClient({ postResponse: {} });
     const tool = getTool(createApplicationTools(client), ApplicationToolName.Create);
@@ -95,6 +169,61 @@ describe('application repository scan tools', () => {
               build_path: './backend',
               containerfile_path: './docker/Dockerfile.prod',
             },
+          }),
+        },
+      }),
+      expect.any(Object)
+    );
+  });
+
+  it('passes typed Kafka credentials and environment variables through application create', async () => {
+    const client = createMockClient({ postResponse: {} });
+    const tool = getTool(createApplicationTools(client), ApplicationToolName.Create);
+    const params = deployApplicationInput.parse({
+      project: 'test-project',
+      service_name: 'example-app',
+      repository_url: 'https://github.com/aiven/example',
+      branch: 'main',
+      port: 8080,
+      environment_variables: [{ key: 'KAFKA_TOPIC', value: 'events' }],
+      service_integrations: [
+        {
+          service_type: 'kafka',
+          service_name: 'example-kafka',
+          bootstrap_servers_env: 'KAFKA_BROKERS',
+        },
+      ],
+      reasoning: 'Deploy the application with Kafka credentials',
+    });
+
+    await tool.handler(params);
+
+    expect(client.post).toHaveBeenCalledWith(
+      '/project/test-project/service',
+      expect.objectContaining({
+        service_integrations: [
+          {
+            integration_type: 'application_service_credential',
+            source_service: 'example-kafka',
+            user_config: {
+              service_type: 'kafka',
+              exposed_values: {
+                bootstrap_servers: { environment_variable_key: 'KAFKA_BROKERS' },
+                security_protocol: {
+                  environment_variable_key: 'KAFKA_SECURITY_PROTOCOL',
+                },
+                access_key: { environment_variable_key: 'KAFKA_ACCESS_KEY' },
+                access_cert: { environment_variable_key: 'KAFKA_ACCESS_CERT' },
+                ca_cert: { environment_variable_key: 'KAFKA_CA_CERT' },
+              },
+            },
+          },
+        ],
+        user_config: {
+          application: expect.objectContaining({
+            environment_variables: [
+              { key: 'KAFKA_TOPIC', value: 'events', kind: 'variable' },
+            ],
           }),
         },
       }),
