@@ -102,6 +102,67 @@ describe('application repository scan tools', () => {
     );
   });
 
+  it('reports application creation as asynchronous without replacing the API state', async () => {
+    const client = createMockClient({
+      postResponse: {
+        service: {
+          service_name: 'example-app',
+          service_type: 'application',
+          state: 'BUILDING',
+          plan: 'startup-50-1024',
+          cloud_name: 'aws-eu-west-1',
+        },
+      },
+    });
+    const tool = getTool(createApplicationTools(client), ApplicationToolName.Create);
+    const params = deployApplicationInput.parse({
+      project: 'test-project',
+      service_name: 'example-app',
+      repository_url: 'https://github.com/aiven/example',
+      branch: 'main',
+      port: 3000,
+      reasoning: 'Deploy the selected application',
+    });
+
+    const result = await tool.handler(params);
+
+    expect(parseResultPayload(result)).toEqual(
+      expect.objectContaining({
+        service_name: 'example-app',
+        state: 'BUILDING',
+        message: 'Application created. The initial deployment is continuing asynchronously.',
+        next_tool: 'aiven_service_get',
+        next_step: expect.stringContaining('may not reflect the deployment immediately'),
+      })
+    );
+  });
+
+  it('reports redeploy as triggered rather than completed', async () => {
+    const client = createMockClient({});
+    const tool = getTool(createApplicationTools(client), ApplicationToolName.Redeploy);
+
+    const result = await tool.handler({
+      project: 'test-project',
+      service_name: 'example-app',
+      reasoning: 'Redeploy the application',
+    });
+
+    expect(client.post).toHaveBeenCalledWith(
+      '/project/test-project/service/example-app/application/redeploy',
+      {},
+      expect.any(Object)
+    );
+    expect(parseResultPayload(result)).toEqual(
+      expect.objectContaining({
+        service_name: 'example-app',
+        branch: 'current',
+        message: 'Redeploy triggered. The deployment is continuing asynchronously.',
+        next_tool: 'aiven_service_get',
+        next_step: expect.stringContaining('may not reflect the deployment immediately'),
+      })
+    );
+  });
+
   it('defines strict input schemas for manifest discovery and scanning', () => {
     expect(
       vcsIntegrationRepositoryBranchListInput.safeParse({
