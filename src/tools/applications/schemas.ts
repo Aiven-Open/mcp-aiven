@@ -37,7 +37,7 @@ export const serviceIntegrationItem = z.discriminatedUnion('service_type', [
     service_type: z.literal('pg'),
     service_name: z
       .string()
-      .describe('Name of the existing Aiven PostgreSQL service in the same project (must be RUNNING).'),
+      .describe('Name of the existing Aiven PostgreSQL service in the same project.'),
     env_key: integrationEnvironmentVariableKey
       .default('DATABASE_URL')
       .describe(
@@ -50,7 +50,7 @@ export const serviceIntegrationItem = z.discriminatedUnion('service_type', [
     service_type: z.literal('valkey'),
     service_name: z
       .string()
-      .describe('Name of the existing Aiven Valkey service in the same project (must be RUNNING).'),
+      .describe('Name of the existing Aiven Valkey service in the same project.'),
     env_key: integrationEnvironmentVariableKey
       .default('REDIS_URL')
       .describe(
@@ -64,7 +64,7 @@ export const serviceIntegrationItem = z.discriminatedUnion('service_type', [
     service_type: z.literal('opensearch'),
     service_name: z
       .string()
-      .describe('Name of the existing Aiven OpenSearch service in the same project (must be RUNNING).'),
+      .describe('Name of the existing Aiven OpenSearch service in the same project.'),
     env_key: integrationEnvironmentVariableKey
       .default('OPENSEARCH_URL')
       .describe(
@@ -78,7 +78,7 @@ export const serviceIntegrationItem = z.discriminatedUnion('service_type', [
     service_type: z.literal('kafka'),
     service_name: z
       .string()
-      .describe('Name of the existing Aiven Kafka service in the same project (must be RUNNING).'),
+      .describe('Name of the existing Aiven Kafka service in the same project.'),
     bootstrap_servers_env: integrationEnvironmentVariableKey
       .default('KAFKA_BOOTSTRAP_SERVER')
       .describe(
@@ -220,7 +220,7 @@ export const deployApplicationInput = z
         'An ARRAY of integrations; each element is ONE object selected by its `service_type` ' +
           '("pg", "valkey", "opensearch", or "kafka") — never a single bare object. ' +
           'Credentials are auto-injected as env vars; set env var names to match what your app reads. ' +
-          'Each service must already exist in the project and be RUNNING.\n\n' +
+          'Each source service must already exist in the project.\n\n' +
           'Example:\n' +
           '  service_integrations: [\n' +
           '    { service_type: "pg", service_name: "my-pg", env_key: "DATABASE_URL" },\n' +

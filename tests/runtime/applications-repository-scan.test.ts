@@ -99,6 +99,7 @@ describe('application repository scan tools', () => {
       expect(properties?.['environment_variables']).toMatchObject({ type: 'array' });
       expect(properties?.['service_integrations']).toMatchObject({ type: 'array' });
       expect(JSON.stringify(properties?.['service_integrations'])).toContain('"kafka"');
+      expect(JSON.stringify(properties?.['service_integrations'])).not.toContain('must be RUNNING');
     } finally {
       await client.close();
       await server.close();
