@@ -223,10 +223,14 @@ export interface ExecutePgQueryOptions {
 // ---------- Application ----------
 
 export enum ApplicationToolName {
+  Create = 'aiven_application_create',
   Deploy = 'aiven_application_deploy',
   Redeploy = 'aiven_application_redeploy',
   VcsIntegrationList = 'aiven_vcs_integration_list',
   VcsIntegrationRepositoryList = 'aiven_vcs_integration_repository_list',
+  VcsIntegrationRepositoryBranchList = 'aiven_vcs_integration_repository_branch_list',
+  VcsIntegrationRepositoryContainerManifestFilesList = 'aiven_vcs_integration_repository_container_manifest_files_list',
+  VcsIntegrationRepositoryScanContainerManifest = 'aiven_vcs_integration_repository_scan_container_manifest',
 }
 
 // ---------- Kafka ----------
