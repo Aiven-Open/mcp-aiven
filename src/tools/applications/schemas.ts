@@ -279,10 +279,10 @@ export const redeployApplicationInput = z
 
 export const vcsIntegrationInitializeInput = z
   .object({
-    project: z
+    organization_id: z
       .string()
       .describe(
-        'Aiven project name. The GitHub account will be connected to the organization that owns this project.'
+        'Aiven organization ID. Use aiven_project_list to obtain the organization_id associated with a project in the target organization.'
       ),
     reasoning: reasoningField,
   })
@@ -290,10 +290,10 @@ export const vcsIntegrationInitializeInput = z
 
 export const vcsIntegrationListInput = z
   .object({
-    project: z
+    organization_id: z
       .string()
       .describe(
-        'Aiven project name. The organization_id is resolved internally from this project.'
+        'Aiven organization ID. Use aiven_project_list to obtain the organization_id associated with a project in the target organization.'
       ),
     reasoning: reasoningField,
   })

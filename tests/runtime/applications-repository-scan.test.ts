@@ -6,6 +6,7 @@ import type { AivenClient } from '../../src/client.js';
 import {
   deployApplicationInput,
   vcsIntegrationInitializeInput,
+  vcsIntegrationListInput,
   vcsIntegrationRepositoryBranchListInput,
   vcsIntegrationRepositoryContainerManifestFilesListInput,
   vcsIntegrationRepositoryScanContainerManifestInput,
@@ -325,7 +326,6 @@ describe('application repository scan tools', () => {
 
   it('starts the GitHub connection flow and tells the agent to wait for the user', async () => {
     const client = createMockClient({
-      getResponse: { project: { organization_id: 'org/id' } },
       postResponse: {
         redirect_url: 'https://github.com/apps/aiven/installations/select_target',
       },
@@ -335,7 +335,7 @@ describe('application repository scan tools', () => {
       ApplicationToolName.VcsIntegrationInitialize
     );
     const params = vcsIntegrationInitializeInput.parse({
-      project: 'test/project',
+      organization_id: 'org/id',
       reasoning: 'Connect a GitHub account to Aiven',
     });
 
@@ -350,16 +350,13 @@ describe('application repository scan tools', () => {
     expect(tool.definition.description).toContain('owner of that GitHub organization');
     expect(tool.definition.description).toContain('personal GitHub account');
     expect(tool.definition.description).toContain('cannot be connected to more than one');
+    expect(tool.definition.description).toContain('entire Aiven organization');
     expect(tool.definition.description).toContain('install or configure the Aiven GitHub App');
     expect(tool.definition.description).toContain(
       'already exists but does not expose the repository'
     );
     expect(tool.definition.description).toContain('can hold several VCS integrations');
-    expect(client.get).toHaveBeenCalledWith('/project/test%2Fproject', {
-      token: 'token',
-      requestId: 'request-id',
-      toolReasoning: 'Connect a GitHub account to Aiven',
-    });
+    expect(client.get).not.toHaveBeenCalled();
     expect(client.post).toHaveBeenCalledWith(
       '/organization/org%2Fid/application/vcs-integration-initialize',
       { vcs_type: 'github' },
@@ -381,6 +378,49 @@ describe('application repository scan tools', () => {
       ],
       next_tool: ApplicationToolName.VcsIntegrationList,
       next_step: expect.stringContaining('Wait for the user to confirm'),
+    });
+  });
+
+  it('lists VCS integrations directly by organization ID', async () => {
+    const client = createMockClient({
+      getResponse: {
+        vcs_integrations: [
+          {
+            vcs_integration_id: 'vcs-1',
+            vcs_account_name: 'aiven',
+            vcs_type: 'github',
+          },
+        ],
+      },
+    });
+    const tool = getTool(createApplicationTools(client), ApplicationToolName.VcsIntegrationList);
+    const params = vcsIntegrationListInput.parse({
+      organization_id: 'org/id',
+      reasoning: 'Find connected repositories',
+    });
+
+    const result = await tool.handler(params, {
+      token: 'token',
+      requestId: 'request-id',
+      toolReasoning: 'Find connected repositories',
+    });
+
+    expect(tool.definition.description).toContain('organization-wide VCS integrations');
+    expect(client.get).toHaveBeenCalledOnce();
+    expect(client.get).toHaveBeenCalledWith('/organization/org%2Fid/application/vcs-integrations', {
+      token: 'token',
+      requestId: 'request-id',
+      toolReasoning: 'Find connected repositories',
+    });
+    expect(parseResultPayload(result)).toEqual({
+      organization_id: 'org/id',
+      vcs_integrations: [
+        {
+          vcs_integration_id: 'vcs-1',
+          vcs_account_name: 'aiven',
+          vcs_type: 'github',
+        },
+      ],
     });
   });
 

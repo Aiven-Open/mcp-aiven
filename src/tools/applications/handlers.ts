@@ -514,7 +514,7 @@ A successful response means the redeploy was triggered, not that it completed. T
       category: ServiceCategory.Application,
       definition: {
         title: 'Connect a GitHub Account',
-        description: `Start the browser-based GitHub connection flow for the organization that owns an Aiven project.
+        description: `Start the browser-based GitHub connection flow for an Aiven organization.
 
 Use this when the user wants to connect a GitHub organization or personal account to Aiven. VCS integration is recommended for every application deployed from GitHub, is required by the repository-scanner tools and for private repository access, and will enable more features on the platform.
 
@@ -524,7 +524,7 @@ Explain these requirements before starting:
 - The user must be an admin of the Aiven organization.
 - To connect a GitHub organization, the user must be an owner of that GitHub organization. Alternatively, they can connect their personal GitHub account.
 - The same GitHub organization or personal account cannot be connected to more than one Aiven organization.
-- The user chooses all repositories or specific repositories during the GitHub flow. All users in the Aiven organization can then view and deploy from the selected repositories.
+- The connection applies to the entire Aiven organization. The user chooses all repositories or specific repositories during the GitHub flow. All users in the Aiven organization can then view and deploy from the selected repositories.
 
 After calling this tool:
 1. Display the returned \`redirect_url\` verbatim so the user can open it in a browser.
@@ -536,29 +536,13 @@ After calling this tool:
         annotations: CREATE_ANNOTATIONS,
       },
       handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
-        const { project } = params as z.infer<typeof vcsIntegrationInitializeInput>;
+        const { organization_id: organizationId } =
+          params as z.infer<typeof vcsIntegrationInitializeInput>;
         const opts: RequestOptions = {
           token: context?.token,
           requestId: context?.requestId,
           toolReasoning: context?.toolReasoning,
         };
-
-        let organizationId: string;
-        try {
-          const projectResult = await client.get<{ project: { organization_id: string } }>(
-            `/project/${encodeURIComponent(project)}`,
-            opts
-          );
-          organizationId = projectResult.project.organization_id;
-          if (!organizationId) {
-            return toolError(`Project '${project}' has no associated organization.`);
-          }
-        } catch (err) {
-          return toolErrorWithRequestId(
-            `Failed to fetch project '${project}': ${errorMessage(err)}`,
-            context?.requestId
-          );
-        }
 
         try {
           const result = await client.post<{ redirect_url: string }>(
@@ -600,31 +584,18 @@ After calling this tool:
       category: ServiceCategory.Application,
       definition: {
         title: 'List VCS Integrations',
-        description: `List connected VCS (GitHub) accounts for the organization that owns a project.
+        description: `List connected VCS (GitHub) accounts for an Aiven organization.
 
-Use this as the first step when deploying from a repository — run it silently before \`aiven_application_create\` to discover available VCS integrations and their IDs. The organization_id is resolved internally from the project name.
+Use this as the first step when deploying from a repository — run it silently before \`aiven_application_create\` to discover organization-wide VCS integrations and their IDs. Use \`aiven_project_list\` to obtain the \`organization_id\` associated with the destination project.
 
 Returns each integration's \`vcs_integration_id\` (needed for \`aiven_vcs_integration_repository_list\`) and \`vcs_account_name\` (the GitHub org or user name).`,
         inputSchema: vcsIntegrationListInput,
         annotations: READ_ONLY_ANNOTATIONS,
       },
       handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
-        const { project } = params as z.infer<typeof vcsIntegrationListInput>;
+        const { organization_id: organizationId } =
+          params as z.infer<typeof vcsIntegrationListInput>;
         const opts = { token: context?.token, requestId: context?.requestId, toolReasoning: context?.toolReasoning };
-
-        let organizationId: string;
-        try {
-          const projectResult = await client.get<{ project: { organization_id: string } }>(
-            `/project/${encodeURIComponent(project)}`,
-            opts
-          );
-          organizationId = projectResult.project.organization_id;
-          if (!organizationId) {
-            return toolError(`Project '${project}' has no associated organization.`);
-          }
-        } catch (err) {
-          return toolError(`Failed to fetch project '${project}': ${errorMessage(err)}`);
-        }
 
         try {
           const result = await client.get<{

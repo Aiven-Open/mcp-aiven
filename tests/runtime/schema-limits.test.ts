@@ -115,7 +115,7 @@ describe('reasoning enforcement across schemas', () => {
 
   it('vcsIntegrationListInput rejects over-limit reasoning', () => {
     const result = vcsIntegrationListInput.safeParse({
-      project: 'p',
+      organization_id: 'org-1',
       reasoning: overLimitReasoning,
     });
     expect(result.success).toBe(false);
@@ -123,7 +123,7 @@ describe('reasoning enforcement across schemas', () => {
 
   it('vcsIntegrationInitializeInput rejects over-limit reasoning', () => {
     const result = vcsIntegrationInitializeInput.safeParse({
-      project: 'p',
+      organization_id: 'org-1',
       reasoning: overLimitReasoning,
     });
     expect(result.success).toBe(false);
