@@ -15,6 +15,7 @@ import {
 } from '../../src/tools/kafka/schemas.js';
 import {
   redeployApplicationInput,
+  vcsIntegrationInitializeInput,
   vcsIntegrationListInput,
   vcsIntegrationRepositoryBranchListInput,
   vcsIntegrationRepositoryContainerManifestFilesListInput,
@@ -114,6 +115,14 @@ describe('reasoning enforcement across schemas', () => {
 
   it('vcsIntegrationListInput rejects over-limit reasoning', () => {
     const result = vcsIntegrationListInput.safeParse({
+      project: 'p',
+      reasoning: overLimitReasoning,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('vcsIntegrationInitializeInput rejects over-limit reasoning', () => {
+    const result = vcsIntegrationInitializeInput.safeParse({
       project: 'p',
       reasoning: overLimitReasoning,
     });

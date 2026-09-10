@@ -137,7 +137,7 @@ export const deployApplicationInput = z
       .string()
       .optional()
       .describe(
-        'VCS integration ID for private repository access. ' +
+        'VCS integration ID for deploying through a connected repository. ' +
           'Auto-resolved via aiven_vcs_integration_list + aiven_vcs_integration_repository_list — do NOT ask the user for this value.'
       ),
 
@@ -145,7 +145,7 @@ export const deployApplicationInput = z
       .string()
       .optional()
       .describe(
-        'Repository ID within the VCS integration. ' +
+        'Repository ID within the connected VCS integration. ' +
           'Auto-resolved by matching source_url in aiven_vcs_integration_repository_list — do NOT ask the user for this value.'
       ),
 
@@ -272,6 +272,17 @@ export const redeployApplicationInput = z
       .describe(
         'Git branch or tag to switch to before rebuilding (e.g. "my-feature-branch", "v1.2.3"). ' +
           'If omitted, redeploys from the branch the service is currently configured on.'
+      ),
+    reasoning: reasoningField,
+  })
+  .strict();
+
+export const vcsIntegrationInitializeInput = z
+  .object({
+    project: z
+      .string()
+      .describe(
+        'Aiven project name. The GitHub account will be connected to the organization that owns this project.'
       ),
     reasoning: reasoningField,
   })

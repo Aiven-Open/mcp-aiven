@@ -226,6 +226,7 @@ export enum ApplicationToolName {
   Create = 'aiven_application_create',
   Deploy = 'aiven_application_deploy',
   Redeploy = 'aiven_application_redeploy',
+  VcsIntegrationInitialize = 'aiven_vcs_integration_initialize',
   VcsIntegrationList = 'aiven_vcs_integration_list',
   VcsIntegrationRepositoryList = 'aiven_vcs_integration_repository_list',
   VcsIntegrationRepositoryBranchList = 'aiven_vcs_integration_repository_branch_list',

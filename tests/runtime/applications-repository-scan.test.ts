@@ -5,6 +5,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { AivenClient } from '../../src/client.js';
 import {
   deployApplicationInput,
+  vcsIntegrationInitializeInput,
   vcsIntegrationRepositoryBranchListInput,
   vcsIntegrationRepositoryContainerManifestFilesListInput,
   vcsIntegrationRepositoryScanContainerManifestInput,
@@ -320,6 +321,101 @@ describe('application repository scan tools', () => {
         next_step: expect.stringContaining('may not reflect the deployment immediately'),
       })
     );
+  });
+
+  it('starts the GitHub connection flow and tells the agent to wait for the user', async () => {
+    const client = createMockClient({
+      getResponse: { project: { organization_id: 'org/id' } },
+      postResponse: {
+        redirect_url: 'https://github.com/apps/aiven/installations/select_target',
+      },
+    });
+    const tool = getTool(
+      createApplicationTools(client),
+      ApplicationToolName.VcsIntegrationInitialize
+    );
+    const params = vcsIntegrationInitializeInput.parse({
+      project: 'test/project',
+      reasoning: 'Connect a GitHub account to Aiven',
+    });
+
+    const result = await tool.handler(params, {
+      token: 'token',
+      requestId: 'request-id',
+      toolReasoning: 'Connect a GitHub account to Aiven',
+    });
+
+    expect(tool.definition.annotations.readOnlyHint).toBe(false);
+    expect(tool.definition.description).toContain('browser-based GitHub connection flow');
+    expect(tool.definition.description).toContain('owner of that GitHub organization');
+    expect(tool.definition.description).toContain('personal GitHub account');
+    expect(tool.definition.description).toContain('cannot be connected to more than one');
+    expect(tool.definition.description).toContain('install or configure the Aiven GitHub App');
+    expect(tool.definition.description).toContain(
+      'already exists but does not expose the repository'
+    );
+    expect(tool.definition.description).toContain('can hold several VCS integrations');
+    expect(client.get).toHaveBeenCalledWith('/project/test%2Fproject', {
+      token: 'token',
+      requestId: 'request-id',
+      toolReasoning: 'Connect a GitHub account to Aiven',
+    });
+    expect(client.post).toHaveBeenCalledWith(
+      '/organization/org%2Fid/application/vcs-integration-initialize',
+      { vcs_type: 'github' },
+      {
+        token: 'token',
+        requestId: 'request-id',
+        toolReasoning: 'Connect a GitHub account to Aiven',
+      }
+    );
+    expect(parseResultPayload(result)).toEqual({
+      organization_id: 'org/id',
+      vcs_type: 'github',
+      redirect_url: 'https://github.com/apps/aiven/installations/select_target',
+      message: 'Open redirect_url in a browser to connect a GitHub account to Aiven.',
+      user_instructions: [
+        'Pick the GitHub organization or personal account. If the Aiven GitHub App is already installed there, choose Configure to grant additional repositories; otherwise install it and select repositories. Then authorize it.',
+        'GitHub will redirect you to Aiven Console. Finalize the connection there (signing in first if needed).',
+        'Return to this terminal and tell the agent when you are done.',
+      ],
+      next_tool: ApplicationToolName.VcsIntegrationList,
+      next_step: expect.stringContaining('Wait for the user to confirm'),
+    });
+  });
+
+  it('tells the agent a missing repository is recoverable rather than a dead end', async () => {
+    const client = createMockClient({
+      getResponse: {
+        repositories: [
+          {
+            remote_repository_id: 'repo-1',
+            vcs_integration_id: 'vcs-1',
+            vcs_type: 'github',
+            full_name: 'aiven/other-repo',
+            name: 'other-repo',
+            source_url: 'https://github.com/aiven/other-repo',
+            default_branch_name: 'main',
+          },
+        ],
+        next: null,
+      },
+    });
+    const tool = getTool(
+      createApplicationTools(client),
+      ApplicationToolName.VcsIntegrationRepositoryList
+    );
+
+    const result = await tool.handler({
+      organization_id: refParams.organization_id,
+      vcs_integration_id: refParams.vcs_integration_id,
+      reasoning: 'Find the repository to deploy',
+    });
+    const payload = parseResultPayload(result) as { no_match_next_step: string };
+
+    expect(payload.no_match_next_step).toContain('do not conclude that it cannot be deployed');
+    expect(payload.no_match_next_step).toContain('truncated result');
+    expect(payload.no_match_next_step).toContain(ApplicationToolName.VcsIntegrationInitialize);
   });
 
   it('defines strict input schemas for manifest discovery and scanning', () => {
