@@ -36,11 +36,16 @@ const MAX_VCS_BRANCH_LIST_ITEMS = 1000;
 /** Safety cap on branch-list HTTP pages. */
 const MAX_VCS_BRANCH_LIST_PAGES = 100;
 
+const VCS_ACCOUNT_MATCH_NEXT_STEP =
+  `For a GitHub repository, compare the owner from its URL with \`vcs_account_name\` (case-insensitive). ` +
+  `If no account matches, do not list repositories from unrelated integrations; offer \`${ApplicationToolName.VcsIntegrationInitialize}\` to connect the repository owner's account. ` +
+  `If an account matches, search only its integration repositories.`;
+
 const VCS_REPOSITORY_NO_MATCH_NEXT_STEP =
-  `If no repository matches the one you are looking for, do not conclude that it cannot be deployed. ` +
-  `It may belong to a GitHub account that is not connected yet, may not have been granted to the connected account, or may fall outside a truncated result. ` +
+  `If the complete result has no match, offer \`${ApplicationToolName.VcsIntegrationInitialize}\` to grant that repository to the connected account. ` +
+  `If the result is truncated, do not conclude that the repository is unavailable. ` +
   // TODO: Once `remote_configure_url` is in the API for each VCS integration, let's offer that directly instead:
-  `Offer \`${ApplicationToolName.VcsIntegrationInitialize}\` to connect or reconfigure GitHub App access.`;
+  `Keep the user-facing explanation to the required next action.`;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -216,7 +221,7 @@ This tool does not accept a Compose file directly. Repository scanning requires 
 Inspect the local project files and confirm each applicable item. Report findings to the user. Block deployment when a problem would make the build or application fail, expose credentials, or weaken transport security. Treat ecosystem and source-layout guidance as recommendations. If a fix is needed, explain it and get the user's approval before editing or pushing code.
 
 - \`repository_url\` visibility → fetch repository metadata and check the \`private\` field. Do not infer from file access — being able to read files tells you nothing about visibility. If you cannot determine it, ask the user.
-- VCS integration → recommended for every GitHub repository, required for private repository access and the repository-scanner tools, and will enable more features on the platform. Call \`aiven_vcs_integration_list\`, then search each integration with \`aiven_vcs_integration_repository_list\` for a matching \`source_url\` (strip trailing \`.git\` and lowercase both sides). If found, use the returned \`vcs_integration_id\` and \`remote_repository_id\`; do NOT ask the user for them. If no integration exposes the repository, finish the other checks but do NOT scan it. Offer to start \`aiven_vcs_integration_initialize\`, explaining that the user must be an Aiven organization admin and either a GitHub organization owner for an organization account or connect their personal GitHub account. Do not create an application from a private repository until access is connected. If the repository is public and the user declines the recommended integration, creation can proceed without VCS integration IDs.
+- \`VCS integration\` → recommended for every GitHub repository and required for private repository access and repository scanning. Call \`aiven_vcs_integration_list\` and compare the repository owner with \`vcs_account_name\` case-insensitively. If no account matches, do not search unrelated integrations; offer \`aiven_vcs_integration_initialize\` to connect the owner's account. If an account matches, search only its repositories for a normalized \`source_url\` match. If the repository is absent from a complete result, offer the same tool to grant access to it. Keep the user-facing explanation brief. If found, use the returned IDs without asking the user. Do not create from a private repository until access is connected; a public repository can proceed without integration IDs if the user declines.
 - \`build_path\` and \`containerfile_path\` → verify the build context and Containerfile/Dockerfile paths are correct. If the file uses \`EXPOSE\`, verify it matches \`port\`. Confirm the image starts the application through \`CMD\`, \`ENTRYPOINT\`, or an equivalent project-specific mechanism.
 - \`port\` → verify app source binds to \`0.0.0.0\`, not \`localhost\`/\`127.0.0.1\`
 - \`service_integrations\` → for each entry, verify the source service exists in the same project (\`aiven_service_get\`) and the app reads the configured env var names. Whether to wait for the service to reach RUNNING depends on how the app handles unavailable services during startup.
@@ -516,22 +521,14 @@ A successful response means the redeploy was triggered, not that it completed. T
         title: 'Connect a GitHub Account',
         description: `Start the browser-based GitHub connection flow for an Aiven organization.
 
-Use this when the user wants to connect a GitHub organization or personal account to Aiven. VCS integration is recommended for every application deployed from GitHub, is required by the repository-scanner tools and for private repository access, and will enable more features on the platform.
+Use this to connect a repository owner's GitHub account when no \`vcs_account_name\` matches, or to grant a repository when its owner is already connected.
 
-Also use this when an integration already exists but does not expose the repository the user needs. The same flow reaches GitHub's reconfigure page for granting additional repositories to an installed app, and an Aiven organization can hold several VCS integrations, so a repository owned by a GitHub account that is not connected yet is also a reason to start this flow.
-
-Explain these requirements before starting:
-- The user must be an admin of the Aiven organization.
-- To connect a GitHub organization, the user must be an owner of that GitHub organization. Alternatively, they can connect their personal GitHub account.
-- The same GitHub organization or personal account cannot be connected to more than one Aiven organization.
-- The connection applies to the entire Aiven organization. The user chooses all repositories or specific repositories during the GitHub flow. All users in the Aiven organization can then view and deploy from the selected repositories.
+Before starting, briefly explain that the user must be an admin of the Aiven organization and, when connecting a GitHub organization, an owner of that GitHub organization. Alternatively, they can connect their personal GitHub account.
 
 After calling this tool:
 1. Display the returned \`redirect_url\` verbatim so the user can open it in a browser.
-2. Tell the user to complete the GitHub steps to install or configure the Aiven GitHub App and authorize it.
-3. Tell them that GitHub redirects back to Aiven Console, where they must finalize the connection (signing in first if needed).
-4. Ask them to return to the terminal and tell you when they are done, then wait. Do not claim the connection succeeded before they confirm.
-5. After they confirm, call \`aiven_vcs_integration_list\` and \`aiven_vcs_integration_repository_list\` again to verify repository access before continuing.`,
+2. In one brief instruction, tell the user to complete the GitHub and Aiven Console flow for the required account or repository, then return and confirm.
+3. Wait. After confirmation, list integrations and repositories again to verify access.`,
         inputSchema: vcsIntegrationInitializeInput,
         annotations: CREATE_ANNOTATIONS,
       },
@@ -564,9 +561,7 @@ After calling this tool:
               redirect_url: result.redirect_url,
               message: 'Open redirect_url in a browser to connect a GitHub account to Aiven.',
               user_instructions: [
-                'Pick the GitHub organization or personal account. If the Aiven GitHub App is already installed there, choose Configure to grant additional repositories; otherwise install it and select repositories. Then authorize it.',
-                'GitHub will redirect you to Aiven Console. Finalize the connection there (signing in first if needed).',
-                'Return to this terminal and tell the agent when you are done.',
+                'Complete the GitHub and Aiven Console flow for the account or repository you need, then return and tell the agent when you are done.',
               ],
               next_tool: ApplicationToolName.VcsIntegrationList,
               next_step:
@@ -588,7 +583,9 @@ After calling this tool:
 
 Use this as the first step when deploying from a repository — run it silently before \`aiven_application_create\` to discover organization-wide VCS integrations and their IDs. Use \`aiven_project_list\` to obtain the \`organization_id\` associated with the destination project.
 
-Returns each integration's \`vcs_integration_id\` (needed for \`aiven_vcs_integration_repository_list\`) and \`vcs_account_name\` (the GitHub org or user name).`,
+For a GitHub URL, compare its owner with \`vcs_account_name\` case-insensitively. If none matches, stop: do not enumerate unrelated repositories. Offer \`aiven_vcs_integration_initialize\` to connect that account. Search repositories only for matching accounts.
+
+Returns each integration's \`vcs_integration_id\` and \`vcs_account_name\` (the GitHub organization or user name).`,
         inputSchema: vcsIntegrationListInput,
         annotations: READ_ONLY_ANNOTATIONS,
       },
@@ -610,6 +607,7 @@ Returns each integration's \`vcs_integration_id\` (needed for \`aiven_vcs_integr
             wrapUntrustedResponse({
               organization_id: organizationId,
               vcs_integrations: result.vcs_integrations,
+              next_step: VCS_ACCOUNT_MATCH_NEXT_STEP,
             }),
             ApplicationToolName.VcsIntegrationList
           );
@@ -625,7 +623,7 @@ Returns each integration's \`vcs_integration_id\` (needed for \`aiven_vcs_integr
         title: 'List VCS Integration Repositories',
         description: `List repositories accessible via a VCS integration (connected GitHub account).
 
-Use this after \`aiven_vcs_integration_list\` to find the \`remote_repository_id\` needed to deploy through a connected VCS integration or use the repository-scanner tools. Compare each repository's \`source_url\` against the user's repository URL to find the match (normalize: strip trailing \`.git\`, lowercase both sides before comparing).
+Use this only for integrations whose \`vcs_account_name\` matches the GitHub repository owner. Compare each repository's \`source_url\` with the requested URL after stripping a trailing \`.git\` and lowercasing both.
 
 The tool follows pagination until there are no more pages, or until ${MAX_VCS_REPOSITORY_LIST_ITEMS} repositories have been collected (whichever comes first). If truncated, \`truncated\` is true and \`next\` may still be set when more pages exist.
 

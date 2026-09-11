@@ -347,15 +347,11 @@ describe('application repository scan tools', () => {
 
     expect(tool.definition.annotations.readOnlyHint).toBe(false);
     expect(tool.definition.description).toContain('browser-based GitHub connection flow');
+    expect(tool.definition.description).toContain("repository owner's GitHub account");
+    expect(tool.definition.description).toContain('admin of the Aiven organization');
     expect(tool.definition.description).toContain('owner of that GitHub organization');
     expect(tool.definition.description).toContain('personal GitHub account');
-    expect(tool.definition.description).toContain('cannot be connected to more than one');
-    expect(tool.definition.description).toContain('entire Aiven organization');
-    expect(tool.definition.description).toContain('install or configure the Aiven GitHub App');
-    expect(tool.definition.description).toContain(
-      'already exists but does not expose the repository'
-    );
-    expect(tool.definition.description).toContain('can hold several VCS integrations');
+    expect(tool.definition.description).toContain('In one brief instruction');
     expect(client.get).not.toHaveBeenCalled();
     expect(client.post).toHaveBeenCalledWith(
       '/organization/org%2Fid/application/vcs-integration-initialize',
@@ -372,9 +368,7 @@ describe('application repository scan tools', () => {
       redirect_url: 'https://github.com/apps/aiven/installations/select_target',
       message: 'Open redirect_url in a browser to connect a GitHub account to Aiven.',
       user_instructions: [
-        'Pick the GitHub organization or personal account. If the Aiven GitHub App is already installed there, choose Configure to grant additional repositories; otherwise install it and select repositories. Then authorize it.',
-        'GitHub will redirect you to Aiven Console. Finalize the connection there (signing in first if needed).',
-        'Return to this terminal and tell the agent when you are done.',
+        'Complete the GitHub and Aiven Console flow for the account or repository you need, then return and tell the agent when you are done.',
       ],
       next_tool: ApplicationToolName.VcsIntegrationList,
       next_step: expect.stringContaining('Wait for the user to confirm'),
@@ -406,6 +400,7 @@ describe('application repository scan tools', () => {
     });
 
     expect(tool.definition.description).toContain('organization-wide VCS integrations');
+    expect(tool.definition.description).toContain('do not enumerate unrelated repositories');
     expect(client.get).toHaveBeenCalledOnce();
     expect(client.get).toHaveBeenCalledWith('/organization/org%2Fid/application/vcs-integrations', {
       token: 'token',
@@ -421,6 +416,7 @@ describe('application repository scan tools', () => {
           vcs_type: 'github',
         },
       ],
+      next_step: expect.stringContaining('compare the owner'),
     });
   });
 
@@ -453,8 +449,8 @@ describe('application repository scan tools', () => {
     });
     const payload = parseResultPayload(result) as { no_match_next_step: string };
 
-    expect(payload.no_match_next_step).toContain('do not conclude that it cannot be deployed');
-    expect(payload.no_match_next_step).toContain('truncated result');
+    expect(payload.no_match_next_step).toContain('grant that repository');
+    expect(payload.no_match_next_step).toContain('result is truncated');
     expect(payload.no_match_next_step).toContain(ApplicationToolName.VcsIntegrationInitialize);
   });
 
