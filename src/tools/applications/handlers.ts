@@ -527,7 +527,7 @@ Before starting, briefly explain that the user must be an admin of the Aiven org
 
 After calling this tool:
 1. Display the returned \`redirect_url\` verbatim so the user can open it in a browser.
-2. In one brief instruction, tell the user to complete the GitHub and Aiven Console flow for the required account or repository, then return and confirm.
+2. Display the returned \`user_instructions\` so the user knows which named Aiven organization to select while completing the GitHub and Aiven Console flow.
 3. Wait. After confirmation, list integrations and repositories again to verify access.`,
         inputSchema: vcsIntegrationInitializeInput,
         annotations: CREATE_ANNOTATIONS,
@@ -542,6 +542,18 @@ After calling this tool:
         };
 
         try {
+          const organization = await client.get<{ organization_name?: string }>(
+            `/organization/${encodeURIComponent(organizationId)}`,
+            opts
+          );
+          if (!organization.organization_name) {
+            return toolErrorWithRequestId(
+              'The organization response did not include an organization name.',
+              context?.requestId
+            );
+          }
+          const organizationName = organization.organization_name;
+
           const result = await client.post<{ redirect_url: string }>(
             `/organization/${encodeURIComponent(organizationId)}/application/vcs-integration-initialize`,
             { vcs_type: 'github' },
@@ -557,11 +569,12 @@ After calling this tool:
           return toolSuccess(
             wrapUntrustedResponse({
               organization_id: organizationId,
+              organization_name: organizationName,
               vcs_type: 'github',
               redirect_url: result.redirect_url,
               message: 'Open redirect_url in a browser to connect a GitHub account to Aiven.',
               user_instructions: [
-                'Complete the GitHub and Aiven Console flow for the account or repository you need, then return and tell the agent when you are done.',
+                `Complete the GitHub setup. After being redirected to Aiven Console, select the Aiven organization "${organizationName}", then click "Confirm connection". When finished, return to this conversation and confirm the connection was completed.`,
               ],
               next_tool: ApplicationToolName.VcsIntegrationList,
               next_step:

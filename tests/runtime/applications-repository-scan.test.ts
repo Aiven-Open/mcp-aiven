@@ -326,6 +326,9 @@ describe('application repository scan tools', () => {
 
   it('starts the GitHub connection flow and tells the agent to wait for the user', async () => {
     const client = createMockClient({
+      getResponse: {
+        organization_name: 'Example Organization',
+      },
       postResponse: {
         redirect_url: 'https://github.com/apps/aiven/installations/select_target',
       },
@@ -351,8 +354,12 @@ describe('application repository scan tools', () => {
     expect(tool.definition.description).toContain('admin of the Aiven organization');
     expect(tool.definition.description).toContain('owner of that GitHub organization');
     expect(tool.definition.description).toContain('personal GitHub account');
-    expect(tool.definition.description).toContain('In one brief instruction');
-    expect(client.get).not.toHaveBeenCalled();
+    expect(tool.definition.description).toContain('which named Aiven organization');
+    expect(client.get).toHaveBeenCalledWith('/organization/org%2Fid', {
+      token: 'token',
+      requestId: 'request-id',
+      toolReasoning: 'Connect a GitHub account to Aiven',
+    });
     expect(client.post).toHaveBeenCalledWith(
       '/organization/org%2Fid/application/vcs-integration-initialize',
       { vcs_type: 'github' },
@@ -364,11 +371,12 @@ describe('application repository scan tools', () => {
     );
     expect(parseResultPayload(result)).toEqual({
       organization_id: 'org/id',
+      organization_name: 'Example Organization',
       vcs_type: 'github',
       redirect_url: 'https://github.com/apps/aiven/installations/select_target',
       message: 'Open redirect_url in a browser to connect a GitHub account to Aiven.',
       user_instructions: [
-        'Complete the GitHub and Aiven Console flow for the account or repository you need, then return and tell the agent when you are done.',
+        'Complete the GitHub setup. After being redirected to Aiven Console, select the Aiven organization "Example Organization", then click "Confirm connection". When finished, return to this conversation and confirm the connection was completed.',
       ],
       next_tool: ApplicationToolName.VcsIntegrationList,
       next_step: expect.stringContaining('Wait for the user to confirm'),
