@@ -14,6 +14,9 @@ import {
 import { createApplicationTools } from '../../src/tools/applications/handlers.js';
 import { ApplicationToolName, type ToolDefinition } from '../../src/types.js';
 
+const VCS_CONNECTION_DOCS_URL =
+  'https://aiven.io/docs/products/runtime/connect-github-account';
+
 function createMockClient(options: {
   getResponse?: unknown;
   getResponses?: unknown[];
@@ -70,6 +73,8 @@ describe('application repository scan tools', () => {
     expect(deployAlias.definition.description).toContain(
       `Use \`${ApplicationToolName.Create}\` instead`
     );
+    expect(createTool.definition.description).toContain(VCS_CONNECTION_DOCS_URL);
+    expect(createTool.definition.description).toContain('Aiven organization admin');
     expect(deployAlias.handler).toBe(createTool.handler);
   });
 
@@ -409,13 +414,19 @@ describe('application repository scan tools', () => {
 
     expect(tool.definition.description).toContain('organization-wide VCS integrations');
     expect(tool.definition.description).toContain('do not enumerate unrelated repositories');
+    expect(tool.definition.description).toContain(VCS_CONNECTION_DOCS_URL);
     expect(client.get).toHaveBeenCalledOnce();
     expect(client.get).toHaveBeenCalledWith('/organization/org%2Fid/application/vcs-integrations', {
       token: 'token',
       requestId: 'request-id',
       toolReasoning: 'Find connected repositories',
     });
-    expect(parseResultPayload(result)).toEqual({
+    const payload = parseResultPayload(result) as {
+      organization_id: string;
+      vcs_integrations: unknown[];
+      next_step: string;
+    };
+    expect(payload).toEqual({
       organization_id: 'org/id',
       vcs_integrations: [
         {
@@ -426,6 +437,11 @@ describe('application repository scan tools', () => {
       ],
       next_step: expect.stringContaining('compare the owner'),
     });
+    expect(payload.next_step).toContain(
+      `If \`${ApplicationToolName.VcsIntegrationInitialize}\` is unavailable`
+    );
+    expect(payload.next_step).toContain(VCS_CONNECTION_DOCS_URL);
+    expect(payload.next_step).toContain('Aiven organization admin');
   });
 
   it('tells the agent a missing repository is recoverable rather than a dead end', async () => {
@@ -460,6 +476,8 @@ describe('application repository scan tools', () => {
     expect(payload.no_match_next_step).toContain('grant that repository');
     expect(payload.no_match_next_step).toContain('result is truncated');
     expect(payload.no_match_next_step).toContain(ApplicationToolName.VcsIntegrationInitialize);
+    expect(payload.no_match_next_step).toContain(VCS_CONNECTION_DOCS_URL);
+    expect(payload.no_match_next_step).toContain('Aiven organization admin');
   });
 
   it('defines strict input schemas for manifest discovery and scanning', () => {

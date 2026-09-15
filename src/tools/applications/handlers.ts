@@ -36,13 +36,21 @@ const MAX_VCS_BRANCH_LIST_ITEMS = 1000;
 /** Safety cap on branch-list HTTP pages. */
 const MAX_VCS_BRANCH_LIST_PAGES = 100;
 
+const VCS_CONNECTION_DOCS_URL =
+  'https://aiven.io/docs/products/runtime/connect-github-account';
+const VCS_INITIALIZE_UNAVAILABLE_NEXT_STEP =
+  `If \`${ApplicationToolName.VcsIntegrationInitialize}\` is unavailable, direct the user to ${VCS_CONNECTION_DOCS_URL}. ` +
+  `An Aiven organization admin must connect the account or configure repository access, and connecting a GitHub organization also requires a GitHub organization owner.`;
+
 const VCS_ACCOUNT_MATCH_NEXT_STEP =
   `For a GitHub repository, compare the owner from its URL with \`vcs_account_name\` (case-insensitive). ` +
-  `If no account matches, do not list repositories from unrelated integrations; offer \`${ApplicationToolName.VcsIntegrationInitialize}\` to connect the repository owner's account. ` +
+  `If no account matches, do not list repositories from unrelated integrations. If \`${ApplicationToolName.VcsIntegrationInitialize}\` is available, offer it to connect the repository owner's account. ` +
+  `${VCS_INITIALIZE_UNAVAILABLE_NEXT_STEP} ` +
   `If an account matches, search only its integration repositories.`;
 
 const VCS_REPOSITORY_NO_MATCH_NEXT_STEP =
-  `If the complete result has no match, offer \`${ApplicationToolName.VcsIntegrationInitialize}\` to grant that repository to the connected account. ` +
+  `If the complete result has no match and \`${ApplicationToolName.VcsIntegrationInitialize}\` is available, offer it to grant that repository to the connected account. ` +
+  `${VCS_INITIALIZE_UNAVAILABLE_NEXT_STEP} ` +
   `If the result is truncated, do not conclude that the repository is unavailable. ` +
   // TODO: Once `remote_configure_url` is in the API for each VCS integration, let's offer that directly instead:
   `Keep the user-facing explanation to the required next action.`;
@@ -221,7 +229,7 @@ This tool does not accept a Compose file directly. Repository scanning requires 
 Inspect the local project files and confirm each applicable item. Report findings to the user. Block deployment when a problem would make the build or application fail, expose credentials, or weaken transport security. Treat ecosystem and source-layout guidance as recommendations. If a fix is needed, explain it and get the user's approval before editing or pushing code.
 
 - \`repository_url\` visibility → fetch repository metadata and check the \`private\` field. Do not infer from file access — being able to read files tells you nothing about visibility. If you cannot determine it, ask the user.
-- \`VCS integration\` → recommended for every GitHub repository and required for private repository access and repository scanning. Call \`aiven_vcs_integration_list\` and compare the repository owner with \`vcs_account_name\` case-insensitively. If no account matches, do not search unrelated integrations; offer \`aiven_vcs_integration_initialize\` to connect the owner's account. If an account matches, search only its repositories for a normalized \`source_url\` match. If the repository is absent from a complete result, offer the same tool to grant access to it. Keep the user-facing explanation brief. If found, use the returned IDs without asking the user. Do not create from a private repository until access is connected; a public repository can proceed without integration IDs if the user declines.
+- \`VCS integration\` → recommended for every GitHub repository and required for private repository access and repository scanning. Call \`aiven_vcs_integration_list\` and compare the repository owner with \`vcs_account_name\` case-insensitively. If no account matches, do not search unrelated integrations. If \`aiven_vcs_integration_initialize\` is available, offer it to connect the owner's account; otherwise, direct the user to ${VCS_CONNECTION_DOCS_URL}. An Aiven organization admin must connect the account or configure repository access, and connecting a GitHub organization also requires a GitHub organization owner. If an account matches, search only its repositories for a normalized \`source_url\` match. If the repository is absent from a complete result, follow the same available-tool-or-documentation path to grant access to it. Keep the user-facing explanation brief. If found, use the returned IDs without asking the user. Do not create from a private repository until access is connected; a public repository can proceed without integration IDs if the user declines.
 - \`build_path\` and \`containerfile_path\` → verify the build context and Containerfile/Dockerfile paths are correct. If the file uses \`EXPOSE\`, verify it matches \`port\`. Confirm the image starts the application through \`CMD\`, \`ENTRYPOINT\`, or an equivalent project-specific mechanism.
 - \`port\` → verify app source binds to \`0.0.0.0\`, not \`localhost\`/\`127.0.0.1\`
 - \`service_integrations\` → for each entry, verify the source service exists in the same project (\`aiven_service_get\`) and the app reads the configured env var names. Whether to wait for the service to reach RUNNING depends on how the app handles unavailable services during startup.
@@ -596,7 +604,7 @@ After calling this tool:
 
 Use this as the first step when deploying from a repository — run it silently before \`aiven_application_create\` to discover organization-wide VCS integrations and their IDs. Use \`aiven_project_list\` to obtain the \`organization_id\` associated with the destination project.
 
-For a GitHub URL, compare its owner with \`vcs_account_name\` case-insensitively. If none matches, stop: do not enumerate unrelated repositories. Offer \`aiven_vcs_integration_initialize\` to connect that account. Search repositories only for matching accounts.
+For a GitHub URL, compare its owner with \`vcs_account_name\` case-insensitively. If none matches, stop: do not enumerate unrelated repositories. If \`aiven_vcs_integration_initialize\` is available, offer it to connect that account; otherwise, direct the user to ${VCS_CONNECTION_DOCS_URL}. An Aiven organization admin must connect the account, and connecting a GitHub organization also requires a GitHub organization owner. Search repositories only for matching accounts.
 
 Returns each integration's \`vcs_integration_id\` and \`vcs_account_name\` (the GitHub organization or user name).`,
         inputSchema: vcsIntegrationListInput,
