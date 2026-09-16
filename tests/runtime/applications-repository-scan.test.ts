@@ -73,8 +73,6 @@ describe('application repository scan tools', () => {
     expect(deployAlias.definition.description).toContain(
       `Use \`${ApplicationToolName.Create}\` instead`
     );
-    expect(createTool.definition.description).toContain(VCS_CONNECTION_DOCS_URL);
-    expect(createTool.definition.description).toContain('Aiven organization admin');
     expect(deployAlias.handler).toBe(createTool.handler);
   });
 
@@ -355,11 +353,13 @@ describe('application repository scan tools', () => {
 
     expect(tool.definition.annotations.readOnlyHint).toBe(false);
     expect(tool.definition.description).toContain('browser-based GitHub connection flow');
-    expect(tool.definition.description).toContain("repository owner's GitHub account");
     expect(tool.definition.description).toContain('admin of the Aiven organization');
     expect(tool.definition.description).toContain('owner of that GitHub organization');
     expect(tool.definition.description).toContain('personal GitHub account');
-    expect(tool.definition.description).toContain('which named Aiven organization');
+    expect(tool.definition.description).toContain('not connected to this Aiven organization');
+    expect(tool.definition.description).toContain('remote_configure_url');
+    expect(tool.definition.description).toContain('show `redirect_url` verbatim');
+    expect(tool.definition.description).toContain('user_instructions');
     expect(client.get).toHaveBeenCalledWith('/organization/org%2Fid', {
       token: 'token',
       requestId: 'request-id',
@@ -396,6 +396,7 @@ describe('application repository scan tools', () => {
             vcs_integration_id: 'vcs-1',
             vcs_account_name: 'aiven',
             vcs_type: 'github',
+            remote_configure_url: 'https://github.com/settings/installations/1234',
           },
         ],
       },
@@ -412,9 +413,8 @@ describe('application repository scan tools', () => {
       toolReasoning: 'Find connected repositories',
     });
 
-    expect(tool.definition.description).toContain('organization-wide VCS integrations');
-    expect(tool.definition.description).toContain('do not enumerate unrelated repositories');
-    expect(tool.definition.description).toContain(VCS_CONNECTION_DOCS_URL);
+    expect(tool.definition.description).toContain('remote_configure_url');
+    expect(tool.definition.description).toContain('next_step');
     expect(client.get).toHaveBeenCalledOnce();
     expect(client.get).toHaveBeenCalledWith('/organization/org%2Fid/application/vcs-integrations', {
       token: 'token',
@@ -433,10 +433,12 @@ describe('application repository scan tools', () => {
           vcs_integration_id: 'vcs-1',
           vcs_account_name: 'aiven',
           vcs_type: 'github',
+          remote_configure_url: 'https://github.com/settings/installations/1234',
         },
       ],
-      next_step: expect.stringContaining('compare the owner'),
+      next_step: expect.stringContaining('Match the GitHub repository owner'),
     });
+    expect(payload.next_step).toContain('list repositories only for that integration');
     expect(payload.next_step).toContain(
       `If \`${ApplicationToolName.VcsIntegrationInitialize}\` is unavailable`
     );
@@ -473,11 +475,14 @@ describe('application repository scan tools', () => {
     });
     const payload = parseResultPayload(result) as { no_match_next_step: string };
 
-    expect(payload.no_match_next_step).toContain('grant that repository');
     expect(payload.no_match_next_step).toContain('result is truncated');
-    expect(payload.no_match_next_step).toContain(ApplicationToolName.VcsIntegrationInitialize);
-    expect(payload.no_match_next_step).toContain(VCS_CONNECTION_DOCS_URL);
-    expect(payload.no_match_next_step).toContain('Aiven organization admin');
+    expect(payload.no_match_next_step).toContain('remote_configure_url');
+    expect(payload.no_match_next_step).toContain('advise the user to open it');
+    expect(payload.no_match_next_step).toContain('update repository access on GitHub');
+    expect(payload.no_match_next_step).toContain(
+      `offer \`${ApplicationToolName.VcsIntegrationInitialize}\` instead`
+    );
+    expect(payload.no_match_next_step).not.toContain(VCS_CONNECTION_DOCS_URL);
   });
 
   it('defines strict input schemas for manifest discovery and scanning', () => {
