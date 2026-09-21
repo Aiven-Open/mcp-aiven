@@ -22,6 +22,7 @@ import {
 import { jsonSchemaToZod } from './json-schema-to-zod.js';
 import { createApiTool } from './api-tool.js';
 import { metricsConfigOverrides } from './metrics-shape.js';
+import { integrationConfigOverrides } from './integrations/overrides.js';
 import { createRequire } from 'node:module';
 import { TOOL_LIST_PICKER_SUFFIX } from '../prompts.js';
 
@@ -181,12 +182,18 @@ export function loadApiTools(client: AivenClient): ToolDefinition[] {
         method: entry.method as HttpMethod,
         path: entry.path,
         inputSchema,
-        annotations: deriveAnnotations(entry.method, entry.readOnly, entry.destructive, entry.openWorld),
+        annotations: deriveAnnotations(
+          entry.method,
+          entry.readOnly,
+          entry.destructive,
+          entry.openWorld
+        ),
         defaults: entry.defaults,
         responseFilter: entry.response_filter,
         // Metrics responses are too large to return whole; the overrides add overview/detail
         // shaping for that one tool (no-op for all others).
         ...metricsConfigOverrides(entry.name, inputSchema),
+        ...integrationConfigOverrides(entry.name, inputSchema, client),
       },
       client
     );

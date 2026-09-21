@@ -1,5 +1,11 @@
 import type { AivenClient } from '../client.js';
-import type { ToolDefinition, ToolResult, HandlerContext, ApiToolConfig, RequestOptions } from '../types.js';
+import type {
+  ToolDefinition,
+  ToolResult,
+  HandlerContext,
+  ApiToolConfig,
+  RequestOptions,
+} from '../types.js';
 import { toolSuccess, toolErrorWithRequestId } from '../types.js';
 import { errorMessage } from '../errors.js';
 import { redactSensitiveData } from '../security.js';
@@ -8,9 +14,7 @@ import { applyResponseFilter, extendSchemaWithSearch, SEARCH_PARAMS } from './re
 
 function extractPathParams(path: string): Set<string> {
   return new Set(
-    [...path.matchAll(/\{([^}]+)\}/g)]
-      .map((m) => m[1])
-      .filter((s): s is string => s !== undefined)
+    [...path.matchAll(/\{([^}]+)\}/g)].map((m) => m[1]).filter((s): s is string => s !== undefined)
   );
 }
 
@@ -98,13 +102,15 @@ export function createApiTool(config: ApiToolConfig, client: AivenClient): ToolD
     handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
       try {
         const args = params as Record<string, unknown>;
-        const search = hasSearch ? args['search'] as string | undefined : undefined;
-        const limit = hasSearch ? args['limit'] as number | undefined : undefined;
-        const offset = hasSearch ? args['offset'] as number | undefined : undefined;
+        const search = hasSearch ? (args['search'] as string | undefined) : undefined;
+        const limit = hasSearch ? (args['limit'] as number | undefined) : undefined;
+        const offset = hasSearch ? (args['offset'] as number | undefined) : undefined;
 
         const apiArgs = Object.fromEntries(
           Object.entries(args).filter(([key]) => !clientOnly.has(key))
         );
+
+        await config.validateParams?.(apiArgs, context);
 
         const opts: RequestOptions = {
           token: context?.token,
@@ -115,7 +121,9 @@ export function createApiTool(config: ApiToolConfig, client: AivenClient): ToolD
         };
 
         const data = await executeRequest(client, config, apiArgs, pathParams, opts);
-        const redacted = redactSensitiveData(data);
+        const redacted = config.redactResponse
+          ? config.redactResponse(data)
+          : redactSensitiveData(data);
 
         const filtered = config.responseFilter
           ? applyResponseFilter(redacted, config.responseFilter, search, limit, offset)
