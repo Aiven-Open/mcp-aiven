@@ -75,8 +75,10 @@ describe('applicationServiceCredentialUserConfig', () => {
   );
 
   it.each(Object.keys(kafkaConfig.exposed_values))('requires the Kafka %s mapping', (key) => {
-    const exposedValues = { ...kafkaConfig.exposed_values };
-    delete exposedValues[key as keyof typeof exposedValues];
+    const exposedValues = {
+      ...kafkaConfig.exposed_values,
+      [key]: undefined,
+    };
 
     expect(
       applicationServiceCredentialUserConfig.safeParse({
