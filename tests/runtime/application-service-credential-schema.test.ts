@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { serviceIntegrationItem } from '../../src/tools/applications/schemas.js';
 import { applicationServiceCredentialUserConfig } from '../../src/tools/integrations/schemas.js';
 
 const connectionStringConfigs = [
@@ -104,6 +105,31 @@ describe('applicationServiceCredentialUserConfig', () => {
       applicationServiceCredentialUserConfig.safeParse({
         ...kafkaConfig,
         password: 'not-allowed',
+      }).success
+    ).toBe(false);
+  });
+});
+
+describe('serviceIntegrationItem', () => {
+  it.each([...connectionStringConfigs, kafkaConfig])(
+    'accepts the Aiven API shape for $service_type unchanged',
+    (userConfig) => {
+      const integration = {
+        integration_type: 'application_service_credential',
+        source_service: `${userConfig.service_type}-service`,
+        user_config: userConfig,
+      };
+
+      expect(serviceIntegrationItem.parse(integration)).toEqual(integration);
+    }
+  );
+
+  it('rejects the former flattened application-create shape', () => {
+    expect(
+      serviceIntegrationItem.safeParse({
+        service_type: 'pg',
+        service_name: 'pg-service',
+        connection_string_environment_variable_key: 'DATABASE_URL',
       }).success
     ).toBe(false);
   });
