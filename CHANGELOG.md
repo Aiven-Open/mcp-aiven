@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.15.3...v1.16.0) (2026-09-22)
+
+
+### Features
+
+* Add VCS integration initialize tool [APP-388] ([#169](https://github.com/Aiven-Open/mcp-aiven/issues/169)) ([087c9d3](https://github.com/Aiven-Open/mcp-aiven/commit/087c9d3296a305004abeec283b78a06e0b18e11b))
+
 ## [1.15.3](https://github.com/Aiven-Open/mcp-aiven/compare/v1.15.2...v1.15.3) (2026-08-27)
 
 
