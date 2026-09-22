@@ -272,6 +272,7 @@ While rejections continue, the server logs a misconfig warning at most once ever
 |---|---|
 | `aiven_application_create` | Create and initially deploy a Containerfile/Dockerfile application; returns 409 if the service already exists |
 | `aiven_application_redeploy` | Rebuild an existing application from its configured repository without changing service configuration |
+| `aiven_vcs_integration_initialize` | Start the browser-based flow for connecting a GitHub account |
 | `aiven_vcs_integration_list` | List connected VCS (GitHub) accounts |
 | `aiven_vcs_integration_repository_list` | List repositories for a VCS integration |
 | `aiven_vcs_integration_repository_branch_list` | List repository branches and their current commit SHAs |

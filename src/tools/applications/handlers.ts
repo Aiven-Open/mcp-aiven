@@ -18,6 +18,7 @@ import { getProjectCaCert } from '../../shared/service-info.js';
 import {
   deployApplicationInput,
   redeployApplicationInput,
+  vcsIntegrationInitializeInput,
   vcsIntegrationListInput,
   vcsIntegrationRepositoryBranchListInput,
   vcsIntegrationRepositoryContainerManifestFilesListInput,
@@ -34,6 +35,21 @@ const MAX_VCS_REPOSITORY_LIST_PAGES = 100;
 const MAX_VCS_BRANCH_LIST_ITEMS = 1000;
 /** Safety cap on branch-list HTTP pages. */
 const MAX_VCS_BRANCH_LIST_PAGES = 100;
+
+const VCS_CONNECTION_DOCS_URL =
+  'https://aiven.io/docs/products/runtime/connect-github-account';
+
+const VCS_INTEGRATION_LIST_NEXT_STEP =
+  `Match the GitHub repository owner to \`vcs_account_name\` case-insensitively. ` +
+  `If one matches, list repositories only for that integration. ` +
+  `If none matches, offer \`${ApplicationToolName.VcsIntegrationInitialize}\` if available. ` +
+  `If \`${ApplicationToolName.VcsIntegrationInitialize}\` is unavailable, direct the user to ${VCS_CONNECTION_DOCS_URL}. ` +
+  `An Aiven organization admin must connect the account or configure repository access, and connecting a GitHub organization also requires a GitHub organization owner.`;
+
+const VCS_REPOSITORY_LIST_NO_MATCH_NEXT_STEP =
+  `If the result is truncated, do not treat the repository as unavailable. ` +
+  `If the complete result has no match and the matching integration has a \`remote_configure_url\`, show it and advise the user to open it to update repository access on GitHub. ` +
+  `If \`remote_configure_url\` is null, offer \`${ApplicationToolName.VcsIntegrationInitialize}\` instead.`;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -202,14 +218,14 @@ export function createApplicationTools(client: AivenClient): ToolDefinition[] {
       title: 'Create Application on Aiven',
       description: `Create and initially deploy one Dockerized application to Aiven from a Containerfile or Dockerfile. The application service must not already exist, and the API returns 409 if it does. A successful response means the application was created and its initial deployment is continuing asynchronously, not that deployment completed. The service state may not reflect the deployment immediately. Tell the user the operation is continuing and ask when they want to check its status with \`aiven_service_get\`; do not poll in a loop. For an existing application, use \`aiven_application_redeploy\` to rebuild from its configured repository without changing its service configuration, \`aiven_service_update\` to change its service configuration, or \`aiven_service_integration_create\`, \`aiven_service_integration_update\`, and \`aiven_service_integration_delete\` to manage connected data services.
 
-This tool does not accept a Compose file directly. To derive candidate Aiven service configurations from a Compose file, use \`aiven_vcs_integration_repository_container_manifest_files_list\`, then \`aiven_vcs_integration_repository_scan_container_manifest\`. The scanner recognizes application services with a build configuration and selected Aiven-compatible data services; it may omit services or settings it cannot map. Review its \`service_suggestions\` before creating accepted services with \`aiven_service_create\`.
+This tool does not accept a Compose file directly. Repository scanning requires a connected VCS account and repository. To derive candidate Aiven service configurations from a Compose file, use \`aiven_vcs_integration_repository_container_manifest_files_list\`, then \`aiven_vcs_integration_repository_scan_container_manifest\`. The scanner recognizes application services with a build configuration and selected Aiven-compatible data services; it may omit services or settings it cannot map. Review its \`service_suggestions\` before creating accepted services with \`aiven_service_create\`.
 
 ## Pre-deploy verification (read-only checks — do NOT create, push, or modify anything)
 
 Inspect the local project files and confirm each applicable item. Report findings to the user. Block deployment when a problem would make the build or application fail, expose credentials, or weaken transport security. Treat ecosystem and source-layout guidance as recommendations. If a fix is needed, explain it and get the user's approval before editing or pushing code.
 
 - \`repository_url\` visibility → fetch repository metadata and check the \`private\` field. Do not infer from file access — being able to read files tells you nothing about visibility. If you cannot determine it, ask the user.
-- VCS credentials (private repos only) → if the repo is private, call \`aiven_vcs_integration_list\` (project), then for each integration call \`aiven_vcs_integration_repository_list\` and find the repo whose \`source_url\` matches (strip trailing \`.git\`, lowercase both sides). If matched, use the resolved \`vcs_integration_id\` and \`remote_repository_id\` — do NOT ask the user for these. If no match found, continue remaining checks but do NOT call this tool; after all checks, tell the user: "⚠️ This repository is private but is not connected to Aiven. Please connect your GitHub account via the Aiven Console and grant access to this repo, then try again."
+- \`VCS integration\` → recommended for every GitHub repository and required for private repository access and repository scanning. Use \`aiven_vcs_integration_list\` to find the matching account before listing its repositories, and follow the returned guidance. If the repository is found, use its \`vcs_integration_id\` and \`remote_repository_id\` without asking the user. Do not create from a private repository until access is connected; a public repository can proceed without integration IDs if the user declines.
 - \`build_path\` and \`containerfile_path\` → verify the build context and Containerfile/Dockerfile paths are correct. If the file uses \`EXPOSE\`, verify it matches \`port\`. Confirm the image starts the application through \`CMD\`, \`ENTRYPOINT\`, or an equivalent project-specific mechanism.
 - \`port\` → verify app source binds to \`0.0.0.0\`, not \`localhost\`/\`127.0.0.1\`
 - \`service_integrations\` → for each entry, verify the source service exists in the same project (\`aiven_service_get\`) and the app reads the configured env var names. Whether to wait for the service to reach RUNNING depends on how the app handles unavailable services during startup.
@@ -324,7 +340,7 @@ CMD ["node", "dist/index.js"]
           ? buildPath
           : `./${buildPath}`;
 
-        // Build source config - include VCS integration IDs for private repo access
+        // Build source config - include VCS integration IDs for connected repository access
         const sourceConfig: Record<string, unknown> = {
           repository_url: repoUrl,
           branch,
@@ -337,7 +353,7 @@ CMD ["node", "dist/index.js"]
             : `./${containerfilePath}`;
         }
 
-        // Add VCS integration IDs if provided (required for private repos)
+        // Add VCS integration IDs when deploying through a connected repository
         if (vcsIntegrationId) {
           sourceConfig['vcs_integration_id'] = vcsIntegrationId;
         }
@@ -503,35 +519,90 @@ A successful response means the redeploy was triggered, not that it completed. T
       },
     },
     {
+      name: ApplicationToolName.VcsIntegrationInitialize,
+      category: ServiceCategory.Application,
+      definition: {
+        title: 'Connect a GitHub Account',
+        description: `Start the browser-based GitHub connection flow for an Aiven organization.
+
+Use this to connect a GitHub account that is not connected to this Aiven organization. If an integration exists but lacks repository access, use its \`remote_configure_url\` instead.
+
+Before starting, briefly explain that the user must be an admin of the Aiven organization and, when connecting a GitHub organization, an owner of that GitHub organization. Alternatively, they can connect their personal GitHub account.
+
+After calling, show \`redirect_url\` verbatim and display \`user_instructions\`, then follow \`next_step\`.`,
+        inputSchema: vcsIntegrationInitializeInput,
+        annotations: CREATE_ANNOTATIONS,
+      },
+      handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
+        const { organization_id: organizationId } =
+          params as z.infer<typeof vcsIntegrationInitializeInput>;
+        const opts: RequestOptions = {
+          token: context?.token,
+          requestId: context?.requestId,
+          toolReasoning: context?.toolReasoning,
+        };
+
+        try {
+          const organization = await client.get<{ organization_name?: string }>(
+            `/organization/${encodeURIComponent(organizationId)}`,
+            opts
+          );
+          if (!organization.organization_name) {
+            return toolErrorWithRequestId(
+              'The organization response did not include an organization name.',
+              context?.requestId
+            );
+          }
+          const organizationName = organization.organization_name;
+
+          const result = await client.post<{ redirect_url: string }>(
+            `/organization/${encodeURIComponent(organizationId)}/application/vcs-integration-initialize`,
+            { vcs_type: 'github' },
+            opts
+          );
+          if (!result.redirect_url) {
+            return toolErrorWithRequestId(
+              'The VCS integration initialization response did not include a redirect URL.',
+              context?.requestId
+            );
+          }
+
+          return toolSuccess(
+            wrapUntrustedResponse({
+              organization_id: organizationId,
+              organization_name: organizationName,
+              vcs_type: 'github',
+              redirect_url: result.redirect_url,
+              message: 'Open redirect_url in a browser to connect a GitHub account to Aiven.',
+              user_instructions: [
+                `Complete the GitHub setup. After being redirected to Aiven Console, select the Aiven organization "${organizationName}", then click "Confirm connection". When finished, return to this conversation and confirm the connection was completed.`,
+              ],
+              next_tool: ApplicationToolName.VcsIntegrationList,
+              next_step:
+                'Wait for the user to confirm they completed the browser flow. Then list VCS integrations and repositories again to verify access.',
+            }),
+            ApplicationToolName.VcsIntegrationInitialize
+          );
+        } catch (err) {
+          return toolErrorWithRequestId(errorMessage(err), context?.requestId);
+        }
+      },
+    },
+    {
       name: ApplicationToolName.VcsIntegrationList,
       category: ServiceCategory.Application,
       definition: {
         title: 'List VCS Integrations',
-        description: `List connected VCS (GitHub) accounts for the organization that owns a project.
+        description: `List connected VCS (GitHub) accounts for an Aiven organization.
 
-Use this as the first step when deploying from a repository — run it silently before \`aiven_application_create\` to discover available VCS integrations and their IDs. The organization_id is resolved internally from the project name.
-
-Returns each integration's \`vcs_integration_id\` (needed for \`aiven_vcs_integration_repository_list\`) and \`vcs_account_name\` (the GitHub org or user name).`,
+Use this before creating an application service from a repository or scanning a repository. Returns each integration's \`vcs_integration_id\`, GitHub \`vcs_account_name\`, and nullable \`remote_configure_url\`. Follow the returned \`next_step\` to select an integration or connect an account.`,
         inputSchema: vcsIntegrationListInput,
         annotations: READ_ONLY_ANNOTATIONS,
       },
       handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
-        const { project } = params as z.infer<typeof vcsIntegrationListInput>;
+        const { organization_id: organizationId } =
+          params as z.infer<typeof vcsIntegrationListInput>;
         const opts = { token: context?.token, requestId: context?.requestId, toolReasoning: context?.toolReasoning };
-
-        let organizationId: string;
-        try {
-          const projectResult = await client.get<{ project: { organization_id: string } }>(
-            `/project/${encodeURIComponent(project)}`,
-            opts
-          );
-          organizationId = projectResult.project.organization_id;
-          if (!organizationId) {
-            return toolError(`Project '${project}' has no associated organization.`);
-          }
-        } catch (err) {
-          return toolError(`Failed to fetch project '${project}': ${errorMessage(err)}`);
-        }
 
         try {
           const result = await client.get<{
@@ -539,6 +610,7 @@ Returns each integration's \`vcs_integration_id\` (needed for \`aiven_vcs_integr
               vcs_integration_id: string;
               vcs_account_name: string;
               vcs_type: string;
+              remote_configure_url: string | null;
             }>;
           }>(`/organization/${encodeURIComponent(organizationId)}/application/vcs-integrations`, opts);
 
@@ -546,6 +618,7 @@ Returns each integration's \`vcs_integration_id\` (needed for \`aiven_vcs_integr
             wrapUntrustedResponse({
               organization_id: organizationId,
               vcs_integrations: result.vcs_integrations,
+              next_step: VCS_INTEGRATION_LIST_NEXT_STEP,
             }),
             ApplicationToolName.VcsIntegrationList
           );
@@ -561,11 +634,11 @@ Returns each integration's \`vcs_integration_id\` (needed for \`aiven_vcs_integr
         title: 'List VCS Integration Repositories',
         description: `List repositories accessible via a VCS integration (connected GitHub account).
 
-Use this after \`aiven_vcs_integration_list\` to find the \`remote_repository_id\` needed for deploying a private repository. Compare each repository's \`source_url\` against the user's repository URL to find the match (normalize: strip trailing \`.git\`, lowercase both sides before comparing).
+Use this only for integrations whose \`vcs_account_name\` matches the GitHub repository owner. Compare each repository's \`source_url\` with the requested URL after stripping a trailing \`.git\` and lowercasing both.
 
 The tool follows pagination until there are no more pages, or until ${MAX_VCS_REPOSITORY_LIST_ITEMS} repositories have been collected (whichever comes first). If truncated, \`truncated\` is true and \`next\` may still be set when more pages exist.
 
-Returns \`remote_repository_id\`, \`full_name\`, \`source_url\`, and \`default_branch_name\` for each repository.`,
+Returns \`remote_repository_id\`, \`full_name\`, \`source_url\`, and \`default_branch_name\` for each repository. If no repository matches, follow \`no_match_next_step\`.`,
         inputSchema: vcsIntegrationRepositoryListInput,
         annotations: READ_ONLY_ANNOTATIONS,
       },
@@ -611,6 +684,7 @@ Returns \`remote_repository_id\`, \`full_name\`, \`source_url\`, and \`default_b
                   repositories,
                   next: null,
                   truncated: false,
+                  no_match_next_step: VCS_REPOSITORY_LIST_NO_MATCH_NEXT_STEP,
                 }),
                 ApplicationToolName.VcsIntegrationRepositoryList
               );
@@ -621,6 +695,7 @@ Returns \`remote_repository_id\`, \`full_name\`, \`source_url\`, and \`default_b
                   repositories,
                   next,
                   truncated: true,
+                  no_match_next_step: VCS_REPOSITORY_LIST_NO_MATCH_NEXT_STEP,
                 }),
                 ApplicationToolName.VcsIntegrationRepositoryList
               );
@@ -634,6 +709,7 @@ Returns \`remote_repository_id\`, \`full_name\`, \`source_url\`, and \`default_b
               next: cursor ?? null,
               truncated: true,
               note: `Pagination stopped after ${MAX_VCS_REPOSITORY_LIST_PAGES} pages (safety limit).`,
+              no_match_next_step: VCS_REPOSITORY_LIST_NO_MATCH_NEXT_STEP,
             }),
             ApplicationToolName.VcsIntegrationRepositoryList
           );

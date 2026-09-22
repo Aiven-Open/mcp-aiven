@@ -137,7 +137,7 @@ export const deployApplicationInput = z
       .string()
       .optional()
       .describe(
-        'VCS integration ID for private repository access. ' +
+        'VCS integration ID for deploying through a connected repository. ' +
           'Auto-resolved via aiven_vcs_integration_list + aiven_vcs_integration_repository_list — do NOT ask the user for this value.'
       ),
 
@@ -145,7 +145,7 @@ export const deployApplicationInput = z
       .string()
       .optional()
       .describe(
-        'Repository ID within the VCS integration. ' +
+        'Repository ID within the connected VCS integration. ' +
           'Auto-resolved by matching source_url in aiven_vcs_integration_repository_list — do NOT ask the user for this value.'
       ),
 
@@ -277,12 +277,23 @@ export const redeployApplicationInput = z
   })
   .strict();
 
-export const vcsIntegrationListInput = z
+export const vcsIntegrationInitializeInput = z
   .object({
-    project: z
+    organization_id: z
       .string()
       .describe(
-        'Aiven project name. The organization_id is resolved internally from this project.'
+        'Aiven organization ID. Use aiven_project_list to obtain the organization_id associated with a project in the target organization.'
+      ),
+    reasoning: reasoningField,
+  })
+  .strict();
+
+export const vcsIntegrationListInput = z
+  .object({
+    organization_id: z
+      .string()
+      .describe(
+        'Aiven organization ID. Use aiven_project_list to obtain the organization_id associated with a project in the target organization.'
       ),
     reasoning: reasoningField,
   })
