@@ -194,9 +194,18 @@ describe('application repository scan tools', () => {
       environment_variables: [{ key: 'KAFKA_TOPIC', value: 'events' }],
       service_integrations: [
         {
-          service_type: 'kafka',
-          service_name: 'example-kafka',
-          bootstrap_servers_env: 'KAFKA_BROKERS',
+          integration_type: 'application_service_credential',
+          source_service: 'example-kafka',
+          user_config: {
+            service_type: 'kafka',
+            exposed_values: {
+              bootstrap_servers: { environment_variable_key: 'KAFKA_BROKERS' },
+              security_protocol: { environment_variable_key: 'KAFKA_PROTOCOL' },
+              access_key: { environment_variable_key: 'KAFKA_SSL_KEY' },
+              access_cert: { environment_variable_key: 'KAFKA_SSL_CERT' },
+              ca_cert: { environment_variable_key: 'KAFKA_SSL_CA_CERT' },
+            },
+          },
         },
       ],
       reasoning: 'Deploy the application with Kafka credentials',
@@ -216,11 +225,11 @@ describe('application repository scan tools', () => {
               exposed_values: {
                 bootstrap_servers: { environment_variable_key: 'KAFKA_BROKERS' },
                 security_protocol: {
-                  environment_variable_key: 'KAFKA_SECURITY_PROTOCOL',
+                  environment_variable_key: 'KAFKA_PROTOCOL',
                 },
-                access_key: { environment_variable_key: 'KAFKA_ACCESS_KEY' },
-                access_cert: { environment_variable_key: 'KAFKA_ACCESS_CERT' },
-                ca_cert: { environment_variable_key: 'KAFKA_CA_CERT' },
+                access_key: { environment_variable_key: 'KAFKA_SSL_KEY' },
+                access_cert: { environment_variable_key: 'KAFKA_SSL_CERT' },
+                ca_cert: { environment_variable_key: 'KAFKA_SSL_CA_CERT' },
               },
             },
           },

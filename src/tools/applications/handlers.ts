@@ -24,7 +24,6 @@ import {
   vcsIntegrationRepositoryContainerManifestFilesListInput,
   vcsIntegrationRepositoryListInput,
   vcsIntegrationRepositoryScanContainerManifestInput,
-  type ServiceIntegrationInput,
 } from './schemas.js';
 
 /** Max repositories returned in one call — stops pagination early (avoids huge payloads). */
@@ -159,64 +158,13 @@ async function fetchAppUrl(
   return component.path;
 }
 
-interface ExposedValueEntry {
-  environment_variable_key: string;
-}
-
-interface ApiServiceIntegrationUserConfig {
-  service_type: string;
-  exposed_values: Record<string, ExposedValueEntry>;
-}
-
-interface ApiServiceIntegration {
-  integration_type: 'application_service_credential';
-  source_service: string;
-  user_config: ApiServiceIntegrationUserConfig;
-}
-
-/**
- * Maps a service_integrations input item to the API shape for application_service_credential.
- *
- * Emits the nested `exposed_values` format introduced in APP-199 / APP-240.
- * The flat `*_environment_variable_name` keys are being phased out.
- */
-export function buildServiceIntegration(integration: ServiceIntegrationInput): ApiServiceIntegration {
-  if (integration.service_type === 'kafka') {
-    return {
-      integration_type: 'application_service_credential',
-      source_service: integration.service_name,
-      user_config: {
-        service_type: 'kafka',
-        exposed_values: {
-          bootstrap_servers: { environment_variable_key: integration.bootstrap_servers_env },
-          security_protocol: { environment_variable_key: integration.security_protocol_env },
-          access_key: { environment_variable_key: integration.access_key_env },
-          access_cert: { environment_variable_key: integration.access_cert_env },
-          ca_cert: { environment_variable_key: integration.ca_cert_env },
-        },
-      },
-    };
-  }
-
-  return {
-    integration_type: 'application_service_credential',
-    source_service: integration.service_name,
-    user_config: {
-      service_type: integration.service_type,
-      exposed_values: {
-        connection_string: { environment_variable_key: integration.env_key },
-      },
-    },
-  };
-}
-
 export function createApplicationTools(client: AivenClient): ToolDefinition[] {
   const createTool: ToolDefinition = {
     name: ApplicationToolName.Create,
     category: ServiceCategory.Application,
     definition: {
       title: 'Create Application on Aiven',
-      description: `Create and initially deploy one Dockerized application to Aiven from a Containerfile or Dockerfile. The application service must not already exist, and the API returns 409 if it does. A successful response means the application was created and its initial deployment is continuing asynchronously, not that deployment completed. The service state may not reflect the deployment immediately. Tell the user the operation is continuing and ask when they want to check its status with \`aiven_service_get\`; do not poll in a loop. For an existing application, use \`aiven_application_redeploy\` to rebuild from its configured repository without changing its service configuration, \`aiven_service_update\` to change its service configuration, or \`aiven_service_integration_create\`, \`aiven_service_integration_update\`, and \`aiven_service_integration_delete\` to manage connected data services.
+      description: `Create and initially deploy one Dockerized application to Aiven from a Containerfile or Dockerfile. The application service must not already exist, and the API returns 409 if it does. A successful response means the application was created and its initial deployment is continuing asynchronously, not that deployment completed. The service state may not reflect the deployment immediately. Tell the user the operation is continuing and ask when they want to check its status with \`aiven_service_get\`; do not poll in a loop. For an existing application, use \`aiven_application_redeploy\` to rebuild from its configured repository without changing its service configuration, \`aiven_service_update\` to change plan, cloud, or \`user_config.application.environment_variables\`, or \`aiven_service_integration_create\`, \`aiven_service_integration_update\`, and \`aiven_service_integration_delete\` to manage service integrations.
 
 This tool does not accept a Compose file directly. Repository scanning requires a connected VCS account and repository. To derive candidate Aiven service configurations from a Compose file, use \`aiven_vcs_integration_repository_container_manifest_files_list\`, then \`aiven_vcs_integration_repository_scan_container_manifest\`. The scanner recognizes application services with a build configuration and selected Aiven-compatible data services; it may omit services or settings it cannot map. Review its \`service_suggestions\` before creating accepted services with \`aiven_service_create\`.
 
@@ -228,7 +176,7 @@ Inspect the local project files and confirm each applicable item. Report finding
 - \`VCS integration\` → recommended for every GitHub repository and required for private repository access and repository scanning. Use \`aiven_vcs_integration_list\` to find the matching account before listing its repositories, and follow the returned guidance. If the repository is found, use its \`vcs_integration_id\` and \`remote_repository_id\` without asking the user. Do not create from a private repository until access is connected; a public repository can proceed without integration IDs if the user declines.
 - \`build_path\` and \`containerfile_path\` → verify the build context and Containerfile/Dockerfile paths are correct. If the file uses \`EXPOSE\`, verify it matches \`port\`. Confirm the image starts the application through \`CMD\`, \`ENTRYPOINT\`, or an equivalent project-specific mechanism.
 - \`port\` → verify app source binds to \`0.0.0.0\`, not \`localhost\`/\`127.0.0.1\`
-- \`service_integrations\` → for each entry, verify the source service exists in the same project (\`aiven_service_get\`) and the app reads the configured env var names. Whether to wait for the service to reach RUNNING depends on how the app handles unavailable services during startup.
+- \`service_integrations\` → for each entry, verify the source service exists in the same project (\`aiven_service_get\`) and inspect the application source to find every environment-variable name it reads. If it accepts multiple fallback names, choose one explicitly for each mapping. Provide every mapping; do not infer names from platform conventions or documentation. Whether to wait for the service to reach RUNNING depends on how the app handles unavailable services during startup.
 - PostgreSQL/Valkey SSL → the deploy tool injects \`PROJECT_CA_CERT\` (base64-encoded Aiven CA cert). Verify that the application's client library uses it to validate TLS. For Node.js \`pg\` v8, \`sslmode\` in the connection URL overrides the \`ssl\` option, so one suitable pattern is:
   \`\`\`js
   const url = new URL(process.env.DATABASE_URL);
@@ -295,15 +243,15 @@ CMD ["node", "dist/index.js"]
           }
         }
 
-        // Build service integrations for automatic credential injection
-        const serviceIntegrations =
-          serviceIntegrationsInput?.map(buildServiceIntegration) ?? [];
+        const serviceIntegrations = serviceIntegrationsInput ?? [];
 
         // Inject PROJECT_CA_CERT when connecting to services that use TLS with Aiven's self-signed CA.
         // Matches App Builder behaviour: fetch from /project/{project}/kms/ca and base64-encode.
         // Kafka credentials are injected as raw PEM files by the platform itself — no CA cert needed here.
-        const needsCaCert = serviceIntegrationsInput?.some(
-          (i) => i.service_type === 'pg' || i.service_type === 'valkey'
+        const needsCaCert = serviceIntegrations.some(
+          (integration) =>
+            integration.user_config.service_type === 'pg' ||
+            integration.user_config.service_type === 'valkey'
         );
         if (needsCaCert) {
           try {
@@ -460,8 +408,8 @@ Use this ONLY when:
 
 Do NOT use this tool:
 - When the Aiven service itself was never created (e.g. \`aiven_application_create\` returned an API error and no service exists) — call \`aiven_application_create\` again instead.
-- To change service configuration (plan, cloud, env vars) — use \`aiven_service_update\`.
-- To add, update, or remove connected data services — use \`aiven_service_integration_create\`, \`aiven_service_integration_update\`, or \`aiven_service_integration_delete\`.
+- To change plan, cloud, or \`user_config.application.environment_variables\` — use \`aiven_service_update\`.
+- To add, update, or remove service integrations — use \`aiven_service_integration_create\`, \`aiven_service_integration_update\`, or \`aiven_service_integration_delete\`.
 - To update an existing application via \`aiven_application_create\` — it is create-only and returns 409 when the service already exists.
 
 Runtime errors in the app (500s, crashes, SSL errors) are NOT deploy failures — the service exists and is running. Use this tool to pick up a code fix in those cases.

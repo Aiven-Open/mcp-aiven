@@ -9,12 +9,29 @@ tools:
     append_list_picker_hint: true
     response_filter:
       key: service_integrations
-      fields: [service_integration_id, integration_type, source_service, dest_service, enabled, active]
-      search_fields: [integration_type]
+      fields:
+        [
+          service_integration_id,
+          integration_type,
+          source_project,
+          source_service,
+          source_service_type,
+          source_endpoint_id,
+          dest_project,
+          dest_service,
+          dest_service_type,
+          dest_endpoint_id,
+          enabled,
+          active,
+          user_config,
+        ]
+      search_fields: [integration_type, source_service, dest_service]
     description: |
-      List all integrations for a specific service. Returns both integrations where this service is the source and where it is the destination.
+      List integrations where the named service is either the source or destination. The result includes IDs, both sides of the integration, service types, status, and user_config so an existing integration can be inspected or selected for update or deletion.
 
-      Use this to see what metrics, logs, data pipeline, or replication integrations are active on a service.
+      An `application_service_credential` integration is created at the project level, not on either service. Set PostgreSQL, Valkey, Kafka, or OpenSearch as `source_service` and the application service as `dest_service`. The integration appears when listing integrations for either service. `user_config.exposed_values` contains `environment_variable_key` configuration, not the values injected into the application service.
+
+      The MCP schema currently describes `application_service_credential` in detail. Aiven supports other integration types too.
 
   - name: aiven_service_integration_create
     method: POST
@@ -25,9 +42,14 @@ tools:
     description: |
       Create a service integration between two Aiven services, or between an Aiven service and an external integration endpoint.
 
-      **Before calling:** use `aiven_integration_types_list` to discover valid `integration_type` values and which source/destination service types each supports.
+      For `application_service_credential`, connect a source service to a destination application service:
+      - Set `source_service` to an existing PostgreSQL, Valkey, Kafka, or OpenSearch service.
+      - Set `dest_service` to the existing application.
+      - Set `integration_type` to `application_service_credential`.
+      - Supply `user_config` and every `environment_variable_key` explicitly. Inspect what the destination application service reads, including accepted aliases. The MCP supplies no defaults.
+      - Do not use `source_endpoint_id` or `dest_endpoint_id`.
 
-      Provide `source_service`/`dest_service` for Aiven-to-Aiven integrations, or use `source_endpoint_id`/`dest_endpoint_id` for external endpoints.
+      Before calling for any other integration type, use `aiven_integration_types_list` to discover valid types and source/destination combinations. Provide `source_service`/`dest_service` for Aiven-to-Aiven integrations, or endpoint IDs for external endpoints. The schemas in this tool describe `application_service_credential` in detail. Other Aiven integration types remain supported through their API-defined `user_config`.
 
   - name: aiven_service_integration_get
     method: GET
@@ -35,7 +57,11 @@ tools:
     category: integrations
     readOnly: true
     description: |
-      Get details for a specific service integration by ID. Returns the integration type, source and destination services, status, and configuration.
+      Get a service integration by ID. Returns its type, source, destination, status, and user_config.
+
+      Call this before updating an integration and preserve its complete `user_config`. For `application_service_credential`, `user_config.exposed_values` contains `environment_variable_key` configuration, not the values injected into the destination application service.
+
+      The MCP schema currently describes `application_service_credential` in detail. Aiven supports other integration types too.
 
   - name: aiven_service_integration_update
     method: PUT
@@ -46,7 +72,11 @@ tools:
     description: |
       Update the configuration of an existing service integration.
 
-      Only `user_config` can be updated — you cannot change the integration type, source, or destination after creation. To change those, delete and recreate the integration.
+      Call `aiven_service_integration_get` first, then submit a complete `user_config` that preserves required fields. For `application_service_credential`, keep `service_type`, inspect what the destination application service reads (including accepted aliases), and explicitly provide every `environment_variable_key`. The MCP fetches the existing integration and validates `user_config` before sending the update.
+
+      Only `user_config` can be updated. You cannot change `integration_type`, `source_service`, `dest_service`, or `user_config.service_type`. To change any of those, delete and recreate the integration.
+
+      The MCP schema currently describes `application_service_credential` in detail. Other Aiven integration types remain supported through their API-defined `user_config`.
 
   - name: aiven_service_integration_delete
     method: DELETE
@@ -56,7 +86,9 @@ tools:
     description: |
       Delete a service integration. This removes the connection between the source and destination services.
 
-      **Warning:** Deleting an integration may disrupt data flows (metrics, logs, replication). Confirm with the user before proceeding.
+      For `application_service_credential`, this removes the source service → destination application service integration. Use list/get to verify `service_integration_id`, `source_service`, and `dest_service` first.
+
+      **Warning:** Deleting an integration may disrupt application access, metrics, logs, replication, or other data flows. Confirm with the user before proceeding. The MCP schema currently describes `application_service_credential` in detail. Aiven supports other integration types too.
 
   - name: aiven_integration_types_list
     method: GET

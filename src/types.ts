@@ -30,7 +30,9 @@ export interface McpRequestOptions {
   readonly clientIp?: string | undefined;
 }
 
-export type McpServerFactory = (options: McpRequestOptions) => import('@modelcontextprotocol/sdk/server/mcp.js').McpServer;
+export type McpServerFactory = (
+  options: McpRequestOptions
+) => import('@modelcontextprotocol/sdk/server/mcp.js').McpServer;
 
 export interface RequestOptions {
   query?: Record<string, string | number | boolean | undefined> | undefined;
@@ -175,6 +177,12 @@ export interface ApiToolConfig {
   annotations: ToolAnnotations;
   defaults?: Record<string, unknown> | undefined;
   responseFilter?: ResponseFilterConfig | undefined;
+  /** Validate or enrich request context before the Aiven API mutation is sent. */
+  validateParams?:
+    | ((args: Record<string, unknown>, context?: HandlerContext) => void | Promise<void>)
+    | undefined;
+  /** Response redaction override for tools with typed, known-safe configuration fields. */
+  redactResponse?: ((data: Record<string, unknown>) => Record<string, unknown>) | undefined;
   /** Transform applied to the (redacted, filtered) response before it is returned. Receives
    *  the input args so it can scope the response to what the caller requested. */
   postProcess?:

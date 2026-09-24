@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { reasoningField } from '../shared-schemas.js';
+import { applicationServiceCredentialUserConfig } from '../integrations/schemas.js';
 
 const environmentVariableItem = z.object({
   key: z.string().describe('Environment variable name (e.g. NODE_ENV, API_KEY)'),
@@ -7,112 +8,20 @@ const environmentVariableItem = z.object({
   kind: z
     .enum(['variable', 'secret'])
     .default('variable')
-    .describe('variable = visible in UI, secret = masked in UI. Use secret for tokens, passwords, URIs.'),
+      .describe(
+      'variable = visible in UI, secret = masked in UI. Use secret for tokens, passwords, URIs.'
+      ),
 });
 
-const integrationEnvironmentVariableKey = z
-  .string()
-  .min(1)
-  .max(512)
-  .regex(
-    /^[a-zA-Z][a-zA-Z0-9_]*$/,
-    'Environment variable names must start with a letter and contain only letters, numbers, and underscores'
-  );
-
-/**
- * One entry in service_integrations. The platform uses these to automatically inject
- * credentials into the running container as environment variables — no manual copy-paste
- * of connection strings needed, and no app code changes required.
- *
- * Set env var names to match what your application already reads.
- *
- * Supported service_type values (must be an existing service in the same project):
- *   - "pg"          → injects a postgres:// connection URI
- *   - "valkey"      → injects a rediss:// connection URI
- *   - "opensearch"  → injects an https:// connection URI
- *   - "kafka"       → injects bootstrap servers + SSL certificates (raw PEM strings)
- */
-export const serviceIntegrationItem = z.discriminatedUnion('service_type', [
-  z.object({
-    service_type: z.literal('pg'),
-    service_name: z
+export const serviceIntegrationItem = z
+  .object({
+    integration_type: z.literal('application_service_credential'),
+    source_service: z
       .string()
-      .describe('Name of the existing Aiven PostgreSQL service in the same project.'),
-    env_key: integrationEnvironmentVariableKey
-      .default('DATABASE_URL')
-      .describe(
-        'Env var your app reads for the PostgreSQL connection URI (full postgres:// URI with SSL params). ' +
-          'Set to match your app — do not change your app code to fit the default. Default: "DATABASE_URL".'
-      ),
-  }),
-
-  z.object({
-    service_type: z.literal('valkey'),
-    service_name: z
-      .string()
-      .describe('Name of the existing Aiven Valkey service in the same project.'),
-    env_key: integrationEnvironmentVariableKey
-      .default('REDIS_URL')
-      .describe(
-        'Env var your app reads for the Valkey connection URI (rediss:// URI). ' +
-          'Set to match your app — do not change your app code to fit the default. ' +
-          'Default used by this MCP: "REDIS_URL" (the API schema default is "DATABASE_URL").'
-      ),
-  }),
-
-  z.object({
-    service_type: z.literal('opensearch'),
-    service_name: z
-      .string()
-      .describe('Name of the existing Aiven OpenSearch service in the same project.'),
-    env_key: integrationEnvironmentVariableKey
-      .default('OPENSEARCH_URL')
-      .describe(
-        'Env var your app reads for the OpenSearch connection URI (https:// URI). ' +
-          'Set to match your app — do not change your app code to fit the default. ' +
-          'Default used by this MCP: "OPENSEARCH_URL" (the API schema default is "OPENSEARCH_URI").'
-      ),
-  }),
-
-  z.object({
-    service_type: z.literal('kafka'),
-    service_name: z
-      .string()
-      .describe('Name of the existing Aiven Kafka service in the same project.'),
-    bootstrap_servers_env: integrationEnvironmentVariableKey
-      .default('KAFKA_BOOTSTRAP_SERVER')
-      .describe(
-        'Env var your app reads for Kafka bootstrap servers (comma-separated host:port). ' +
-          'Set to match your app. Default: "KAFKA_BOOTSTRAP_SERVER".'
-      ),
-    security_protocol_env: integrationEnvironmentVariableKey
-      .default('KAFKA_SECURITY_PROTOCOL')
-      .describe(
-        'Env var your app reads for the security protocol (value will be "SSL"). ' +
-          'Set to match your app. Default: "KAFKA_SECURITY_PROTOCOL".'
-      ),
-    access_key_env: integrationEnvironmentVariableKey
-      .default('KAFKA_ACCESS_KEY')
-      .describe(
-        'Env var your app reads for the SSL client private key (raw PEM string, NOT base64). ' +
-          'Set to match your app. Default: "KAFKA_ACCESS_KEY".'
-      ),
-    access_cert_env: integrationEnvironmentVariableKey
-      .default('KAFKA_ACCESS_CERT')
-      .describe(
-        'Env var your app reads for the SSL client certificate (raw PEM string, NOT base64). ' +
-          'Set to match your app. Default: "KAFKA_ACCESS_CERT".'
-      ),
-    ca_cert_env: integrationEnvironmentVariableKey
-      .default('KAFKA_CA_CERT')
-      .describe(
-        'Env var your app reads for the CA certificate (raw PEM string, NOT base64). ' +
-          'Set to match your app. Default: "KAFKA_CA_CERT".'
-      ),
-  }),
-]);
-
-export type ServiceIntegrationInput = z.infer<typeof serviceIntegrationItem>;
+      .describe('Name of the existing source service in the same project.'),
+    user_config: applicationServiceCredentialUserConfig,
+  })
+  .strict();
 
 export const deployApplicationInput = z
   .object({
@@ -217,14 +126,12 @@ export const deployApplicationInput = z
       .array(serviceIntegrationItem)
       .optional()
       .describe(
-        'An ARRAY of integrations; each element is ONE object selected by its `service_type` ' +
-          '("pg", "valkey", "opensearch", or "kafka") — never a single bare object. ' +
-          'Credentials are auto-injected as env vars; set env var names to match what your app reads. ' +
-          'Each source service must already exist in the project.\n\n' +
+        'Application service credential integrations in the same shape returned by repository scan and accepted by the Aiven API. ' +
+          'Each source_service must already exist in the project. Inspect the application source and explicitly set each ' +
+          'user_config.exposed_values.<value>.environment_variable_key; this MCP supplies no defaults.\n\n' +
           'Example:\n' +
           '  service_integrations: [\n' +
-          '    { service_type: "pg", service_name: "my-pg", env_key: "DATABASE_URL" },\n' +
-          '    { service_type: "kafka", service_name: "my-kafka", bootstrap_servers_env: "KAFKA_BROKERS" }\n' +
+          '    { integration_type: "application_service_credential", source_service: "my-pg", user_config: { service_type: "pg", exposed_values: { connection_string: { environment_variable_key: "DATABASE_URL" } } } }\n' +
           '  ]'
       ),
 
