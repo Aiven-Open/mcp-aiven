@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.17.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.16.0...v1.17.0) (2026-09-24)
+
+
+### Features
+
+* Add explicit support for application_service_credential integration type [APP-393] ([#171](https://github.com/Aiven-Open/mcp-aiven/issues/171)) ([7e6f2a9](https://github.com/Aiven-Open/mcp-aiven/commit/7e6f2a93f1ed257eaa6b060279e2fbdc9a136f89))
+
 ## [1.16.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.15.3...v1.16.0) (2026-09-22)
 
 
