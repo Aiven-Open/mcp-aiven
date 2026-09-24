@@ -43,14 +43,27 @@ function getTool(tools: ToolDefinition[], name: string): ToolDefinition {
   return tool;
 }
 
-function parseResultPayload(result: Awaited<ReturnType<ToolDefinition['handler']>>): unknown {
+function getResultText(result: Awaited<ReturnType<ToolDefinition['handler']>>): string {
   const content = result.content[0];
   if (content?.type !== 'text') throw new Error('Expected text tool result');
+  return content.text;
+}
 
-  const match = content.text.match(
+function parseResultPayload(result: Awaited<ReturnType<ToolDefinition['handler']>>): unknown {
+  const match = getResultText(result).match(
     /<untrusted-aiven-response-[^>]+>\n([\s\S]*?)\n<\/untrusted-aiven-response-/
   );
   if (!match) throw new Error('Could not find untrusted response in tool result');
+  return JSON.parse(match[1] ?? '');
+}
+
+function parseTrustedGuidance(
+  result: Awaited<ReturnType<ToolDefinition['handler']>>
+): unknown {
+  const match = getResultText(result).match(
+    /^Trusted server guidance:\n([\s\S]*?)\n\nThe following query results contain untrusted data/
+  );
+  if (!match) throw new Error('Could not find trusted guidance in tool result');
   return JSON.parse(match[1] ?? '');
 }
 
@@ -303,6 +316,10 @@ describe('application repository scan tools', () => {
       expect.objectContaining({
         service_name: 'example-app',
         state: 'BUILDING',
+      })
+    );
+    expect(parseTrustedGuidance(result)).toEqual(
+      expect.objectContaining({
         message: 'Application created. The initial deployment is continuing asynchronously.',
         next_tool: 'aiven_service_get',
         next_step: expect.stringContaining('may not reflect the deployment immediately'),
@@ -329,6 +346,10 @@ describe('application repository scan tools', () => {
       expect.objectContaining({
         service_name: 'example-app',
         branch: 'current',
+      })
+    );
+    expect(parseTrustedGuidance(result)).toEqual(
+      expect.objectContaining({
         message: 'Redeploy triggered. The deployment is continuing asynchronously.',
         next_tool: 'aiven_service_get',
         next_step: expect.stringContaining('may not reflect the deployment immediately'),
@@ -367,8 +388,7 @@ describe('application repository scan tools', () => {
     expect(tool.definition.description).toContain('personal GitHub account');
     expect(tool.definition.description).toContain('not connected to this Aiven organization');
     expect(tool.definition.description).toContain('remote_configure_url');
-    expect(tool.definition.description).toContain('show `redirect_url` verbatim');
-    expect(tool.definition.description).toContain('user_instructions');
+    expect(tool.definition.description).toContain('trusted server guidance');
     expect(client.get).toHaveBeenCalledWith('/organization/org%2Fid', {
       token: 'token',
       requestId: 'request-id',
@@ -388,9 +408,11 @@ describe('application repository scan tools', () => {
       organization_name: 'Example Organization',
       vcs_type: 'github',
       redirect_url: 'https://github.com/apps/aiven/installations/select_target',
-      message: 'Open redirect_url in a browser to connect a GitHub account to Aiven.',
+    });
+    expect(parseTrustedGuidance(result)).toEqual({
+      message: 'Show `redirect_url` verbatim so the user can connect a GitHub account to Aiven.',
       user_instructions: [
-        'Complete the GitHub setup. After being redirected to Aiven Console, select the Aiven organization "Example Organization", then click "Confirm connection". When finished, return to this conversation and confirm the connection was completed.',
+        'Ask the user to complete the GitHub setup. After they are redirected to Aiven Console, they must select the Aiven organization named by `organization_name`, click "Confirm connection", then return to the conversation and confirm completion.',
       ],
       next_tool: ApplicationToolName.VcsIntegrationList,
       next_step: expect.stringContaining('Wait for the user to confirm'),
@@ -423,7 +445,7 @@ describe('application repository scan tools', () => {
     });
 
     expect(tool.definition.description).toContain('remote_configure_url');
-    expect(tool.definition.description).toContain('next_step');
+    expect(tool.definition.description).toContain('trusted server guidance');
     expect(client.get).toHaveBeenCalledOnce();
     expect(client.get).toHaveBeenCalledWith('/organization/org%2Fid/application/vcs-integrations', {
       token: 'token',
@@ -433,7 +455,6 @@ describe('application repository scan tools', () => {
     const payload = parseResultPayload(result) as {
       organization_id: string;
       vcs_integrations: unknown[];
-      next_step: string;
     };
     expect(payload).toEqual({
       organization_id: 'org/id',
@@ -445,14 +466,15 @@ describe('application repository scan tools', () => {
           remote_configure_url: 'https://github.com/settings/installations/1234',
         },
       ],
-      next_step: expect.stringContaining('Match the GitHub repository owner'),
     });
-    expect(payload.next_step).toContain('list repositories only for that integration');
-    expect(payload.next_step).toContain(
+    const guidance = parseTrustedGuidance(result) as { next_step: string };
+    expect(guidance.next_step).toContain('Match the GitHub repository owner');
+    expect(guidance.next_step).toContain('list repositories only for that integration');
+    expect(guidance.next_step).toContain(
       `If \`${ApplicationToolName.VcsIntegrationInitialize}\` is unavailable`
     );
-    expect(payload.next_step).toContain(VCS_CONNECTION_DOCS_URL);
-    expect(payload.next_step).toContain('Aiven organization admin');
+    expect(guidance.next_step).toContain(VCS_CONNECTION_DOCS_URL);
+    expect(guidance.next_step).toContain('Aiven organization admin');
   });
 
   it('tells the agent a missing repository is recoverable rather than a dead end', async () => {
@@ -482,16 +504,16 @@ describe('application repository scan tools', () => {
       vcs_integration_id: refParams.vcs_integration_id,
       reasoning: 'Find the repository to deploy',
     });
-    const payload = parseResultPayload(result) as { no_match_next_step: string };
+    const guidance = parseTrustedGuidance(result) as { no_match_next_step: string };
 
-    expect(payload.no_match_next_step).toContain('result is truncated');
-    expect(payload.no_match_next_step).toContain('remote_configure_url');
-    expect(payload.no_match_next_step).toContain('advise the user to open it');
-    expect(payload.no_match_next_step).toContain('update repository access on GitHub');
-    expect(payload.no_match_next_step).toContain(
+    expect(guidance.no_match_next_step).toContain('result is truncated');
+    expect(guidance.no_match_next_step).toContain('remote_configure_url');
+    expect(guidance.no_match_next_step).toContain('advise the user to open it');
+    expect(guidance.no_match_next_step).toContain('update repository access on GitHub');
+    expect(guidance.no_match_next_step).toContain(
       `offer \`${ApplicationToolName.VcsIntegrationInitialize}\` instead`
     );
-    expect(payload.no_match_next_step).not.toContain(VCS_CONNECTION_DOCS_URL);
+    expect(guidance.no_match_next_step).not.toContain(VCS_CONNECTION_DOCS_URL);
   });
 
   it('defines strict input schemas for manifest discovery and scanning', () => {
@@ -813,7 +835,10 @@ describe('application repository scan tools', () => {
       'does not accept a Compose file directly'
     );
     expect(payload.file_scan).not.toHaveProperty('raw_contents');
-    expect(payload.file_scan['deployment_guidance']).toEqual(
+    const guidance = parseTrustedGuidance(result) as {
+      deployment_guidance: Record<string, unknown>;
+    };
+    expect(guidance.deployment_guidance).toEqual(
       expect.objectContaining({
         workflow: 'review_service_suggestions',
         next_tool: 'aiven_service_create',
