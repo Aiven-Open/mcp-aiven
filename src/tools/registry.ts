@@ -23,6 +23,7 @@ import { jsonSchemaToZod } from './json-schema-to-zod.js';
 import { createApiTool } from './api-tool.js';
 import { metricsConfigOverrides } from './metrics-shape.js';
 import { serviceTypeConfigOverrides } from './service-type-shape.js';
+import { plansConfigOverrides } from './plans-shape.js';
 import { integrationConfigOverrides } from './integrations/overrides.js';
 import { serviceGetConfigOverrides } from './service-get-shape.js';
 import { createRequire } from 'node:module';
@@ -200,6 +201,7 @@ export function loadApiTools(client: AivenClient): ToolDefinition[] {
         ...serviceTypeConfigOverrides(entry.name),
         ...integrationConfigOverrides(entry.name, inputSchema, client),
         ...serviceGetConfigOverrides(entry.name),
+        ...plansConfigOverrides(entry.name, inputSchema),
       },
       client
     );
