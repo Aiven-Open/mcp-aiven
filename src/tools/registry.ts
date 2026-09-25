@@ -22,6 +22,7 @@ import {
 import { jsonSchemaToZod } from './json-schema-to-zod.js';
 import { createApiTool } from './api-tool.js';
 import { metricsConfigOverrides } from './metrics-shape.js';
+import { plansConfigOverrides } from './plans-shape.js';
 import { integrationConfigOverrides } from './integrations/overrides.js';
 import { createRequire } from 'node:module';
 import { TOOL_LIST_PICKER_SUFFIX } from '../prompts.js';
@@ -194,6 +195,7 @@ export function loadApiTools(client: AivenClient): ToolDefinition[] {
         // shaping for that one tool (no-op for all others).
         ...metricsConfigOverrides(entry.name, inputSchema),
         ...integrationConfigOverrides(entry.name, inputSchema, client),
+        ...plansConfigOverrides(entry.name, inputSchema),
       },
       client
     );

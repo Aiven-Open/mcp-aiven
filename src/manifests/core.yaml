@@ -43,20 +43,21 @@ tools:
     method: GET
     path: /project/{project}/service-types/{service_type}/plans
     category: core
-    append_list_picker_hint: true
     response_filter:
       key: service_plans
-      fields: [service_plan]
-      search_fields: [service_plan]
+      fields: [service_plan, regions]
     description: |
       List available plans for a service type. Requires `project` — use `aiven_project_list` first if unknown.
 
-      Each plan may include **`regions`** (and sometimes **`clouds`**) describing where that plan can run. Use those fields to show the user **which cloud names** (e.g. `do-fra`, `aws-eu-central-1`) are valid for their chosen plan before calling `aiven_service_create`.
+      If the user has provided any information about a plan they would prefer to use or some cloud constraints, use `plan` or `region` to narrow the list of results. `plan` matches the plan name. `region` matches the cloud name and keeps only those regions. Both are case-insensitive substrings.
 
-      **Pricing is not included in this response.** Prices vary by cloud region. Use `aiven_service_plan_pricing` to get pricing for a specific plan and cloud.
-      
+      Each plan includes `regions`: a map of cloud name to hourly `{price_usd}`. When `region` is set, only matching regions are kept and plans with none are dropped.
+
+      Use `aiven_service_plan_pricing` for the detailed price breakdown of one plan in one exact cloud.
+
       This tool returns a list of service plans with the following fields:
       - service_plan: The name of the service plan
+      - regions: Cloud name to hourly `{price_usd}`
 
   - name: aiven_service_plan_pricing
     method: GET
@@ -83,7 +84,7 @@ tools:
     description: |
       Create a new Aiven service. Always call `aiven_service_type_plans` first, present plans to the user, and let them choose before creating. Do not pick a plan yourself.
 
-      **Cloud (`cloud`) — never guess or silently default.** After the user picks a plan, show valid cloud names from that plan’s **`regions` / `clouds`** in the `aiven_service_type_plans` response and **ask which cloud they want**. Do not invent a region (e.g. do not assume `do-fra`). If per-plan clouds are unclear, call `aiven_list_project_clouds` and still require an **explicit user choice** unless they told you to use a specific cloud or the project’s default.
+      **Cloud (`cloud`) — never guess or silently default.** After the user picks a plan, show cloud names and `price_usd` from that plan's `regions` and **ask which cloud they want**. Pass `region` on `aiven_service_type_plans` only when the user already named a cloud or region. Do not invent a region (e.g. do not assume `do-fra`). If the regions are unclear, call `aiven_list_project_clouds` and still require an **explicit user choice** unless they told you to use a specific cloud or the project's default.
 
       **Compose repository-scan workflow:** This tool does not accept a Compose file. `aiven_vcs_integration_repository_scan_container_manifest` can derive candidate `service_suggestions` for application services with a build configuration and recognized Aiven-compatible data services. It may omit Compose services or settings it cannot map. Present the returned suggestions and these limitations to the user. After they confirm which services to create, resolve and confirm each accepted service's plan and cloud, then create dependencies before applications that reference them. Preserve each suggestion's `service_type`, `service_name`, `user_config`, and `service_integrations`, and add `project`, `plan`, and `cloud`.
 
