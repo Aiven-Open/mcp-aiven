@@ -220,6 +220,7 @@ While rejections continue, the server logs a misconfig warning at most once ever
 | `aiven_project_vpc_list` | List VPCs for a project |
 | `aiven_service_list` | List services |
 | `aiven_service_type_plans` | List plans with cloud availability |
+| `aiven_service_type_get` | Get default and available engine versions for a service type |
 | `aiven_service_plan_pricing` | Get pricing for a plan in a specific cloud |
 | `aiven_service_create` | Create a service |
 | `aiven_service_get` | Get service information |
