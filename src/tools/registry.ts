@@ -22,6 +22,7 @@ import {
 import { jsonSchemaToZod } from './json-schema-to-zod.js';
 import { createApiTool } from './api-tool.js';
 import { metricsConfigOverrides } from './metrics-shape.js';
+import { serviceTypeConfigOverrides } from './service-type-shape.js';
 import { integrationConfigOverrides } from './integrations/overrides.js';
 import { createRequire } from 'node:module';
 import { TOOL_LIST_PICKER_SUFFIX } from '../prompts.js';
@@ -193,6 +194,9 @@ export function loadApiTools(client: AivenClient): ToolDefinition[] {
         // Metrics responses are too large to return whole; the overrides add overview/detail
         // shaping for that one tool (no-op for all others).
         ...metricsConfigOverrides(entry.name, inputSchema),
+        // The service-type response embeds the engine's whole user_config_schema; the override
+        // lifts out the version fields for that one tool (no-op for all others).
+        ...serviceTypeConfigOverrides(entry.name),
         ...integrationConfigOverrides(entry.name, inputSchema, client),
       },
       client
