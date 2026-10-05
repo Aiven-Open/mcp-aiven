@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { AivenClient } from '../../src/client.js';
 import type { ToolDefinition } from '../../src/types.js';
-import { formatPgRunQueryResult } from '../../src/tools/pg/query.js';
+import { formatPgRunQueryResult, MAX_ROWS } from '../../src/tools/pg/query.js';
 
 function firstTextContent(
   content: Array<{ type: string; text?: string }> | undefined
@@ -54,6 +54,74 @@ describe('formatPgRunQueryResult', () => {
     expect(meta.hasMore).toBe(true);
     expect(paged[0]).toEqual({ id: 20 });
   });
+
+  // Shape returned by pg-editor/run-query (observed live): rows as objects with keys in
+  // alphabetical order, no column metadata
+  const runQueryResponse = (
+    results: Record<string, unknown>[],
+    extra = {}
+  ): Record<string, unknown> => ({
+    results,
+    row_count: results.length,
+    truncated: false,
+    truncated_cells: false,
+    byte_size: 123,
+    elapsed_time: 4,
+    mode: 'read_only',
+    ...extra,
+  });
+  const readOnly = { limit: 100, offset: 0, mode: 'read-only' as never };
+
+  it('reports a complete result as not truncated', () => {
+    const { meta } = formatPgRunQueryResult(runQueryResponse([{ id: 1 }]), readOnly);
+    expect(meta.truncated).toBe(false);
+    expect(meta.truncatedCells).toBe(false);
+  });
+
+  it('marks the result truncated when the API says so, even under the row cap', () => {
+    const { meta } = formatPgRunQueryResult(
+      runQueryResponse([{ id: 1 }, { id: 2 }], { truncated: true }),
+      readOnly
+    );
+    expect(meta.truncated).toBe(true);
+  });
+
+  // Observed live: SELECT g FROM generate_series(1, 5000) g returns the first 1000 rows,
+  // row_count=1000 (rows returned, not total) and truncated=true
+  it('marks the result truncated when the API caps it at the row limit', () => {
+    const rows = Array.from({ length: MAX_ROWS }, (_, i) => ({ g: i + 1 }));
+    const { meta } = formatPgRunQueryResult(runQueryResponse(rows, { truncated: true }), readOnly);
+    expect(meta.rowCount).toBe(MAX_ROWS);
+    expect(meta.truncated).toBe(true);
+    expect(meta.hasMore).toBe(true);
+  });
+
+  it('marks cells truncated when the API truncated them', () => {
+    const { meta } = formatPgRunQueryResult(
+      runQueryResponse([{ id: 1 }], { truncated_cells: true }),
+      readOnly
+    );
+    expect(meta.truncatedCells).toBe(true);
+    expect(meta.truncated).toBe(false);
+  });
+
+  it('marks cells truncated when a cell is cut locally', () => {
+    const { meta, rows } = formatPgRunQueryResult(
+      runQueryResponse([{ body: 'x'.repeat(5000), id: 1 }]),
+      readOnly
+    );
+    expect(meta.truncatedCells).toBe(true);
+    expect(String(rows[0]?.['body'])).toMatch(/\.\.\. \(truncated\)$/);
+  });
+
+  it('ignores truncated cells outside the requested page', () => {
+    const rows = [
+      { body: 'x'.repeat(5000), id: 1 },
+      { body: 'short', id: 2 },
+    ];
+    const { meta } = formatPgRunQueryResult(runQueryResponse(rows), { ...readOnly, offset: 1 });
+    expect(meta.truncatedCells).toBe(false);
+  });
 });
 
 describe('aiven_pg_read', () => {
@@ -94,6 +162,11 @@ describe('aiven_pg_read', () => {
     const postResponse = {
       results: [{ id: 1, name: 'test' }],
       row_count: 1,
+      truncated: false,
+      truncated_cells: false,
+      byte_size: 24,
+      elapsed_time: 3,
+      mode: 'read_only',
     };
     const client = createMockClient({ postResponse });
     const tools = createPgCustomTools(client);
@@ -154,7 +227,9 @@ describe('aiven_pg_read', () => {
 });
 
 describe('validateReadQuery', () => {
-  let validateReadQuery: (query: string) => Promise<{ valid: boolean; error?: string; stmtType?: string }>;
+  let validateReadQuery: (
+    query: string
+  ) => Promise<{ valid: boolean; error?: string; stmtType?: string }>;
 
   beforeEach(async () => {
     vi.resetModules();
@@ -175,7 +250,9 @@ describe('validateReadQuery', () => {
 });
 
 describe('validateWriteQuery', () => {
-  let validateWriteQuery: (query: string) => Promise<{ valid: boolean; error?: string; stmtType?: string }>;
+  let validateWriteQuery: (
+    query: string
+  ) => Promise<{ valid: boolean; error?: string; stmtType?: string }>;
 
   beforeEach(async () => {
     vi.resetModules();
