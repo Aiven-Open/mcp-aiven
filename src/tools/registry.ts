@@ -24,6 +24,7 @@ import { createApiTool } from './api-tool.js';
 import { metricsConfigOverrides } from './metrics-shape.js';
 import { serviceTypeConfigOverrides } from './service-type-shape.js';
 import { integrationConfigOverrides } from './integrations/overrides.js';
+import { serviceGetConfigOverrides } from './service-get-shape.js';
 import { createRequire } from 'node:module';
 import { TOOL_LIST_PICKER_SUFFIX } from '../prompts.js';
 
@@ -198,6 +199,7 @@ export function loadApiTools(client: AivenClient): ToolDefinition[] {
         // lifts out the version fields for that one tool (no-op for all others).
         ...serviceTypeConfigOverrides(entry.name),
         ...integrationConfigOverrides(entry.name, inputSchema, client),
+        ...serviceGetConfigOverrides(entry.name),
       },
       client
     );
