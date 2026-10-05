@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.17.1](https://github.com/Aiven-Open/mcp-aiven/compare/v1.17.0...v1.17.1) (2026-10-05)
+
+
+### Bug Fixes
+
+* put core service fields first in aiven_service_get responses ([#179](https://github.com/Aiven-Open/mcp-aiven/issues/179)) ([f92409a](https://github.com/Aiven-Open/mcp-aiven/commit/f92409a3bdf988660eae6205ce084964eab15f58))
+
 ## [1.17.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.16.0...v1.17.0) (2026-10-04)
 
 
