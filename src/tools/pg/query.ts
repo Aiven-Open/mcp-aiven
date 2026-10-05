@@ -11,16 +11,21 @@ export const MAX_ROWS = 1000;
 export const DEFAULT_LIMIT = 100;
 const MAX_CELL_LENGTH = 4096;
 
-function truncateCells(row: Record<string, unknown>): Record<string, unknown> {
+function truncateCells(row: Record<string, unknown>): {
+  row: Record<string, unknown>;
+  truncated: boolean;
+} {
   const result: Record<string, unknown> = {};
+  let truncated = false;
   for (const [key, value] of Object.entries(row)) {
     if (typeof value === 'string' && value.length > MAX_CELL_LENGTH) {
       result[key] = value.slice(0, MAX_CELL_LENGTH) + '... (truncated)';
+      truncated = true;
     } else {
       result[key] = value;
     }
   }
-  return result;
+  return { row: result, truncated };
 }
 
 function fieldNames(fields: unknown): string[] {
@@ -70,6 +75,16 @@ function extractCommand(data: Record<string, unknown>): string | undefined {
   return undefined;
 }
 
+// The run-query API reports its own truncation (`truncated`, `truncated_cells`)
+function extractFlag(data: Record<string, unknown>, key: string): boolean {
+  const nested = data['result'];
+  const nestedValue =
+    nested && typeof nested === 'object' && !Array.isArray(nested)
+      ? (nested as Record<string, unknown>)[key]
+      : undefined;
+  return data[key] === true || nestedValue === true;
+}
+
 function wrapInBoundary(data: unknown): string {
   return wrapUntrustedResponse(redactSensitiveData(data));
 }
@@ -83,7 +98,8 @@ export function formatPgRunQueryResult(
 
   const allRows = extractRows(data).slice(0, MAX_ROWS);
   const paged = allRows.slice(offset, offset + limit);
-  const truncatedRows = paged.map((row) => truncateCells(row));
+  const cells = paged.map((row) => truncateCells(row));
+  const truncatedRows = cells.map((c) => c.row);
 
   const rowCount = extractRowCount(data, extractRows(data));
   const nestedResult = data['result'];
@@ -97,7 +113,8 @@ export function formatPgRunQueryResult(
     rowCount,
     returnedRows: paged.length,
     totalRowsCapped: allRows.length,
-    truncated: rowCount > MAX_ROWS,
+    truncated: rowCount > MAX_ROWS || extractFlag(data, 'truncated'),
+    truncatedCells: extractFlag(data, 'truncated_cells') || cells.some((c) => c.truncated),
     offset,
     limit,
     hasMore: offset + limit < allRows.length,
