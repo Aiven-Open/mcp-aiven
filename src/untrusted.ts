@@ -21,6 +21,22 @@ export function wrapUntrustedResponse(data: unknown): string {
 }
 
 /**
+ * Places server-authored guidance before an untrusted response boundary.
+ *
+ * Guidance must not contain values copied from API responses or user input.
+ */
+export function wrapUntrustedResponseWithGuidance(
+  guidance: unknown,
+  data: unknown
+): string {
+  const body =
+    typeof guidance === 'string' ? guidance : JSON.stringify(guidance, null, 2);
+  return [`Trusted server guidance:\n${body}`, wrapUntrustedResponse(data)].join(
+    '\n\n'
+  );
+}
+
+/**
  * Strips the untrusted-data warning and boundary tags, returning just the body.
  * Used before security-scanning output so our own wrapper isn't mistaken for
  * an injection. Returns the input unchanged if it isn't a wrapped response.
