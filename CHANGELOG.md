@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.18.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.17.1...v1.18.0) (2026-10-08)
+
+
+### Features
+
+* Improve plan and pricing discovery [APP-398] ([#174](https://github.com/Aiven-Open/mcp-aiven/issues/174)) ([9c8cf2c](https://github.com/Aiven-Open/mcp-aiven/commit/9c8cf2c0affbbc73e60de767071d7a8ed8b2dfe1))
+
+
+### Bug Fixes
+
+* Keep trusted guidance outside untrusted response boundaries ([#172](https://github.com/Aiven-Open/mcp-aiven/issues/172)) ([ea99b95](https://github.com/Aiven-Open/mcp-aiven/commit/ea99b95e095c9f5ad11406596a18ed5927da86ef))
+
 ## [1.17.1](https://github.com/Aiven-Open/mcp-aiven/compare/v1.17.0...v1.17.1) (2026-10-05)
 
 
