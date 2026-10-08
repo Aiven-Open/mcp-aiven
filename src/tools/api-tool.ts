@@ -125,9 +125,11 @@ export function createApiTool(config: ApiToolConfig, client: AivenClient): ToolD
           ? config.redactResponse(data)
           : redactSensitiveData(data);
 
+        const prepared = config.preFilter ? config.preFilter(redacted, args) : redacted;
+
         const filtered = config.responseFilter
-          ? applyResponseFilter(redacted, config.responseFilter, search, limit, offset)
-          : redacted;
+          ? applyResponseFilter(prepared, config.responseFilter, search, limit, offset)
+          : prepared;
 
         const processed = config.postProcess ? config.postProcess(filtered, args) : filtered;
 
