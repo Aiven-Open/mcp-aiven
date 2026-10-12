@@ -62,7 +62,9 @@ const clickhouseConfig = {
 
 describe('applicationServiceCredentialUserConfig', () => {
   it('requires every ClickHouse mapping and rejects connection_string', () => {
-    const { secure: _secure, ...withoutSecure } = clickhouseConfig.exposed_values;
+    const withoutSecure = Object.fromEntries(
+      Object.entries(clickhouseConfig.exposed_values).filter(([key]) => key !== 'secure')
+    );
     expect(
       applicationServiceCredentialUserConfig.safeParse({
         ...clickhouseConfig,
