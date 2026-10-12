@@ -183,12 +183,17 @@ export interface ApiToolConfig {
     | undefined;
   /** Response redaction override for tools with typed, known-safe configuration fields. */
   redactResponse?: ((data: Record<string, unknown>) => Record<string, unknown>) | undefined;
+  /** Transform applied to the redacted response before `responseFilter`, so its filtering is
+   *  reflected in search, `total`, and pagination. Receives the input args. */
+  preFilter?:
+    | ((data: Record<string, unknown>, args: Record<string, unknown>) => Record<string, unknown>)
+    | undefined;
   /** Transform applied to the (redacted, filtered) response before it is returned. Receives
    *  the input args so it can scope the response to what the caller requested. */
   postProcess?:
     | ((data: Record<string, unknown>, args: Record<string, unknown>) => Record<string, unknown>)
     | undefined;
-  /** Input params consumed client-side (by postProcess) — never forwarded to the Aiven API. */
+  /** Input params consumed client-side (by preFilter or postProcess) — never forwarded to the Aiven API. */
   clientOnlyParams?: readonly string[] | undefined;
 }
 

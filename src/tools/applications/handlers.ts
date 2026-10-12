@@ -13,7 +13,7 @@ import {
 } from '../../types.js';
 import { errorMessage } from '../../errors.js';
 import { redactSensitiveData } from '../../security.js';
-import { wrapUntrustedResponse } from '../../untrusted.js';
+import { wrapUntrustedResponse, wrapUntrustedResponseWithGuidance } from '../../untrusted.js';
 import { getProjectCaCert } from '../../shared/service-info.js';
 import {
   deployApplicationInput,
@@ -50,6 +50,45 @@ const VCS_REPOSITORY_LIST_NO_MATCH_NEXT_STEP =
   `If the complete result has no match and the matching integration has a \`remote_configure_url\`, show it and advise the user to open it to update repository access on GitHub. ` +
   `If \`remote_configure_url\` is null, offer \`${ApplicationToolName.VcsIntegrationInitialize}\` instead.`;
 
+const ASYNC_DEPLOYMENT_NEXT_STEP =
+  'The service state may not reflect the deployment immediately. Tell the user the operation is continuing asynchronously and ask when they want to check its status; do not poll in a loop.';
+
+const VCS_INTEGRATION_INITIALIZE_GUIDANCE = {
+  message: 'Show `redirect_url` verbatim so the user can connect a GitHub account to Aiven.',
+  user_instructions: [
+    'Ask the user to complete the GitHub setup. After they are redirected to Aiven Console, they must select the Aiven organization named by `organization_name`, click "Confirm connection", then return to the conversation and confirm completion.',
+  ],
+  next_tool: ApplicationToolName.VcsIntegrationList,
+  next_step:
+    'Wait for the user to confirm they completed the browser flow. Then list VCS integrations and repositories again to verify access.',
+};
+
+const COMPOSE_SCAN_DEPLOYMENT_GUIDANCE = {
+  workflow: 'review_service_suggestions',
+  message:
+    'The repository scanner produced candidate Aiven service configurations from this Compose file. The suggestions may omit services or settings the scanner cannot map. Review them before creating services, and do not pass the Compose file itself to aiven_application_create.',
+  next_tool: 'aiven_service_create',
+  limitations: [
+    'Suggestions cover only Compose services recognized by the repository scanner.',
+    'Image-only services that do not map to a supported Aiven service may be omitted.',
+  ],
+  tls_guidance: {
+    applies_to_integrations: ['pg', 'valkey', 'mysql'],
+    ca_certificate_file_mounts: 'planned_not_yet_available',
+    temporary_workaround:
+      'Keep TLS enabled but disable server-certificate validation in the application client. Explain the reduced protection and get the user’s approval before changing their application.',
+    warning:
+      'Disabling certificate validation preserves encryption but does not authenticate the server. Remove the workaround when platform-provided CA certificate file mounts become available.',
+  },
+  steps: [
+    'Present the returned suggestions and these limitations to the user.',
+    'Confirm which suggested services to create, including their plan and cloud.',
+    'For PostgreSQL, MySQL, or Valkey integrations, present the temporary TLS workaround and get the user’s approval before changing certificate validation.',
+    'Create referenced services before applications that use them. Whether to wait for them to reach RUNNING depends on how the application handles unavailable services during startup.',
+    'Preserve each suggestion’s user_config and service_integrations when creating it.',
+  ],
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -61,16 +100,11 @@ function ensureGitHubSuffix(repositoryUrl: string): string {
   return repositoryUrl;
 }
 
-function withAsyncDeploymentGuidance(
-  result: Record<string, unknown>,
-  message: string
-): Record<string, unknown> {
+function asyncDeploymentGuidance(message: string): Record<string, unknown> {
   return {
-    ...result,
     message,
     next_tool: 'aiven_service_get',
-    next_step:
-      'The service state may not reflect the deployment immediately. Tell the user the operation is continuing asynchronously and ask when they want to check its status; do not poll in a loop.',
+    next_step: ASYNC_DEPLOYMENT_NEXT_STEP,
   };
 }
 
@@ -85,34 +119,6 @@ function prepareManifestScanResult(result: Record<string, unknown>): Record<stri
   // suggestions are the actionable scan output.
   const summarizedFileScan = { ...fileScan };
   delete summarizedFileScan['raw_contents'];
-
-  if (summarizedFileScan['container_manifest_type'] === 'compose') {
-    summarizedFileScan['deployment_guidance'] = {
-      workflow: 'review_service_suggestions',
-      message:
-        'The repository scanner produced candidate Aiven service configurations from this Compose file. The suggestions may omit services or settings the scanner cannot map. Review them before creating services, and do not pass the Compose file itself to aiven_application_create.',
-      next_tool: 'aiven_service_create',
-      limitations: [
-        'Suggestions cover only Compose services recognized by the repository scanner.',
-        'Image-only services that do not map to a supported Aiven service may be omitted.',
-      ],
-      tls_guidance: {
-        applies_to_integrations: ['pg', 'valkey', 'mysql'],
-        ca_certificate_file_mounts: 'planned_not_yet_available',
-        temporary_workaround:
-          'Keep TLS enabled but disable server-certificate validation in the application client. Explain the reduced protection and get the user’s approval before changing their application.',
-        warning:
-          'Disabling certificate validation preserves encryption but does not authenticate the server. Remove the workaround when platform-provided CA certificate file mounts become available.',
-      },
-      steps: [
-        'Present the returned suggestions and these limitations to the user.',
-        'Confirm which suggested services to create, including their plan and cloud.',
-        'For PostgreSQL or Valkey integrations, present the temporary TLS workaround and get the user’s approval before changing certificate validation.',
-        'Create referenced services before applications that use them. Whether to wait for them to reach RUNNING depends on how the application handles unavailable services during startup.',
-        'Preserve each suggestion’s user_config and service_integrations when creating it.',
-      ],
-    };
-  }
 
   summarizedResult['file_scan'] = summarizedFileScan;
   return summarizedResult;
@@ -177,7 +183,7 @@ Inspect the local project files and confirm each applicable item. Report finding
 - \`build_path\` and \`containerfile_path\` → verify the build context and Containerfile/Dockerfile paths are correct. If the file uses \`EXPOSE\`, verify it matches \`port\`. Confirm the image starts the application through \`CMD\`, \`ENTRYPOINT\`, or an equivalent project-specific mechanism.
 - \`port\` → verify app source binds to \`0.0.0.0\`, not \`localhost\`/\`127.0.0.1\`
 - \`service_integrations\` → for each entry, verify the source service exists in the same project (\`aiven_service_get\`) and inspect the application source to find every environment-variable name it reads. If it accepts multiple fallback names, choose one explicitly for each mapping. Provide every mapping; do not infer names from platform conventions or documentation. Whether to wait for the service to reach RUNNING depends on how the app handles unavailable services during startup.
-- PostgreSQL/Valkey SSL → the deploy tool injects \`PROJECT_CA_CERT\` (base64-encoded Aiven CA cert). Verify that the application's client library uses it to validate TLS. For Node.js \`pg\` v8, \`sslmode\` in the connection URL overrides the \`ssl\` option, so one suitable pattern is:
+- PostgreSQL/MySQL/Valkey SSL → the deploy tool injects \`PROJECT_CA_CERT\` (base64-encoded Aiven CA cert). Verify that the application's client library uses it to validate TLS. For Node.js \`pg\` v8, \`sslmode\` in the connection URL overrides the \`ssl\` option, so one suitable pattern is:
   \`\`\`js
   const url = new URL(process.env.DATABASE_URL);
   url.searchParams.delete('sslmode');
@@ -188,6 +194,7 @@ Inspect the local project files and confirm each applicable item. Report finding
   \`\`\`
   Equivalent library-appropriate implementations are valid. If certificate validation is missing, report the issue and ask before editing or pushing code.
 - OpenSearch SSL → Aiven OpenSearch uses a publicly-trusted TLS certificate. No \`PROJECT_CA_CERT\` is injected and none is needed. App code should connect using the environment variable configured by the OpenSearch service integration without any custom CA cert (the default system trust store is sufficient).
+- ClickHouse SSL → No \`PROJECT_CA_CERT\` is injected. Keep TLS enabled by using the \`secure\` value exposed by the ClickHouse service integration, and connect with the default system trust store.
 - \`app_service_name\` → verify target app is RUNNING (\`aiven_service_get\`); source reads \`app_env_key\` env var
 - \`repository_url\` → ask the user to provide the repo URL and confirm code is pushed to \`branch\`
 - Node.js repositories → verify \`node_modules/\` is ignored. Ignore generated output such as \`dist/\` or \`.next/\` when the project does not intentionally commit it.
@@ -266,7 +273,7 @@ CMD ["node", "dist/index.js"]
             }
           } catch (err) {
             return toolError(
-              `Failed to fetch project CA certificate required for TLS with pg/valkey: ${errorMessage(err)}`
+              `Failed to fetch project CA certificate required for TLS with pg/valkey/mysql: ${errorMessage(err)}`
             );
           }
         }
@@ -350,26 +357,22 @@ CMD ["node", "dist/index.js"]
               cloud_name: service['cloud_name'],
             };
             return toolSuccess(
-              wrapUntrustedResponse(
-                redactSensitiveData(
-                  withAsyncDeploymentGuidance(
-                    summary,
-                    'Application created. The initial deployment is continuing asynchronously.'
-                  )
-                )
+              wrapUntrustedResponseWithGuidance(
+                asyncDeploymentGuidance(
+                  'Application created. The initial deployment is continuing asynchronously.'
+                ),
+                redactSensitiveData(summary)
               ),
               ApplicationToolName.Create
             );
           }
 
           return toolSuccess(
-            wrapUntrustedResponse(
-              redactSensitiveData(
-                withAsyncDeploymentGuidance(
-                  result,
-                  'Application created. The initial deployment is continuing asynchronously.'
-                )
-              )
+            wrapUntrustedResponseWithGuidance(
+              asyncDeploymentGuidance(
+                'Application created. The initial deployment is continuing asynchronously.'
+              ),
+              redactSensitiveData(result)
             ),
             ApplicationToolName.Create
           );
@@ -451,14 +454,14 @@ A successful response means the redeploy was triggered, not that it completed. T
           );
 
           return toolSuccess(
-            wrapUntrustedResponse(
-              withAsyncDeploymentGuidance(
-                {
-                  service_name: serviceName,
-                  branch: branch ?? 'current',
-                },
+            wrapUntrustedResponseWithGuidance(
+              asyncDeploymentGuidance(
                 'Redeploy triggered. The deployment is continuing asynchronously.'
-              )
+              ),
+              {
+                service_name: serviceName,
+                branch: branch ?? 'current',
+              }
             ),
             ApplicationToolName.Redeploy
           );
@@ -478,7 +481,7 @@ Use this to connect a GitHub account that is not connected to this Aiven organiz
 
 Before starting, briefly explain that the user must be an admin of the Aiven organization and, when connecting a GitHub organization, an owner of that GitHub organization. Alternatively, they can connect their personal GitHub account.
 
-After calling, show \`redirect_url\` verbatim and display \`user_instructions\`, then follow \`next_step\`.`,
+After calling, follow the trusted server guidance returned before the untrusted API data.`,
         inputSchema: vcsIntegrationInitializeInput,
         annotations: CREATE_ANNOTATIONS,
       },
@@ -517,18 +520,11 @@ After calling, show \`redirect_url\` verbatim and display \`user_instructions\`,
           }
 
           return toolSuccess(
-            wrapUntrustedResponse({
+            wrapUntrustedResponseWithGuidance(VCS_INTEGRATION_INITIALIZE_GUIDANCE, {
               organization_id: organizationId,
               organization_name: organizationName,
               vcs_type: 'github',
               redirect_url: result.redirect_url,
-              message: 'Open redirect_url in a browser to connect a GitHub account to Aiven.',
-              user_instructions: [
-                `Complete the GitHub setup. After being redirected to Aiven Console, select the Aiven organization "${organizationName}", then click "Confirm connection". When finished, return to this conversation and confirm the connection was completed.`,
-              ],
-              next_tool: ApplicationToolName.VcsIntegrationList,
-              next_step:
-                'Wait for the user to confirm they completed the browser flow. Then list VCS integrations and repositories again to verify access.',
             }),
             ApplicationToolName.VcsIntegrationInitialize
           );
@@ -544,7 +540,7 @@ After calling, show \`redirect_url\` verbatim and display \`user_instructions\`,
         title: 'List VCS Integrations',
         description: `List connected VCS (GitHub) accounts for an Aiven organization.
 
-Use this before creating an application service from a repository or scanning a repository. Returns each integration's \`vcs_integration_id\`, GitHub \`vcs_account_name\`, and nullable \`remote_configure_url\`. Follow the returned \`next_step\` to select an integration or connect an account.`,
+Use this before creating an application service from a repository or scanning a repository. Returns each integration's \`vcs_integration_id\`, GitHub \`vcs_account_name\`, and nullable \`remote_configure_url\`. Follow the trusted server guidance returned before the untrusted API data to select an integration or connect an account.`,
         inputSchema: vcsIntegrationListInput,
         annotations: READ_ONLY_ANNOTATIONS,
       },
@@ -564,11 +560,13 @@ Use this before creating an application service from a repository or scanning a 
           }>(`/organization/${encodeURIComponent(organizationId)}/application/vcs-integrations`, opts);
 
           return toolSuccess(
-            wrapUntrustedResponse({
-              organization_id: organizationId,
-              vcs_integrations: result.vcs_integrations,
-              next_step: VCS_INTEGRATION_LIST_NEXT_STEP,
-            }),
+            wrapUntrustedResponseWithGuidance(
+              { next_step: VCS_INTEGRATION_LIST_NEXT_STEP },
+              {
+                organization_id: organizationId,
+                vcs_integrations: result.vcs_integrations,
+              }
+            ),
             ApplicationToolName.VcsIntegrationList
           );
         } catch (err) {
@@ -587,7 +585,7 @@ Use this only for integrations whose \`vcs_account_name\` matches the GitHub rep
 
 The tool follows pagination until there are no more pages, or until ${MAX_VCS_REPOSITORY_LIST_ITEMS} repositories have been collected (whichever comes first). If truncated, \`truncated\` is true and \`next\` may still be set when more pages exist.
 
-Returns \`remote_repository_id\`, \`full_name\`, \`source_url\`, and \`default_branch_name\` for each repository. If no repository matches, follow \`no_match_next_step\`.`,
+Returns \`remote_repository_id\`, \`full_name\`, \`source_url\`, and \`default_branch_name\` for each repository. If no repository matches, follow the trusted no-match guidance returned before the untrusted API data.`,
         inputSchema: vcsIntegrationRepositoryListInput,
         annotations: READ_ONLY_ANNOTATIONS,
       },
@@ -629,23 +627,27 @@ Returns \`remote_repository_id\`, \`full_name\`, \`source_url\`, and \`default_b
 
             if (hitEnd) {
               return toolSuccess(
-                wrapUntrustedResponse({
-                  repositories,
-                  next: null,
-                  truncated: false,
-                  no_match_next_step: VCS_REPOSITORY_LIST_NO_MATCH_NEXT_STEP,
-                }),
+                wrapUntrustedResponseWithGuidance(
+                  { no_match_next_step: VCS_REPOSITORY_LIST_NO_MATCH_NEXT_STEP },
+                  {
+                    repositories,
+                    next: null,
+                    truncated: false,
+                  }
+                ),
                 ApplicationToolName.VcsIntegrationRepositoryList
               );
             }
             if (hitItemCap) {
               return toolSuccess(
-                wrapUntrustedResponse({
-                  repositories,
-                  next,
-                  truncated: true,
-                  no_match_next_step: VCS_REPOSITORY_LIST_NO_MATCH_NEXT_STEP,
-                }),
+                wrapUntrustedResponseWithGuidance(
+                  { no_match_next_step: VCS_REPOSITORY_LIST_NO_MATCH_NEXT_STEP },
+                  {
+                    repositories,
+                    next,
+                    truncated: true,
+                  }
+                ),
                 ApplicationToolName.VcsIntegrationRepositoryList
               );
             }
@@ -653,13 +655,17 @@ Returns \`remote_repository_id\`, \`full_name\`, \`source_url\`, and \`default_b
           }
 
           return toolSuccess(
-            wrapUntrustedResponse({
-              repositories,
-              next: cursor ?? null,
-              truncated: true,
-              note: `Pagination stopped after ${MAX_VCS_REPOSITORY_LIST_PAGES} pages (safety limit).`,
-              no_match_next_step: VCS_REPOSITORY_LIST_NO_MATCH_NEXT_STEP,
-            }),
+            wrapUntrustedResponseWithGuidance(
+              {
+                note: `Pagination stopped after ${MAX_VCS_REPOSITORY_LIST_PAGES} pages (safety limit).`,
+                no_match_next_step: VCS_REPOSITORY_LIST_NO_MATCH_NEXT_STEP,
+              },
+              {
+                repositories,
+                next: cursor ?? null,
+                truncated: true,
+              }
+            ),
             ApplicationToolName.VcsIntegrationRepositoryList
           );
         } catch (err) {
@@ -724,12 +730,16 @@ The tool follows pagination until there are no more pages, or until ${MAX_VCS_BR
           }
 
           return toolSuccess(
-            wrapUntrustedResponse({
-              branches,
-              next: cursor ?? null,
-              truncated: true,
-              note: `Pagination stopped after ${MAX_VCS_BRANCH_LIST_PAGES} pages (safety limit).`,
-            }),
+            wrapUntrustedResponseWithGuidance(
+              {
+                note: `Pagination stopped after ${MAX_VCS_BRANCH_LIST_PAGES} pages (safety limit).`,
+              },
+              {
+                branches,
+                next: cursor ?? null,
+                truncated: true,
+              }
+            ),
             ApplicationToolName.VcsIntegrationRepositoryBranchList
           );
         } catch (err) {
@@ -789,13 +799,13 @@ Pass a selected \`file_path\` to \`aiven_vcs_integration_repository_scan_contain
 
 Use \`aiven_vcs_integration_repository_container_manifest_files_list\` first and pass one of its \`file_path\` values. The scanner accepts Containerfile/Dockerfile and Compose manifests.
 
-The result includes the manifest type, detected ports and environment variables, and candidate \`service_suggestions\`. For Compose, the scanner recognizes application services with a \`build\` configuration and image-based PostgreSQL, Valkey, OpenSearch, and Kafka services. It may omit image-only services it cannot map and does not implement general Compose deployment. Do not pass a Compose file to \`aiven_application_create\`.
+The result includes the manifest type, detected ports and environment variables, and candidate \`service_suggestions\`. For Compose, the scanner recognizes application services with a \`build\` configuration and image-based PostgreSQL, Valkey, MySQL, ClickHouse, OpenSearch, and Kafka services. It may omit image-only services it cannot map and does not implement general Compose deployment. Do not pass a Compose file to \`aiven_application_create\`.
 
 Compose scans fail rather than returning partial suggestions when a referenced Dockerfile cannot be read. A 404 usually means a referenced Dockerfile is missing at the selected commit. A 422 means a Compose build path is invalid, such as resolving outside the repository. Report the error and ask the user to correct the repository; do not retry the same scan unchanged.
 
 To use scan results, present the returned suggestions and scanner limitations to the user. The scan inspected the supplied commit SHA, but each application suggestion deploys from the branch name and is not pinned to that commit. Before creating services, call \`aiven_vcs_integration_repository_branch_list\` again and verify that the branch still points to the inspected commit SHA; if it changed, scan the new commit and use the refreshed suggestions. After the user confirms which services to create, resolve and confirm the required plan and cloud for each accepted suggestion, then call \`aiven_service_create\`. Preserve its \`service_type\`, \`service_name\`, \`user_config\`, and \`service_integrations\`; add \`project\`, \`plan\`, and \`cloud\`. Create referenced services before applications that use them. Whether to wait for them to reach RUNNING depends on how the application handles unavailable services during startup.
 
-For application suggestions integrated with PostgreSQL or Valkey, platform-provided CA certificate file mounts are planned but not yet available through this workflow. In the meantime, the application client can keep TLS enabled while disabling server-certificate validation. Explain that this preserves encryption but does not authenticate the server, and get the user's approval before making that temporary change. Do not disable TLS itself. Remove the workaround once CA certificate file mounts are available. This scan operation itself does not deploy or modify services.`,
+For application suggestions integrated with PostgreSQL, MySQL, or Valkey, platform-provided CA certificate file mounts are planned but not yet available through this workflow. In the meantime, the application client can keep TLS enabled while disabling server-certificate validation. Explain that this preserves encryption but does not authenticate the server, and get the user's approval before making that temporary change. Do not disable TLS itself. Remove the workaround once CA certificate file mounts are available. This scan operation itself does not deploy or modify services.`,
         inputSchema: vcsIntegrationRepositoryScanContainerManifestInput,
         annotations: READ_ONLY_ANNOTATIONS,
       },
@@ -826,8 +836,18 @@ For application suggestions integrated with PostgreSQL or Valkey, platform-provi
             opts
           );
 
+          const preparedResult = prepareManifestScanResult(result);
+          const fileScan = preparedResult['file_scan'];
+          const response =
+            isRecord(fileScan) && fileScan['container_manifest_type'] === 'compose'
+              ? wrapUntrustedResponseWithGuidance(
+                  { deployment_guidance: COMPOSE_SCAN_DEPLOYMENT_GUIDANCE },
+                  preparedResult
+                )
+              : wrapUntrustedResponse(preparedResult);
+
           return toolSuccess(
-            wrapUntrustedResponse(prepareManifestScanResult(result)),
+            response,
             ApplicationToolName.VcsIntegrationRepositoryScanContainerManifest
           );
         } catch (err) {

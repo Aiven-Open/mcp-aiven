@@ -86,7 +86,7 @@ describe('applicationServiceCredentialUserConfig', () => {
     }
   );
 
-  it.each(['valkey', 'kafka', 'opensearch'] as const)(
+  it.each(['mysql', 'valkey', 'kafka', 'opensearch'] as const)(
     'accepts empty source_service_parameters for $service_type as defined by the API',
     (serviceType) => {
       const config = [...connectionStringConfigs, kafkaConfig].find(

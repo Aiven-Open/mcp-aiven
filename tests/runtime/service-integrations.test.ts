@@ -406,9 +406,11 @@ describe('application service credential integration tools', () => {
   });
 });
 
+const serviceTypesNeedingProjectCa = new Set(['pg', 'mysql', 'valkey']);
+
 describe('application creation with service credentials', () => {
   it.each(applicationCreateInputs)(
-    'passes explicit $service_type mappings through unchanged',
+    'passes explicit $user_config.service_type mappings through unchanged',
     async (serviceIntegration) => {
       const client = {
         get: vi.fn().mockResolvedValue({ certificate: 'project-ca' }),
@@ -437,6 +439,10 @@ describe('application creation with service credentials', () => {
           service_integrations: [serviceIntegration],
         }),
         expect.any(Object)
+      );
+      const body = JSON.stringify(vi.mocked(client.post).mock.calls[0]?.[1]);
+      expect(body.includes('PROJECT_CA_CERT')).toBe(
+        serviceTypesNeedingProjectCa.has(serviceIntegration.user_config.service_type)
       );
     }
   );
