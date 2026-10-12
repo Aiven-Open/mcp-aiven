@@ -27,6 +27,33 @@ const configs: Array<{
     },
   },
   {
+    serviceType: 'mysql',
+    userConfig: {
+      service_type: 'mysql',
+      exposed_values: {
+        connection_string: { environment_variable_key: 'MYSQL_URL' },
+      },
+      source_service_parameters: {
+        user: 'app_user',
+        database: 'app_database',
+      },
+    },
+  },
+  {
+    serviceType: 'clickhouse',
+    userConfig: {
+      service_type: 'clickhouse',
+      exposed_values: {
+        host: { environment_variable_key: 'CLICKHOUSE_HOST' },
+        port: { environment_variable_key: 'CLICKHOUSE_PORT' },
+        user: { environment_variable_key: 'CLICKHOUSE_USER' },
+        password: { environment_variable_key: 'CLICKHOUSE_PASSWORD' },
+        database: { environment_variable_key: 'CLICKHOUSE_DATABASE' },
+        secure: { environment_variable_key: 'CLICKHOUSE_SECURE' },
+      },
+    },
+  },
+  {
     serviceType: 'valkey',
     userConfig: {
       service_type: 'valkey',

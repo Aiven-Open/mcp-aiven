@@ -31,7 +31,7 @@ function withTypedUserConfig(inputSchema: z.ZodType): z.ZodType {
     user_config: z
       .union([applicationServiceCredentialUserConfig, genericUserConfig])
       .describe(
-        'For application_service_credential, use one of the typed PostgreSQL, Valkey, Kafka, or OpenSearch configurations. Other integration types remain supported with their API-defined user_config.'
+        'For application_service_credential, use one of the typed PostgreSQL, MySQL, ClickHouse, Valkey, Kafka, or OpenSearch configurations. Other integration types remain supported with their API-defined user_config.'
       ),
   });
 }

@@ -97,7 +97,7 @@ function prepareManifestScanResult(result: Record<string, unknown>): Record<stri
         'Image-only services that do not map to a supported Aiven service may be omitted.',
       ],
       tls_guidance: {
-        applies_to_integrations: ['pg', 'valkey'],
+        applies_to_integrations: ['pg', 'valkey', 'mysql'],
         ca_certificate_file_mounts: 'planned_not_yet_available',
         temporary_workaround:
           'Keep TLS enabled but disable server-certificate validation in the application client. Explain the reduced protection and get the user’s approval before changing their application.',
@@ -251,7 +251,8 @@ CMD ["node", "dist/index.js"]
         const needsCaCert = serviceIntegrations.some(
           (integration) =>
             integration.user_config.service_type === 'pg' ||
-            integration.user_config.service_type === 'valkey'
+            integration.user_config.service_type === 'valkey' ||
+            integration.user_config.service_type === 'mysql'
         );
         if (needsCaCert) {
           try {
