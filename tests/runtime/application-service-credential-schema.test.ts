@@ -14,6 +14,16 @@ const connectionStringConfigs = [
     },
   },
   {
+    service_type: 'mysql',
+    exposed_values: {
+      connection_string: { environment_variable_key: 'MYSQL_URL' },
+    },
+    source_service_parameters: {
+      user: 'app_user',
+      database: 'app_database',
+    },
+  },
+  {
     service_type: 'valkey',
     exposed_values: {
       connection_string: { environment_variable_key: 'VALKEY_URL' },
@@ -38,15 +48,47 @@ const kafkaConfig = {
   },
 } as const;
 
+const clickhouseConfig = {
+  service_type: 'clickhouse',
+  exposed_values: {
+    host: { environment_variable_key: 'CLICKHOUSE_HOST' },
+    port: { environment_variable_key: 'CLICKHOUSE_PORT' },
+    user: { environment_variable_key: 'CLICKHOUSE_USER' },
+    password: { environment_variable_key: 'CLICKHOUSE_PASSWORD' },
+    database: { environment_variable_key: 'CLICKHOUSE_DATABASE' },
+    secure: { environment_variable_key: 'CLICKHOUSE_SECURE' },
+  },
+} as const;
+
 describe('applicationServiceCredentialUserConfig', () => {
-  it.each([...connectionStringConfigs, kafkaConfig])(
+  it('requires every ClickHouse mapping and rejects connection_string', () => {
+    const withoutSecure = Object.fromEntries(
+      Object.entries(clickhouseConfig.exposed_values).filter(([key]) => key !== 'secure')
+    );
+    expect(
+      applicationServiceCredentialUserConfig.safeParse({
+        ...clickhouseConfig,
+        exposed_values: withoutSecure,
+      }).success
+    ).toBe(false);
+    expect(
+      applicationServiceCredentialUserConfig.safeParse({
+        ...clickhouseConfig,
+        exposed_values: {
+          connection_string: { environment_variable_key: 'CLICKHOUSE_URL' },
+        },
+      }).success
+    ).toBe(false);
+  });
+
+  it.each([...connectionStringConfigs, kafkaConfig, clickhouseConfig])(
     'accepts an explicit $service_type configuration without adding defaults',
     (config) => {
       expect(applicationServiceCredentialUserConfig.parse(config)).toEqual(config);
     }
   );
 
-  it.each(['valkey', 'kafka', 'opensearch'] as const)(
+  it.each(['mysql', 'valkey', 'kafka', 'opensearch'] as const)(
     'accepts empty source_service_parameters for $service_type as defined by the API',
     (serviceType) => {
       const config = [...connectionStringConfigs, kafkaConfig].find(

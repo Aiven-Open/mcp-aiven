@@ -27,6 +27,33 @@ const configs: Array<{
     },
   },
   {
+    serviceType: 'mysql',
+    userConfig: {
+      service_type: 'mysql',
+      exposed_values: {
+        connection_string: { environment_variable_key: 'MYSQL_URL' },
+      },
+      source_service_parameters: {
+        user: 'app_user',
+        database: 'app_database',
+      },
+    },
+  },
+  {
+    serviceType: 'clickhouse',
+    userConfig: {
+      service_type: 'clickhouse',
+      exposed_values: {
+        host: { environment_variable_key: 'CLICKHOUSE_HOST' },
+        port: { environment_variable_key: 'CLICKHOUSE_PORT' },
+        user: { environment_variable_key: 'CLICKHOUSE_USER' },
+        password: { environment_variable_key: 'CLICKHOUSE_PASSWORD' },
+        database: { environment_variable_key: 'CLICKHOUSE_DATABASE' },
+        secure: { environment_variable_key: 'CLICKHOUSE_SECURE' },
+      },
+    },
+  },
+  {
     serviceType: 'valkey',
     userConfig: {
       service_type: 'valkey',
@@ -379,38 +406,67 @@ describe('application service credential integration tools', () => {
   });
 });
 
+async function createApplication(
+  serviceIntegration: (typeof applicationCreateInputs)[number]
+): Promise<AivenClient> {
+  const client = {
+    get: vi.fn().mockResolvedValue({ certificate: 'project-ca' }),
+    post: vi.fn().mockResolvedValue({}),
+    put: vi.fn(),
+    delete: vi.fn(),
+    patch: vi.fn(),
+    request: vi.fn(),
+  } as unknown as AivenClient;
+  const create = getTool(createApplicationTools(client), 'aiven_application_create');
+  const params = deployApplicationInput.parse({
+    project: 'test-project',
+    service_name: 'example-app',
+    repository_url: 'https://github.com/aiven/example',
+    branch: 'main',
+    port: 8080,
+    service_integrations: [serviceIntegration],
+    reasoning: 'Create the application with an existing data service',
+  });
+
+  await create.handler(params);
+  return client;
+}
+
 describe('application creation with service credentials', () => {
   it.each(applicationCreateInputs)(
-    'passes explicit $service_type mappings through unchanged',
+    'passes explicit $user_config.service_type mappings through unchanged',
     async (serviceIntegration) => {
-      const client = {
-        get: vi.fn().mockResolvedValue({ certificate: 'project-ca' }),
-        post: vi.fn().mockResolvedValue({}),
-        put: vi.fn(),
-        delete: vi.fn(),
-        patch: vi.fn(),
-        request: vi.fn(),
-      } as unknown as AivenClient;
-      const create = getTool(createApplicationTools(client), 'aiven_application_create');
-      const params = deployApplicationInput.parse({
-        project: 'test-project',
-        service_name: 'example-app',
-        repository_url: 'https://github.com/aiven/example',
-        branch: 'main',
-        port: 8080,
-        service_integrations: [serviceIntegration],
-        reasoning: 'Create the application with an existing data service',
-      });
-
-      await create.handler(params);
+      const client = await createApplication(serviceIntegration);
 
       expect(client.post).toHaveBeenCalledWith(
         '/project/test-project/service',
-        expect.objectContaining({
-          service_integrations: [serviceIntegration],
-        }),
+        expect.objectContaining({ service_integrations: [serviceIntegration] }),
         expect.any(Object)
       );
+    }
+  );
+
+  const caCertCases = [
+    { serviceType: 'pg', injectsCert: true },
+    { serviceType: 'mysql', injectsCert: true },
+    { serviceType: 'valkey', injectsCert: true },
+    { serviceType: 'clickhouse', injectsCert: false },
+    { serviceType: 'kafka', injectsCert: false },
+    { serviceType: 'opensearch', injectsCert: false },
+  ];
+
+  it.each(caCertCases)(
+    'PROJECT_CA_CERT injected for $serviceType: $injectsCert',
+    async ({ serviceType, injectsCert }) => {
+      const serviceIntegration = applicationCreateInputs.find(
+        (input) => input.user_config.service_type === serviceType
+      );
+      if (!serviceIntegration) throw new Error(`No application input for ${serviceType}`);
+
+      const client = await createApplication(serviceIntegration);
+      const body = JSON.stringify(vi.mocked(client.post).mock.calls[0]?.[1]);
+
+      expect(body.includes('PROJECT_CA_CERT')).toBe(injectsCert);
     }
   );
 });

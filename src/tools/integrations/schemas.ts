@@ -99,15 +99,50 @@ const kafkaApplicationServiceCredentialUserConfig = z
   })
   .strict();
 
+const mysqlApplicationServiceCredentialUserConfig = z
+  .object({
+    service_type: z.literal('mysql'),
+    exposed_values: connectionStringExposedValues,
+    source_service_parameters: sourceServiceParameters
+      .optional()
+      .describe('Optional MySQL user and database overrides.'),
+  })
+  .strict();
+
+const clickhouseApplicationServiceCredentialUserConfig = z
+  .object({
+    service_type: z.literal('clickhouse'),
+    exposed_values: z
+      .object({
+        host: exposedValue.describe('ClickHouse host exposed to the destination application.'),
+        port: exposedValue.describe('ClickHouse port exposed to the destination application.'),
+        user: exposedValue.describe('ClickHouse user exposed to the destination application.'),
+        password: exposedValue.describe(
+          'ClickHouse password exposed to the destination application.'
+        ),
+        database: exposedValue.describe(
+          'ClickHouse database exposed to the destination application.'
+        ),
+        secure: exposedValue.describe(
+          'Whether to use a secure (TLS) ClickHouse connection, exposed to the destination application.'
+        ),
+      })
+      .strict(),
+    source_service_parameters: emptySourceServiceParameters.optional(),
+  })
+  .strict();
+
 export const applicationServiceCredentialUserConfig = z
   .discriminatedUnion('service_type', [
     pgApplicationServiceCredentialUserConfig,
     valkeyApplicationServiceCredentialUserConfig,
     kafkaApplicationServiceCredentialUserConfig,
     opensearchApplicationServiceCredentialUserConfig,
+    mysqlApplicationServiceCredentialUserConfig,
+    clickhouseApplicationServiceCredentialUserConfig,
   ])
   .describe(
-    'Typed configuration for an application_service_credential integration from a PostgreSQL, Valkey, Kafka, or OpenSearch service to an application.'
+    'Typed configuration for an application_service_credential integration from a PostgreSQL, MySQL, ClickHouse, Valkey, Kafka, or OpenSearch service to an application.'
   );
 
 export type ApplicationServiceCredentialUserConfig = z.infer<

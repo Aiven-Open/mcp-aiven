@@ -73,7 +73,7 @@ const COMPOSE_SCAN_DEPLOYMENT_GUIDANCE = {
     'Image-only services that do not map to a supported Aiven service may be omitted.',
   ],
   tls_guidance: {
-    applies_to_integrations: ['pg', 'valkey'],
+    applies_to_integrations: ['pg', 'valkey', 'mysql'],
     ca_certificate_file_mounts: 'planned_not_yet_available',
     temporary_workaround:
       'Keep TLS enabled but disable server-certificate validation in the application client. Explain the reduced protection and get the user’s approval before changing their application.',
@@ -83,7 +83,7 @@ const COMPOSE_SCAN_DEPLOYMENT_GUIDANCE = {
   steps: [
     'Present the returned suggestions and these limitations to the user.',
     'Confirm which suggested services to create, including their plan and cloud.',
-    'For PostgreSQL or Valkey integrations, present the temporary TLS workaround and get the user’s approval before changing certificate validation.',
+    'For PostgreSQL, MySQL, or Valkey integrations, present the temporary TLS workaround and get the user’s approval before changing certificate validation.',
     'Create referenced services before applications that use them. Whether to wait for them to reach RUNNING depends on how the application handles unavailable services during startup.',
     'Preserve each suggestion’s user_config and service_integrations when creating it.',
   ],
@@ -183,7 +183,7 @@ Inspect the local project files and confirm each applicable item. Report finding
 - \`build_path\` and \`containerfile_path\` → verify the build context and Containerfile/Dockerfile paths are correct. If the file uses \`EXPOSE\`, verify it matches \`port\`. Confirm the image starts the application through \`CMD\`, \`ENTRYPOINT\`, or an equivalent project-specific mechanism.
 - \`port\` → verify app source binds to \`0.0.0.0\`, not \`localhost\`/\`127.0.0.1\`
 - \`service_integrations\` → for each entry, verify the source service exists in the same project (\`aiven_service_get\`) and inspect the application source to find every environment-variable name it reads. If it accepts multiple fallback names, choose one explicitly for each mapping. Provide every mapping; do not infer names from platform conventions or documentation. Whether to wait for the service to reach RUNNING depends on how the app handles unavailable services during startup.
-- PostgreSQL/Valkey SSL → the deploy tool injects \`PROJECT_CA_CERT\` (base64-encoded Aiven CA cert). Verify that the application's client library uses it to validate TLS. For Node.js \`pg\` v8, \`sslmode\` in the connection URL overrides the \`ssl\` option, so one suitable pattern is:
+- PostgreSQL/MySQL/Valkey SSL → the deploy tool injects \`PROJECT_CA_CERT\` (base64-encoded Aiven CA cert). Verify that the application's client library uses it to validate TLS. For Node.js \`pg\` v8, \`sslmode\` in the connection URL overrides the \`ssl\` option, so one suitable pattern is:
   \`\`\`js
   const url = new URL(process.env.DATABASE_URL);
   url.searchParams.delete('sslmode');
@@ -194,6 +194,7 @@ Inspect the local project files and confirm each applicable item. Report finding
   \`\`\`
   Equivalent library-appropriate implementations are valid. If certificate validation is missing, report the issue and ask before editing or pushing code.
 - OpenSearch SSL → Aiven OpenSearch uses a publicly-trusted TLS certificate. No \`PROJECT_CA_CERT\` is injected and none is needed. App code should connect using the environment variable configured by the OpenSearch service integration without any custom CA cert (the default system trust store is sufficient).
+- ClickHouse SSL → No \`PROJECT_CA_CERT\` is injected. Keep TLS enabled by using the \`secure\` value exposed by the ClickHouse service integration, and connect with the default system trust store.
 - \`app_service_name\` → verify target app is RUNNING (\`aiven_service_get\`); source reads \`app_env_key\` env var
 - \`repository_url\` → ask the user to provide the repo URL and confirm code is pushed to \`branch\`
 - Node.js repositories → verify \`node_modules/\` is ignored. Ignore generated output such as \`dist/\` or \`.next/\` when the project does not intentionally commit it.
@@ -257,7 +258,8 @@ CMD ["node", "dist/index.js"]
         const needsCaCert = serviceIntegrations.some(
           (integration) =>
             integration.user_config.service_type === 'pg' ||
-            integration.user_config.service_type === 'valkey'
+            integration.user_config.service_type === 'valkey' ||
+            integration.user_config.service_type === 'mysql'
         );
         if (needsCaCert) {
           try {
@@ -271,7 +273,7 @@ CMD ["node", "dist/index.js"]
             }
           } catch (err) {
             return toolError(
-              `Failed to fetch project CA certificate required for TLS with pg/valkey: ${errorMessage(err)}`
+              `Failed to fetch project CA certificate required for TLS with pg/valkey/mysql: ${errorMessage(err)}`
             );
           }
         }
@@ -797,13 +799,13 @@ Pass a selected \`file_path\` to \`aiven_vcs_integration_repository_scan_contain
 
 Use \`aiven_vcs_integration_repository_container_manifest_files_list\` first and pass one of its \`file_path\` values. The scanner accepts Containerfile/Dockerfile and Compose manifests.
 
-The result includes the manifest type, detected ports and environment variables, and candidate \`service_suggestions\`. For Compose, the scanner recognizes application services with a \`build\` configuration and image-based PostgreSQL, Valkey, OpenSearch, and Kafka services. It may omit image-only services it cannot map and does not implement general Compose deployment. Do not pass a Compose file to \`aiven_application_create\`.
+The result includes the manifest type, detected ports and environment variables, and candidate \`service_suggestions\`. For Compose, the scanner recognizes application services with a \`build\` configuration and image-based PostgreSQL, Valkey, MySQL, ClickHouse, OpenSearch, and Kafka services. It may omit image-only services it cannot map and does not implement general Compose deployment. Do not pass a Compose file to \`aiven_application_create\`.
 
 Compose scans fail rather than returning partial suggestions when a referenced Dockerfile cannot be read. A 404 usually means a referenced Dockerfile is missing at the selected commit. A 422 means a Compose build path is invalid, such as resolving outside the repository. Report the error and ask the user to correct the repository; do not retry the same scan unchanged.
 
 To use scan results, present the returned suggestions and scanner limitations to the user. The scan inspected the supplied commit SHA, but each application suggestion deploys from the branch name and is not pinned to that commit. Before creating services, call \`aiven_vcs_integration_repository_branch_list\` again and verify that the branch still points to the inspected commit SHA; if it changed, scan the new commit and use the refreshed suggestions. After the user confirms which services to create, resolve and confirm the required plan and cloud for each accepted suggestion, then call \`aiven_service_create\`. Preserve its \`service_type\`, \`service_name\`, \`user_config\`, and \`service_integrations\`; add \`project\`, \`plan\`, and \`cloud\`. Create referenced services before applications that use them. Whether to wait for them to reach RUNNING depends on how the application handles unavailable services during startup.
 
-For application suggestions integrated with PostgreSQL or Valkey, platform-provided CA certificate file mounts are planned but not yet available through this workflow. In the meantime, the application client can keep TLS enabled while disabling server-certificate validation. Explain that this preserves encryption but does not authenticate the server, and get the user's approval before making that temporary change. Do not disable TLS itself. Remove the workaround once CA certificate file mounts are available. This scan operation itself does not deploy or modify services.`,
+For application suggestions integrated with PostgreSQL, MySQL, or Valkey, platform-provided CA certificate file mounts are planned but not yet available through this workflow. In the meantime, the application client can keep TLS enabled while disabling server-certificate validation. Explain that this preserves encryption but does not authenticate the server, and get the user's approval before making that temporary change. Do not disable TLS itself. Remove the workaround once CA certificate file mounts are available. This scan operation itself does not deploy or modify services.`,
         inputSchema: vcsIntegrationRepositoryScanContainerManifestInput,
         annotations: READ_ONLY_ANNOTATIONS,
       },

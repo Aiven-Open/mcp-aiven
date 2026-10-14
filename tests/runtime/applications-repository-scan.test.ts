@@ -846,7 +846,7 @@ describe('application repository scan tools', () => {
           expect.stringContaining('may be omitted'),
         ]),
         tls_guidance: expect.objectContaining({
-          applies_to_integrations: ['pg', 'valkey'],
+          applies_to_integrations: ['pg', 'valkey', 'mysql'],
           ca_certificate_file_mounts: 'planned_not_yet_available',
           temporary_workaround: expect.stringContaining(
             'disable server-certificate validation'
