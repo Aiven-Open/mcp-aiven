@@ -1,0 +1,5 @@
+# OpenSearch-specific API tools (e.g. index management) belong in this manifest with
+# category: opensearch. Until those tools exist, services_scope=opensearch exposes core
+# tools only—the same implicit-core behaviour as pg/kafka scopes.
+
+tools: []
