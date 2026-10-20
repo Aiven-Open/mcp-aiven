@@ -9,6 +9,7 @@ import { createKafkaCustomTools } from './tools/kafka/index.js';
 import { createPgCustomTools } from './tools/pg/index.js';
 import { createApplicationTools } from './tools/applications/index.js';
 import { createDocsTools } from './tools/docs/index.js';
+import { createOpenSearchCustomTools } from './tools/opensearch/index.js';
 import { createServiceSearchTool } from './tools/service-search.js';
 import { createConnectionInfoTool } from './tools/connection-info.js';
 import { createStdioTransport, startHttpServer } from './transport.js';
@@ -68,6 +69,7 @@ function loadAllTools(client: AivenClient): ToolDefinition[] {
     ...createKafkaCustomTools(client),
     ...createPgCustomTools(client),
     ...createApplicationTools(client),
+    ...createOpenSearchCustomTools(client),
     ...createDocsTools(),
     ...createServiceSearchTool(client),
   ];

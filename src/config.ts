@@ -39,6 +39,7 @@ const SCOPE_TO_CATEGORY: Record<string, ServiceCategory> = {
   kafka: ServiceCategory.Kafka,
   application: ServiceCategory.Application,
   integrations: ServiceCategory.Integrations,
+  opensearch: ServiceCategory.OpenSearch,
 };
 
 export const VALID_SCOPES = Object.freeze(['all', ...Object.keys(SCOPE_TO_CATEGORY)]);

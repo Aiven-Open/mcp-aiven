@@ -67,6 +67,7 @@ const CATEGORY_MAP: Record<string, ServiceCategory> = {
   pg: ServiceCategory.Pg,
   kafka: ServiceCategory.Kafka,
   integrations: ServiceCategory.Integrations,
+  opensearch: ServiceCategory.OpenSearch,
 };
 
 function toCategory(cat: string): ServiceCategory {

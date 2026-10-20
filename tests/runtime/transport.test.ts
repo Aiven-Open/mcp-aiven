@@ -234,6 +234,17 @@ describe('parseMcpQueryParams', () => {
       const result = parseMcpQueryParams({ services_scope: ['kafka', 'pg'] }, false);
       expect(result).toEqual({ error: 'Duplicate query parameter: services_scope' });
     });
+
+    it('parses ?services_scope=opensearch with implicit core', () => {
+      const result = parseMcpQueryParams({ services_scope: 'opensearch' }, false);
+      expect(result).toEqual({
+        options: {
+          readOnly: false,
+          categories: new Set([ServiceCategory.Core, ServiceCategory.OpenSearch]),
+          allowSecrets: false,
+        },
+      });
+    });
   });
 
   describe('write_allowlist', () => {

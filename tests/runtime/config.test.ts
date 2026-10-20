@@ -133,6 +133,17 @@ describe('loadConfig', () => {
     expect(() => loadConfig()).toThrow(/AIVEN_SERVICES_SCOPE.*Unknown scope/);
   });
 
+  it('parses AIVEN_SERVICES_SCOPE=opensearch with implicit core', () => {
+    process.env['AIVEN_TOKEN'] = 'test-token';
+    process.env['AIVEN_SERVICES_SCOPE'] = 'opensearch';
+
+    const config = loadConfig();
+
+    expect(config.categories).toEqual(
+      new Set([ServiceCategory.Core, ServiceCategory.OpenSearch])
+    );
+  });
+
   it('leaves writeAllowlist undefined when AIVEN_WRITE_ALLOWLIST is unset', () => {
     process.env['AIVEN_TOKEN'] = 'test-token';
     delete process.env['AIVEN_WRITE_ALLOWLIST'];
@@ -228,6 +239,22 @@ describe('parseScopes', () => {
 
   it('returns undefined categories for explicit "all"', () => {
     expect(parseScopes('all')).toEqual({ categories: undefined });
+  });
+
+  it('parses opensearch with implicit core', () => {
+    expect(parseScopes('opensearch')).toEqual({
+      categories: new Set([ServiceCategory.Core, ServiceCategory.OpenSearch]),
+    });
+  });
+
+  it('allows opensearch combined with other scopes', () => {
+    expect(parseScopes('opensearch,kafka')).toEqual({
+      categories: new Set([
+        ServiceCategory.Core,
+        ServiceCategory.OpenSearch,
+        ServiceCategory.Kafka,
+      ]),
+    });
   });
 
   it('rejects "all" combined with other scopes', () => {

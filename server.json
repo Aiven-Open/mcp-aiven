@@ -56,7 +56,7 @@
         },
         {
           "name": "AIVEN_SERVICES_SCOPE",
-          "description": "Comma-separated scopes to expose (e.g. pg, kafka, pg,kafka, or all). Valid: all, core, pg, kafka, application, integrations.",
+          "description": "Comma-separated scopes to expose (e.g. pg, kafka, pg,kafka, or all). Valid: all, core, pg, kafka, application, integrations, opensearch.",
           "format": "string"
         },
         {
@@ -78,9 +78,9 @@
           "choices": ["true", "false"]
         },
         "services_scope": {
-          "description": "Comma-separated scopes to expose, e.g. pg, kafka, or pg,kafka. core (project/service discovery) is always included. all loads every tool and cannot be combined with other scopes.",
+          "description": "Comma-separated scopes to expose, e.g. pg, kafka, or pg,kafka. core (project/service discovery) is included implicitly. opensearch has no dedicated tools yet (core only). all loads every tool and cannot be combined with other scopes.",
           "default": "all",
-          "choices": ["all", "core", "pg", "kafka", "application", "integrations"]
+          "choices": ["all", "core", "pg", "kafka", "application", "integrations", "opensearch"]
         },
         "allow_secrets": {
           "description": "Allow the connection-info tool to return live credentials instead of [REDACTED].",
