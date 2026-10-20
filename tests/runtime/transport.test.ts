@@ -245,6 +245,17 @@ describe('parseMcpQueryParams', () => {
         },
       });
     });
+
+    it('parses ?services_scope=context with implicit core', () => {
+      const result = parseMcpQueryParams({ services_scope: 'context' }, false);
+      expect(result).toEqual({
+        options: {
+          readOnly: false,
+          categories: new Set([ServiceCategory.Core, ServiceCategory.Context]),
+          allowSecrets: false,
+        },
+      });
+    });
   });
 
   describe('write_allowlist', () => {

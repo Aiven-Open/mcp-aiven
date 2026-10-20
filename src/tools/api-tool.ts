@@ -67,7 +67,8 @@ async function executeRequest(
     return client.delete(url, opts);
   }
 
-  const body = collectNonPathParams(args, pathParams);
+  const params = collectNonPathParams(args, pathParams);
+  const body: Record<string, unknown> = config.bodyKey ? { [config.bodyKey]: params } : params;
   if (config.defaults) {
     for (const [k, v] of Object.entries(config.defaults)) {
       if (!(k in body)) body[k] = v;
