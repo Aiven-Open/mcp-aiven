@@ -1,0 +1,184 @@
+# Context catalog tools: search resources, find lineage, add tags, add descriptions
+tools:
+  - name: aiven_context_search_assets
+    method: POST
+    path: /organization/{organization_id}/context/tool-calls
+    category: context
+    readOnly: true
+    body_key: arguments
+    defaults:
+      tool_name: search_assets
+    manual_schema:
+      type: object
+      properties:
+        organization_id:
+          type: string
+          description: Aiven organization ID, from the `organization_id` field of `aiven_project_list`.
+        query:
+          type: string
+          description: Search asset names and descriptions.
+        id:
+          type: string
+          description: Asset ID.
+        urn:
+          type: string
+          description: Asset URN.
+        types:
+          type: array
+          items:
+            type: string
+          description: Asset types, for example `topic`, `table`.
+        source:
+          type: array
+          items:
+            type: string
+          description: Source, for example `kafka`, `postgres` or `s3`.
+        tags:
+          type: array
+          items:
+            type: string
+        metadata_filters:
+          type: array
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+              operator:
+                type: string
+                description: Comparison operator, for example `=` or `>`.
+              value:
+                anyOf:
+                  - type: string
+                  - type: number
+                  - type: boolean
+            required: [key, operator, value]
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: Results per page. Default 20.
+        offset:
+          type: integer
+          minimum: 0
+      required: [organization_id]
+    manual_strict: true
+    description: |
+      Search and retrieve assets in the Aiven context catalog. Use `query` to search by name, `id` or `urn` to retrieve an asset, or the filter fields to narrow the results. Use `limit` and `offset` for pagination.
+      `metadata_filters` only applies together with `query`, e.g {
+        "query": "orders",
+        "metadata_filters": [
+          {"key": "size", "operator": ">", "value": 500}
+        ]
+      }
+
+      Responses may suggest follow-up actions. Only call the `aiven_context_*` tools. To pass an asset from a response to another tool, use its `urn` value or its `id`.
+
+      `organization_id` is the `organization_id` of a project from `aiven_project_list`. The tool works only for organizations with the Aiven context catalog enabled. On a `context_catalog_not_enabled` or `context_service_not_found` error, do not call other `aiven_context_*` tools for that organization.
+
+  - name: aiven_context_get_lineage
+    method: POST
+    path: /organization/{organization_id}/context/tool-calls
+    category: context
+    readOnly: true
+    body_key: arguments
+    defaults:
+      tool_name: get_lineage
+    manual_schema:
+      type: object
+      properties:
+        organization_id:
+          type: string
+          description: Aiven organization ID, from the `organization_id` field of `aiven_project_list`.
+        asset_id:
+          type: string
+          description: Asset ID.
+        urn:
+          type: string
+          description: Asset URN.
+        direction:
+          type: string
+          enum: [upstream, downstream, both]
+          description: Default `both`.
+        depth:
+          type: integer
+          minimum: 1
+          maximum: 10
+          description: Hops to traverse. Default 3.
+      required: [organization_id]
+    manual_strict: true
+    description: |
+      Fetch upstream and downstream relationships for an asset in the Aiven context catalog. Identify the asset with `asset_id` or `urn`, and use `direction` and `depth` to control the traversal.
+
+      Responses may suggest follow-up actions. Only call the `aiven_context_*` tools. To pass an asset from a response to another tool, use its `urn` value or its `id`.
+
+      `organization_id` is the `organization_id` of a project from `aiven_project_list`. The tool works only for organizations with the Aiven context catalog enabled. On a `context_catalog_not_enabled` or `context_service_not_found` error, do not call other `aiven_context_*` tools for that organization.
+
+  - name: aiven_context_update_tags
+    method: POST
+    path: /organization/{organization_id}/context/write-tool-calls
+    category: context
+    destructive: true
+    body_key: arguments
+    defaults:
+      tool_name: update_tags
+    manual_schema:
+      type: object
+      properties:
+        organization_id:
+          type: string
+          description: Aiven organization ID, from the `organization_id` field of `aiven_project_list`.
+        id:
+          type: string
+          description: Asset ID.
+        urn:
+          type: string
+          description: Asset URN.
+        add_tags:
+          type: array
+          items:
+            type: string
+        remove_tags:
+          type: array
+          items:
+            type: string
+      required: [organization_id]
+    manual_strict: true
+    description: |
+      Add or remove tags on an asset identified by `id` or `urn`.
+
+      Responses may suggest follow-up actions. Only call the `aiven_context_*` tools. To pass an asset from a response to another tool, use its `urn` value or its `id`.
+
+      `organization_id` is the `organization_id` of a project from `aiven_project_list`. The tool works only for organizations with the Aiven context catalog enabled. On a `context_catalog_not_enabled` or `context_service_not_found` error, do not call other `aiven_context_*` tools for that organization.
+
+  - name: aiven_context_update_description
+    method: POST
+    path: /organization/{organization_id}/context/write-tool-calls
+    category: context
+    destructive: true
+    body_key: arguments
+    defaults:
+      tool_name: update_description
+    manual_schema:
+      type: object
+      properties:
+        organization_id:
+          type: string
+          description: Aiven organization ID, from the `organization_id` field of `aiven_project_list`.
+        id:
+          type: string
+          description: Asset ID.
+        urn:
+          type: string
+          description: Asset URN.
+        description:
+          type: string
+          description: Text to set. An empty string clears it.
+      required: [organization_id, description]
+    manual_strict: true
+    description: |
+      Set or clear an asset's description. Identify the asset by `id` or `urn`.
+
+      Responses may suggest follow-up actions. Only call the `aiven_context_*` tools. To pass an asset from a response to another tool, use its `urn` value or its `id`.
+
+      `organization_id` is the `organization_id` of a project from `aiven_project_list`. The tool works only for organizations with the Aiven context catalog enabled. On a `context_catalog_not_enabled` or `context_service_not_found` error, do not call other `aiven_context_*` tools for that organization.
