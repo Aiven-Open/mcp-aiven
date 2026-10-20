@@ -26,6 +26,9 @@ Only SELECT and EXPLAIN are allowed. INSERT, UPDATE, DELETE, CREATE, DROP, and o
 Results are capped at ${MAX_ROWS} rows. Large cell values are truncated.
 Supports pagination via \`limit\` (default ${DEFAULT_LIMIT}) and \`offset\` (default 0).
 Response metadata includes \`hasMore\`, \`offset\`, and \`limit\` to assist with paging.
+If \`truncated\` or \`truncatedCells\` is true, the result is incomplete: narrow the query (fewer rows or columns) rather than treating it as the full answer.
+
+Column metadata is not returned, so \`fields\` is empty. Each row is an object keyed by column name, with keys in alphabetical order rather than SELECT order. \`numeric\` and date/time values arrive as strings; cast in SQL (e.g. \`::float8\`) when you need JSON numbers.
 
 **Tip:** Before querying data, check the table structure first:
 \`\`\`
