@@ -151,10 +151,29 @@ describe('aiven_pg_read', () => {
     expect(result.isError).toBe(true);
     expect(client.post).not.toHaveBeenCalled();
   });
+
+  it('should reject a write nested inside EXPLAIN ANALYZE without calling API', async () => {
+    const client = createMockClient({});
+    const tools = createPgCustomTools(client);
+    const tool = getTool(tools, 'aiven_pg_read');
+
+    const result = await tool.handler({
+      project: 'proj',
+      service_name: 'svc',
+      query: 'EXPLAIN ANALYZE DELETE FROM users',
+      ...DEFAULT_PG_PARAMS,
+    });
+
+    expect(result.isError).toBe(true);
+    expect(firstTextContent(result.content)).toContain('DeleteStmt');
+    expect(client.post).not.toHaveBeenCalled();
+  });
 });
 
 describe('validateReadQuery', () => {
-  let validateReadQuery: (query: string) => Promise<{ valid: boolean; error?: string; stmtType?: string }>;
+  let validateReadQuery: (
+    query: string
+  ) => Promise<{ valid: boolean; error?: string; stmtType?: string }>;
 
   beforeEach(async () => {
     vi.resetModules();
@@ -172,10 +191,89 @@ describe('validateReadQuery', () => {
     const r = await validateReadQuery("INSERT INTO users (name) VALUES ('Alice')");
     expect(r.valid).toBe(false);
   });
+
+  it.each([
+    ['EXPLAIN ANALYZE DELETE', 'EXPLAIN ANALYZE DELETE FROM users', 'DeleteStmt'],
+    [
+      'EXPLAIN (ANALYZE) UPDATE',
+      "EXPLAIN (ANALYZE, BUFFERS) UPDATE users SET name = 'x'",
+      'UpdateStmt',
+    ],
+    ['plain EXPLAIN INSERT', "EXPLAIN INSERT INTO users (name) VALUES ('x')", 'InsertStmt'],
+    ['DELETE in a CTE', 'WITH d AS (DELETE FROM users RETURNING *) SELECT * FROM d', 'DeleteStmt'],
+    [
+      'INSERT in a nested CTE',
+      "WITH a AS (WITH b AS (INSERT INTO users (name) VALUES ('x') RETURNING id) SELECT id FROM b) SELECT * FROM a",
+      'InsertStmt',
+    ],
+    [
+      'UPDATE in a CTE under EXPLAIN',
+      "EXPLAIN ANALYZE WITH u AS (UPDATE users SET name = 'x' RETURNING id) SELECT * FROM u",
+      'UpdateStmt',
+    ],
+    [
+      'MERGE in a CTE',
+      'WITH m AS (MERGE INTO users u USING src s ON u.id = s.id WHEN MATCHED THEN DELETE RETURNING u.id) SELECT * FROM m',
+      'MergeStmt',
+    ],
+    ['SELECT INTO', 'SELECT * INTO users_copy FROM users', 'SELECT INTO'],
+    [
+      'SELECT INTO in a UNION branch',
+      'SELECT id INTO users_copy FROM users UNION SELECT id FROM admins',
+      'SELECT INTO',
+    ],
+    ['SELECT FOR UPDATE', 'SELECT * FROM users FOR UPDATE', 'FOR UPDATE/SHARE'],
+    [
+      'FOR SHARE in a subquery',
+      'SELECT * FROM (SELECT * FROM users FOR SHARE) s',
+      'FOR UPDATE/SHARE',
+    ],
+    [
+      'FOR UPDATE in a UNION branch',
+      'SELECT id FROM users UNION ALL (SELECT id FROM admins FOR UPDATE)',
+      'FOR UPDATE/SHARE',
+    ],
+  ])('should reject %s', async (_name, query, expected) => {
+    const r = await validateReadQuery(query);
+    expect(r.valid).toBe(false);
+    expect(r.error).toContain(expected);
+  });
+
+  it.each([
+    ['EXPLAIN SELECT', 'EXPLAIN SELECT * FROM users'],
+    ['EXPLAIN ANALYZE SELECT', 'EXPLAIN (ANALYZE, BUFFERS) SELECT * FROM users WHERE id = 1'],
+    [
+      'read-only CTE',
+      'WITH recent AS (SELECT * FROM users ORDER BY created_at DESC LIMIT 10) SELECT * FROM recent',
+    ],
+    [
+      'recursive CTE',
+      'WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 5) SELECT * FROM n',
+    ],
+    [
+      'DISTINCT ON with join and ROLLUP',
+      "WITH f AS (SELECT DISTINCT ON (restaurant, day) restaurant, day, mean FROM forecasts WHERE made_on <= day ORDER BY restaurant, day, made_on DESC) SELECT COALESCE(restaurant, 'ALL'), sum(mean) FROM f JOIN actuals USING (restaurant, day) GROUP BY ROLLUP(restaurant)",
+    ],
+    ['window function', 'SELECT id, row_number() OVER (PARTITION BY team ORDER BY id) FROM users'],
+    [
+      'identifiers named like AST nodes',
+      'SELECT "DeleteStmt", "intoClause" AS "lockingClause" FROM "InsertStmt"',
+    ],
+    [
+      'string literal with write SQL',
+      "SELECT 'DELETE FROM users; SELECT * INTO x FOR UPDATE' AS note",
+    ],
+    ['UNION of selects', 'SELECT id FROM users UNION ALL SELECT id FROM admins'],
+  ])('should allow %s', async (_name, query) => {
+    const r = await validateReadQuery(query);
+    expect(r).toEqual(expect.objectContaining({ valid: true }));
+  });
 });
 
 describe('validateWriteQuery', () => {
-  let validateWriteQuery: (query: string) => Promise<{ valid: boolean; error?: string; stmtType?: string }>;
+  let validateWriteQuery: (
+    query: string
+  ) => Promise<{ valid: boolean; error?: string; stmtType?: string }>;
 
   beforeEach(async () => {
     vi.resetModules();
@@ -250,5 +348,23 @@ describe('aiven_pg_write', () => {
 
     expect(result.isError).toBe(true);
     expect(client.post).not.toHaveBeenCalled();
+  });
+
+  it('should still allow data-modifying CTEs', async () => {
+    const client = createMockClient({
+      postResponse: { results: [], row_count: 1, command: 'SELECT' },
+    });
+    const tools = createPgCustomTools(client);
+    const tool = getTool(tools, 'aiven_pg_write');
+
+    const result = await tool.handler({
+      project: 'proj',
+      service_name: 'svc',
+      query: 'WITH d AS (DELETE FROM users WHERE id = 1 RETURNING *) SELECT * FROM d',
+      ...DEFAULT_PG_PARAMS,
+    });
+
+    expect(result.isError).toBeUndefined();
+    expect(client.post).toHaveBeenCalledOnce();
   });
 });
