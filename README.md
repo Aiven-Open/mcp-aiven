@@ -74,7 +74,7 @@ Enable read-only mode by adding `?read_only=true` to the URL. All write operatio
 
 Reduce the tool surface exposed to your AI agent by adding `?services_scope=` to the URL. Useful when you only work with a subset of Aiven services and want to keep the agent's context focused. Combine values with commas. `core` (project/service discovery) is always included implicitly.
 
-Valid scopes: `all`, `core`, `pg`, `kafka`, `application`, `integrations`, `opensearch`. Use `all` to explicitly load every tool (same as omitting the param). `all` cannot be combined with other scopes. `opensearch` follows the same rules as `kafka` or `pg` (core plus OpenSearch-category tools); there are no OpenSearch-specific tools yet, so it currently exposes core only.
+Valid scopes: `all`, `core`, `pg`, `kafka`, `application`, `integrations`, `opensearch`, `context`. Use `all` to explicitly load every tool (same as omitting the param). `all` cannot be combined with other scopes. `opensearch` follows the same rules as `kafka` or `pg` (core plus OpenSearch-category tools); there are no OpenSearch-specific tools yet, so it currently exposes core only.
 
 ```json
 {
@@ -91,6 +91,22 @@ You can also combine with `read_only`:
 ```
 https://mcp.aiven.live/mcp?services_scope=pg&read_only=true
 ```
+
+#### Aiven Context Catalog Tools (Remote)
+
+The `context` scope adds `aiven_context_*` tools for the Aiven context catalog: data
+discovery, lineage, tags and asset
+documentation. Enable them with `?services_scope=core,context`.
+
+Each tool takes an `organization_id`, which the agent reads from the `organization_id` field
+of `aiven_project_list`. The tools work only for organizations with the Aiven context catalog
+enabled. The tools that change the catalog (`aiven_context_update_tags`,
+`aiven_context_update_description`) are hidden with `read_only=true` unless listed in
+`write_allowlist`.
+
+Changing `services_scope` changes the server URL. Most MCP clients store credentials per
+URL, so the client typically asks you to log in again. The OAuth resource does not include the query
+string, so the new login grants the same Aiven permissions as before.
 
 #### Write Exceptions in Read-Only Mode (Remote)
 
@@ -179,7 +195,7 @@ MCP_HOST=http://localhost:3000 node dist/index.js
 |---|---|---|---|
 | `AIVEN_TOKEN` | stdio only | -- | Aiven API token ([create one here](https://console.aiven.io/profile/tokens)) |
 | `AIVEN_READ_ONLY` | No | `false` | Set to `true` to expose only read-only tools |
-| `AIVEN_SERVICES_SCOPE` | No | -- | Comma-separated scopes to expose (e.g. `kafka`, `pg,kafka`, or `all`). Valid: `all`, `core`, `pg`, `kafka`, `application`, `integrations`, `opensearch`. `core` is included implicitly for scoped service types. `opensearch` has no dedicated tools yet (core only until OpenSearch tools are added). Omitting the var or setting `all` loads every tool. |
+| `AIVEN_SERVICES_SCOPE` | No | -- | Comma-separated scopes to expose (e.g. `kafka`, `pg,kafka`, or `all`). Valid: `all`, `core`, `pg`, `kafka`, `application`, `integrations`, `opensearch`, `context`. `core` is included implicitly for scoped service types. `opensearch` has no dedicated tools yet (core only until OpenSearch tools are added). Omitting the var or setting `all` loads every tool. |
 | `AIVEN_ALLOW_SECRETS` | No | `false` | Set to `true` to expose the `aiven_service_connection_info` tool, which returns live credentials (passwords, connection URIs, certs) into the conversation. Disabled while `AIVEN_READ_ONLY=true`. |
 | `AIVEN_WRITE_ALLOWLIST` | No | -- | Comma-separated tool names to re-enable while `AIVEN_READ_ONLY=true` (e.g. `aiven_kafka_topic_create`). Ignored when read-only mode is not enabled. |
 | `MCP_HOST` | No | `https://mcp.aiven.live` | Override the OAuth protected resource host |

@@ -7,6 +7,7 @@ import {
   loadEdgeAuthSecret,
   parseScopes,
   parseWriteAllowlist,
+  VALID_SCOPES,
 } from '../../src/config.js';
 import { ServiceCategory } from '../../src/types.js';
 
@@ -260,6 +261,18 @@ describe('parseScopes', () => {
   it('rejects "all" combined with other scopes', () => {
     const r = parseScopes('all,kafka');
     expect(r).toMatchObject({ error: expect.stringContaining(`'all' cannot be combined`) });
+  });
+});
+
+describe('context scope', () => {
+  it('parses the context scope and includes core', () => {
+    expect(parseScopes('context')).toEqual({
+      categories: new Set([ServiceCategory.Core, ServiceCategory.Context]),
+    });
+  });
+
+  it('lists context as a valid scope', () => {
+    expect(VALID_SCOPES).toContain('context');
   });
 });
 
