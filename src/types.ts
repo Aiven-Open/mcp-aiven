@@ -9,6 +9,7 @@ export enum ServiceCategory {
   Application = 'application',
   Integrations = 'integrations',
   OpenSearch = 'opensearch',
+  Context = 'context',
 }
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -177,6 +178,8 @@ export interface ApiToolConfig {
   inputSchema: z.ZodType;
   annotations: ToolAnnotations;
   defaults?: Record<string, unknown> | undefined;
+  /** Send the non-path params as an object under this key. `defaults` stay at the top level. */
+  bodyKey?: string | undefined;
   responseFilter?: ResponseFilterConfig | undefined;
   /** Validate or enrich request context before the Aiven API mutation is sent. */
   validateParams?:

@@ -40,9 +40,10 @@ const SCOPE_TO_CATEGORY: Record<string, ServiceCategory> = {
   application: ServiceCategory.Application,
   integrations: ServiceCategory.Integrations,
   opensearch: ServiceCategory.OpenSearch,
+  context: ServiceCategory.Context,
 };
 
-export const VALID_SCOPES = Object.freeze(['all', ...Object.keys(SCOPE_TO_CATEGORY)]);
+const VALID_SCOPES = Object.freeze(['all', ...Object.keys(SCOPE_TO_CATEGORY)]);
 
 export function parseScopes(
   raw: string | undefined
