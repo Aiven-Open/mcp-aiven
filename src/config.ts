@@ -40,9 +40,10 @@ const SCOPE_TO_CATEGORY: Record<string, ServiceCategory> = {
   application: ServiceCategory.Application,
   integrations: ServiceCategory.Integrations,
   opensearch: ServiceCategory.OpenSearch,
+  context: ServiceCategory.Context,
 };
 
-export const VALID_SCOPES = Object.freeze(['all', ...Object.keys(SCOPE_TO_CATEGORY)]);
+const VALID_SCOPES = Object.freeze(['all', ...Object.keys(SCOPE_TO_CATEGORY)]);
 
 export function parseScopes(
   raw: string | undefined
@@ -59,9 +60,11 @@ export function parseScopes(
   }
 
   if (parts.includes('all')) {
-    if (parts.length > 1) {
-      return { error: `'all' cannot be combined with other scopes` };
+    const rest = parts.filter((p) => p !== 'all');
+    if (rest.some((p) => p !== 'context')) {
+      return { error: `'all' cannot be combined with other scopes except 'context'` };
     }
+    if (rest.length > 0) return { categories: new Set(Object.values(ServiceCategory)) };
     return { categories: undefined };
   }
 

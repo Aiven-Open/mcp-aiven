@@ -41,6 +41,7 @@ interface ManifestEntry {
   destructive?: boolean;
   openWorld?: boolean;
   defaults?: Record<string, unknown>;
+  body_key?: string;
   response_filter?: ResponseFilterConfig;
 }
 
@@ -68,6 +69,7 @@ const CATEGORY_MAP: Record<string, ServiceCategory> = {
   kafka: ServiceCategory.Kafka,
   integrations: ServiceCategory.Integrations,
   opensearch: ServiceCategory.OpenSearch,
+  context: ServiceCategory.Context,
 };
 
 function toCategory(cat: string): ServiceCategory {
@@ -193,6 +195,7 @@ export function loadApiTools(client: AivenClient): ToolDefinition[] {
           entry.openWorld
         ),
         defaults: entry.defaults,
+        bodyKey: entry.body_key,
         responseFilter: entry.response_filter,
         // Metrics responses are too large to return whole; the overrides add overview/detail
         // shaping for that one tool (no-op for all others).
