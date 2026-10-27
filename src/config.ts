@@ -60,9 +60,11 @@ export function parseScopes(
   }
 
   if (parts.includes('all')) {
-    if (parts.length > 1) {
-      return { error: `'all' cannot be combined with other scopes` };
+    const rest = parts.filter((p) => p !== 'all');
+    if (rest.some((p) => p !== 'context')) {
+      return { error: `'all' cannot be combined with other scopes except 'context'` };
     }
+    if (rest.length > 0) return { categories: new Set(Object.values(ServiceCategory)) };
     return { categories: undefined };
   }
 

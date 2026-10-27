@@ -288,6 +288,17 @@ describe('parseScopes', () => {
     const r = parseScopes('all,kafka');
     expect(r).toMatchObject({ error: expect.stringContaining(`'all' cannot be combined`) });
   });
+
+  it('returns every category for "all,context"', () => {
+    expect(parseScopes('all,context')).toEqual({
+      categories: new Set(Object.values(ServiceCategory)),
+    });
+  });
+
+  it('rejects "all,context" combined with other scopes', () => {
+    const r = parseScopes('all,context,kafka');
+    expect(r).toMatchObject({ error: expect.stringContaining(`'all' cannot be combined`) });
+  });
 });
 
 describe('loadHttpMcpRateLimit', () => {
