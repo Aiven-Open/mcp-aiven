@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.18.1](https://github.com/Aiven-Open/mcp-aiven/compare/v1.18.0...v1.18.1) (2026-10-31)
+
+
+### Bug Fixes
+
+* send required mode to the run-query tool ([#191](https://github.com/Aiven-Open/mcp-aiven/issues/191)) ([971f0e7](https://github.com/Aiven-Open/mcp-aiven/commit/971f0e7c7e5dd55e6bb5aff00d6129ed8bae438f))
+
 ## [1.18.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.17.1...v1.18.0) (2026-10-20)
 
 
