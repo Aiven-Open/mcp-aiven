@@ -5,11 +5,14 @@ export function pgRunQueryPath(project: string, serviceName: string): string {
   return `/project/${encodeURIComponent(project)}/service/${encodeURIComponent(serviceName)}/pg-editor/run-query`;
 }
 
+export type PgRunQueryMode = 'object' | 'array';
+
 export interface PgRunQueryBody {
   query: string;
   database: string;
   schema_name: string;
   expect_readonly: boolean;
+  mode: PgRunQueryMode;
 }
 
 export async function postPgRunQuery(
