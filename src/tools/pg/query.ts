@@ -155,6 +155,7 @@ export async function executePgQuery(
         database,
         schema_name: schema,
         expect_readonly: mode === PgQueryMode.ReadOnly,
+        mode: 'object',
       },
       apiOpts
     );

@@ -90,7 +90,7 @@ describe('aiven_pg_read', () => {
     expect(client.post).not.toHaveBeenCalled();
   });
 
-  it('should POST query, database, schema_name, and expect_readonly to pg-editor/run-query', async () => {
+  it('should POST query, database, schema_name, expect_readonly, and mode to pg-editor/run-query', async () => {
     const postResponse = {
       results: [{ id: 1, name: 'test' }],
       row_count: 1,
@@ -119,6 +119,7 @@ describe('aiven_pg_read', () => {
         database: 'defaultdb',
         schema_name: 'public',
         expect_readonly: true,
+        mode: 'object',
       },
       expect.objectContaining({
         toolName: 'aiven_pg_read',
@@ -225,6 +226,7 @@ describe('aiven_pg_write', () => {
         database: 'defaultdb',
         schema_name: 'public',
         expect_readonly: false,
+        mode: 'object',
       }),
       expect.objectContaining({ toolName: 'aiven_pg_write', mcpAcornAuth: true })
     );
