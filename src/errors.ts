@@ -25,7 +25,11 @@ export class AivenError extends Error {
   constructor(status: number, apiMessage: string, errorCode?: string, moreInfo?: string) {
     const lines: string[] = [`Aiven API Error (${status}): ${scrubSensitiveValues(apiMessage)}`];
 
-    const hint = ERROR_HINTS[status];
+    // A 403 is not always about permissions, so with an error code point at the code instead
+    const hint =
+      status === 403 && errorCode
+        ? `Refused for the reason in error code ${errorCode}. A 403 is not always about permissions, so follow the message.`
+        : ERROR_HINTS[status];
     if (hint) {
       lines.push(`Hint: ${hint}`);
     }

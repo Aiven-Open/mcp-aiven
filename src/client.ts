@@ -51,7 +51,12 @@ export class AivenClient {
       } as never,
     )) as {
       data?: unknown;
-      error?: { message?: string; error_code?: string; more_info?: string };
+      error?: {
+        message?: string;
+        error_code?: string;
+        more_info?: string;
+        errors?: { error_code?: string }[];
+      };
       response: Response;
     };
 
@@ -59,7 +64,8 @@ export class AivenClient {
       throw new AivenError(
         result.response.status,
         `${result.error.message ?? result.response.statusText} [${method} ${API_BASE_URL}${path}]`,
-        result.error.error_code,
+        // Most API errors carry the code only in `errors`, which typically has one element
+        result.error.error_code ?? result.error.errors?.[0]?.error_code,
         result.error.more_info,
       );
     }
