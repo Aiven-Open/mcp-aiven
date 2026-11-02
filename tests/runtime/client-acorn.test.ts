@@ -10,6 +10,7 @@ vi.mock('openapi-fetch', () => ({
 }));
 
 import { AivenClient } from '../../src/client.js';
+import { AivenError } from '../../src/errors.js';
 
 const baseConfig: Omit<AivenConfig, 'transport' | 'mcpAcornSecret'> = {
   token: 'tok',
@@ -65,5 +66,50 @@ describe('PG Editor acorn auth', () => {
         }),
       })
     );
+  });
+});
+
+describe('API error responses', () => {
+  it('reads the error code from the first entry of errors', async () => {
+    const message =
+      'Free MySQL plans are no longer available. Use the MySQL developer-1 plan instead.';
+    requestMock.mockResolvedValueOnce({
+      error: {
+        errors: [{ error_code: 'mysql_free_tier_discontinued', message, status: 403 }],
+        message,
+      },
+      response: { status: 403, statusText: 'Forbidden' },
+    });
+    const client = new AivenClient({
+      ...baseConfig,
+      transport: 'stdio',
+      mcpAcornSecret: undefined,
+    });
+
+    const error = await client.post('/project/p/service', {}).catch((err: unknown) => err);
+
+    expect(error).toBeInstanceOf(AivenError);
+    expect(error).toMatchObject({
+      status: 403,
+      errorCode: 'mysql_free_tier_discontinued',
+    });
+    expect((error as AivenError).message).toContain('error code mysql_free_tier_discontinued');
+    expect((error as AivenError).message).not.toContain('lacks permission');
+  });
+
+  it('still reads a top-level error code', async () => {
+    requestMock.mockResolvedValueOnce({
+      error: { message: 'Unable to parse query', error_code: 'unable_to_parse_query' },
+      response: { status: 400, statusText: 'Bad Request' },
+    });
+    const client = new AivenClient({
+      ...baseConfig,
+      transport: 'stdio',
+      mcpAcornSecret: undefined,
+    });
+
+    const error = await client.post('/pg/query/optimize', {}).catch((err: unknown) => err);
+
+    expect(error).toMatchObject({ status: 400, errorCode: 'unable_to_parse_query' });
   });
 });

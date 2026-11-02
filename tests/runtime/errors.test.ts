@@ -41,6 +41,26 @@ describe('AivenError', () => {
     expect(error.errorCode).toBe('INVALID_REQUEST');
   });
 
+  it('should point at the error code for a 403 with a code', () => {
+    const error = new AivenError(
+      403,
+      'Free MySQL plans are no longer available.',
+      'mysql_free_tier_discontinued'
+    );
+
+    expect(error.message).toContain(
+      'Hint: Refused for the reason in error code mysql_free_tier_discontinued.'
+    );
+    expect(error.message).not.toContain('lacks permission');
+  });
+
+  it('should keep the hint for other statuses with an error code', () => {
+    const error = new AivenError(404, 'Service does not exist', 'service_not_found');
+
+    expect(error.message).toContain('Hint: Verify');
+    expect(error.message).toContain('Error code: service_not_found');
+  });
+
   it('should include more info link when present', () => {
     const error = new AivenError(400, 'Error', undefined, 'https://docs.aiven.io/errors/123');
 
