@@ -18,6 +18,7 @@ import { getProjectCaCert } from '../../shared/service-info.js';
 import {
   deployApplicationInput,
   redeployApplicationInput,
+  verifyCustomDomainInput,
   vcsIntegrationInitializeInput,
   vcsIntegrationListInput,
   vcsIntegrationRepositoryBranchListInput,
@@ -34,6 +35,11 @@ const MAX_VCS_REPOSITORY_LIST_PAGES = 100;
 const MAX_VCS_BRANCH_LIST_ITEMS = 1000;
 /** Safety cap on branch-list HTTP pages. */
 const MAX_VCS_BRANCH_LIST_PAGES = 100;
+
+const CUSTOM_DOMAIN_VERIFY_NEXT_STEP =
+  'The check runs asynchronously. The new status appears in `aiven_service_get` under ' +
+  '`metadata.application_port_custom_domains[].fqdns[]` as `pending`, `verified` or `failed`. ' +
+  'Tell the user the check was started and ask when they want to see the result; do not poll in a loop.';
 
 const VCS_CONNECTION_DOCS_URL =
   'https://aiven.io/docs/products/runtime/connect-github-account';
@@ -464,6 +470,66 @@ A successful response means the redeploy was triggered, not that it completed. T
               }
             ),
             ApplicationToolName.Redeploy
+          );
+        } catch (err) {
+          return toolErrorWithRequestId(errorMessage(err), context?.requestId);
+        }
+      },
+    },
+    {
+      name: ApplicationToolName.CustomDomainVerify,
+      category: ServiceCategory.Application,
+      definition: {
+        title: 'Verify Application Custom Domain',
+        description: `Ask Aiven to check the DNS record of one custom domain of an existing application service.
+
+Use this ONLY when:
+- The domain is configured on a port of the service in \`user_config.application.ports[].custom_domains\`
+- The user has created the CNAME record, and the status of the domain is \`pending\` or \`failed\`
+
+Do NOT use this tool to add or remove a custom domain — use \`aiven_service_update\` with \`user_config.application.ports[].custom_domains\`.
+
+The CNAME record must point the domain to the platform hostname of its port: \`<hostname> CNAME <host>.\`, where \`<host>\` is the \`host\` of the \`components\` entry whose \`component\` is the port name in \`aiven_service_get\`. Root domains such as \`example.com\` are not supported, because a root domain cannot have a CNAME record.
+
+A successful response means the check was queued, not that the domain is verified. The new status appears later in \`aiven_service_get\` under \`metadata.application_port_custom_domains[].fqdns[]\` as \`pending\`, \`verified\` or \`failed\`. Tell the user the check was started and ask when they want to see the result; do not poll in a loop.
+
+A \`failed\` domain is not checked again automatically: only this tool checks it again. If this tool ran before the CNAME record existed, DNS resolvers may cache the missing record for up to an hour, and the domain fails again until then. Tell the user to wait before verifying again.
+
+Errors: 404 means the hostname is not configured on the service. 400 means the service cannot verify custom domains. 429 means the domain was verified less than 10 seconds ago.`,
+        inputSchema: verifyCustomDomainInput,
+        annotations: UPDATE_ANNOTATIONS,
+      },
+      handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
+        const {
+          project,
+          service_name: serviceName,
+          hostname,
+        } = params as z.infer<typeof verifyCustomDomainInput>;
+
+        try {
+          const opts: RequestOptions = {
+            token: context?.token,
+            requestId: context?.requestId,
+            toolReasoning: context?.toolReasoning,
+          };
+
+          // Only queues the check. Returns 202 Accepted with an empty body.
+          await client.post<Record<string, unknown>>(
+            `/project/${encodeURIComponent(project)}/service/${encodeURIComponent(serviceName)}/application/custom-domains/${encodeURIComponent(hostname)}/verify`,
+            {},
+            opts
+          );
+
+          return toolSuccess(
+            wrapUntrustedResponseWithGuidance(
+              {
+                message: 'Custom domain check queued. The result is not available yet.',
+                next_tool: 'aiven_service_get',
+                next_step: CUSTOM_DOMAIN_VERIFY_NEXT_STEP,
+              },
+              { service_name: serviceName, hostname }
+            ),
+            ApplicationToolName.CustomDomainVerify
           );
         } catch (err) {
           return toolErrorWithRequestId(errorMessage(err), context?.requestId);
