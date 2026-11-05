@@ -240,6 +240,7 @@ export enum ApplicationToolName {
   Create = 'aiven_application_create',
   Deploy = 'aiven_application_deploy',
   Redeploy = 'aiven_application_redeploy',
+  CustomDomainVerify = 'aiven_application_custom_domain_verify',
   VcsIntegrationInitialize = 'aiven_vcs_integration_initialize',
   VcsIntegrationList = 'aiven_vcs_integration_list',
   VcsIntegrationRepositoryList = 'aiven_vcs_integration_repository_list',

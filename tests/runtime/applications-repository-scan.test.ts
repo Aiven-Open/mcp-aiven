@@ -357,6 +357,35 @@ describe('application repository scan tools', () => {
     );
   });
 
+  it('reports a custom domain verify as queued and points to aiven_service_get for the result', async () => {
+    const client = createMockClient({});
+    const tool = getTool(createApplicationTools(client), ApplicationToolName.CustomDomainVerify);
+
+    const result = await tool.handler({
+      project: 'test-project',
+      service_name: 'example-app',
+      hostname: 'app.example.com',
+      reasoning: 'Check the CNAME record of the custom domain',
+    });
+
+    expect(client.post).toHaveBeenCalledWith(
+      '/project/test-project/service/example-app/application/custom-domains/app.example.com/verify',
+      {},
+      expect.any(Object)
+    );
+    expect(parseResultPayload(result)).toEqual({
+      service_name: 'example-app',
+      hostname: 'app.example.com',
+    });
+    expect(parseTrustedGuidance(result)).toEqual(
+      expect.objectContaining({
+        message: 'Custom domain check queued. The result is not available yet.',
+        next_tool: 'aiven_service_get',
+        next_step: expect.stringContaining('metadata.application_port_custom_domains'),
+      })
+    );
+  });
+
   it('starts the GitHub connection flow and tells the agent to wait for the user', async () => {
     const client = createMockClient({
       getResponse: {

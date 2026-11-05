@@ -169,6 +169,20 @@ export const deployApplicationInput = z
   // as an empty object. Cross-field VCS validation is done in the handler.
   .strict();
 
+export const verifyCustomDomainInput = z
+  .object({
+    project: z.string().describe('Aiven project name'),
+    service_name: z.string().describe('Name of the application service'),
+    hostname: z
+      .string()
+      .describe(
+        'Custom domain to check, as configured in user_config.application.ports[].custom_domains ' +
+          '(e.g. "app.example.com")'
+      ),
+    reasoning: reasoningField,
+  })
+  .strict();
+
 export const redeployApplicationInput = z
   .object({
     project: z.string().describe('Aiven project name'),
