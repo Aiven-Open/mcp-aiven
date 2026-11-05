@@ -144,6 +144,17 @@ describe('loadConfig', () => {
     );
   });
 
+  it('parses AIVEN_SERVICES_SCOPE=context with implicit core', () => {
+    process.env['AIVEN_TOKEN'] = 'test-token';
+    process.env['AIVEN_SERVICES_SCOPE'] = 'context';
+
+    const config = loadConfig();
+
+    expect(config.categories).toEqual(
+      new Set([ServiceCategory.Core, ServiceCategory.Context])
+    );
+  });
+
   it('leaves writeAllowlist undefined when AIVEN_WRITE_ALLOWLIST is unset', () => {
     process.env['AIVEN_TOKEN'] = 'test-token';
     delete process.env['AIVEN_WRITE_ALLOWLIST'];
@@ -257,8 +268,35 @@ describe('parseScopes', () => {
     });
   });
 
+  it('parses the context scope and includes core', () => {
+    expect(parseScopes('context')).toEqual({
+      categories: new Set([ServiceCategory.Core, ServiceCategory.Context]),
+    });
+  });
+
+  it('allows context combined with other scopes', () => {
+    expect(parseScopes('context,kafka')).toEqual({
+      categories: new Set([
+        ServiceCategory.Core,
+        ServiceCategory.Context,
+        ServiceCategory.Kafka,
+      ]),
+    });
+  });
+
   it('rejects "all" combined with other scopes', () => {
     const r = parseScopes('all,kafka');
+    expect(r).toMatchObject({ error: expect.stringContaining(`'all' cannot be combined`) });
+  });
+
+  it('returns every category for "all,context"', () => {
+    expect(parseScopes('all,context')).toEqual({
+      categories: new Set(Object.values(ServiceCategory)),
+    });
+  });
+
+  it('rejects "all,context" combined with other scopes', () => {
+    const r = parseScopes('all,context,kafka');
     expect(r).toMatchObject({ error: expect.stringContaining(`'all' cannot be combined`) });
   });
 });

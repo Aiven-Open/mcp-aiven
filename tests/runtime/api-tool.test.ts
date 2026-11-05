@@ -181,6 +181,34 @@ describe('createApiTool', () => {
     );
   });
 
+  it('should nest the non-path params under bodyKey and keep defaults at the top level', async () => {
+    const config: ApiToolConfig = {
+      ...baseConfig,
+      method: 'POST',
+      path: '/organization/{organization_id}/context/tool-calls',
+      inputSchema: z
+        .object({
+          organization_id: z.string(),
+          query: z.string(),
+        })
+        .strict(),
+      annotations: CREATE_ANNOTATIONS,
+      defaults: { tool_name: 'search_assets' },
+      bodyKey: 'arguments',
+    };
+    const client = createMockClient({});
+    const tool = createApiTool(config, client);
+
+    await tool.handler({ organization_id: 'org1', query: 'orders' });
+
+    expect(client.request).toHaveBeenCalledWith(
+      'POST',
+      '/organization/org1/context/tool-calls',
+      { arguments: { query: 'orders' }, tool_name: 'search_assets' },
+      expect.objectContaining({ toolName: 'aiven_list_projects' })
+    );
+  });
+
   it('should call client.delete for DELETE methods', async () => {
     const config: ApiToolConfig = {
       ...baseConfig,

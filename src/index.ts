@@ -20,7 +20,7 @@ import { readOnlyInstructions, connectionInfoInstructions } from './prompts.js';
 import { instrumentServer, flushAndExit } from './instrumentation/index.js';
 import { scan } from './security/model-armor.js';
 import { unwrapUntrustedResponse } from './untrusted.js';
-import { toolError } from './types.js';
+import { toolError, ServiceCategory } from './types.js';
 import { sanitizeMcpClient } from './mcp-client-header.js';
 import { summarizeCatalog } from './tool-catalog.js';
 
@@ -145,6 +145,8 @@ async function main(): Promise<void> {
     if (options.categories) {
       const allowed = options.categories;
       tools = tools.filter((t) => allowed.has(t.category));
+    } else {
+      tools = tools.filter((t) => t.category !== ServiceCategory.Context);
     }
 
     if (options.allowSecrets) {
