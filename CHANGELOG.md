@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.19.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.18.1...v1.19.0) (2026-11-05)
+
+
+### Features
+
+* **applications:** add a tool to verify a custom domain ([#195](https://github.com/Aiven-Open/mcp-aiven/issues/195)) ([9d09262](https://github.com/Aiven-Open/mcp-aiven/commit/9d09262d99e24438a750164286238b1b73512107))
+
+
+### Bug Fixes
+
+* read API error codes from the errors list ([#193](https://github.com/Aiven-Open/mcp-aiven/issues/193)) ([ac12dda](https://github.com/Aiven-Open/mcp-aiven/commit/ac12dda2a9fbbe03655c984a11a9c555480b9eed))
+
 ## [1.18.1](https://github.com/Aiven-Open/mcp-aiven/compare/v1.18.0...v1.18.1) (2026-10-31)
 
 
