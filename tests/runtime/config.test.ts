@@ -144,6 +144,17 @@ describe('loadConfig', () => {
     );
   });
 
+  it('parses AIVEN_SERVICES_SCOPE=context with implicit core', () => {
+    process.env['AIVEN_TOKEN'] = 'test-token';
+    process.env['AIVEN_SERVICES_SCOPE'] = 'context';
+
+    const config = loadConfig();
+
+    expect(config.categories).toEqual(
+      new Set([ServiceCategory.Core, ServiceCategory.Context])
+    );
+  });
+
   it('leaves writeAllowlist undefined when AIVEN_WRITE_ALLOWLIST is unset', () => {
     process.env['AIVEN_TOKEN'] = 'test-token';
     delete process.env['AIVEN_WRITE_ALLOWLIST'];
@@ -252,6 +263,22 @@ describe('parseScopes', () => {
       categories: new Set([
         ServiceCategory.Core,
         ServiceCategory.OpenSearch,
+        ServiceCategory.Kafka,
+      ]),
+    });
+  });
+
+  it('parses the context scope and includes core', () => {
+    expect(parseScopes('context')).toEqual({
+      categories: new Set([ServiceCategory.Core, ServiceCategory.Context]),
+    });
+  });
+
+  it('allows context combined with other scopes', () => {
+    expect(parseScopes('context,kafka')).toEqual({
+      categories: new Set([
+        ServiceCategory.Core,
+        ServiceCategory.Context,
         ServiceCategory.Kafka,
       ]),
     });
