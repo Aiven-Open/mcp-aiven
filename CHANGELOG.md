@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.20.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.19.0...v1.20.0) (2026-11-11)
+
+
+### Features
+
+* add Aiven context catalog tools under the context scope ([#189](https://github.com/Aiven-Open/mcp-aiven/issues/189)) ([7e45c19](https://github.com/Aiven-Open/mcp-aiven/commit/7e45c190f0711723883664c72488ab32b3ec471f))
+
 ## [1.19.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.18.1...v1.19.0) (2026-11-05)
 
 
