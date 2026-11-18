@@ -131,7 +131,7 @@ tools:
     exclude_params: [include_secrets]
     description: |
       Get service information. `project` must be a valid Aiven project name from `aiven_project_list`.
-      If the service `state` is not `RUNNING`, return the status to the user and stop. Do NOT call this tool again in a loop — let the user decide when to re-check.
+      If `state` is not `RUNNING`, report it to the user, following any service type specific notes below, otherwise stop. Do NOT call this tool again in a loop. Let the user decide when to re-check.
 
       **Returns:** A `service` object; exact keys depend on `service_type` (Postgres example below). Not an exhaustive listing.
 
