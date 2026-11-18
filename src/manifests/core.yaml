@@ -144,8 +144,8 @@ tools:
       **Infrastructure:** **`node_states`** (per-node AZ, role, lifecycle).
 
       **Application services:**
-      - `state`: `REBUILDING` while building or deploying. `RUNNING` can be an earlier version if the latest build or deployment failed. `POWEROFF` also means no deployment has succeeded yet.
-      - `metadata.application_latest_build` is the latest build, not the running version. Its `status` is the current step or a result: `SUCCESS`, `FAILED`, `CANCELLED` (replaced by a newer build) or `UNKNOWN` (no result within an hour). After `SUCCESS`, see `metadata.application_deployment_status`. Without this field, use `metadata.application_build_status`.
+      - `state`: It is `RUNNING` when a version serves traffic (which can be the previous version if a newer build is in progress or has failed). It is `REBUILDING` during the first build and while deploying a successful later build. It is `POWEROFF` when powered off or when no deployment has succeeded yet.
+      - `metadata.application_latest_build` contains the status of the latest build. Its `status` is `UNKNOWN` when there is no result within an hour. Otherwise it is the name of the last entry in `steps`, such as `BUILDING_IMAGE`. The final ones are `SUCCESS`, `FAILED` and `CANCELLED` (i.e. "replaced by a newer build"). After `SUCCESS`, see `metadata.application_deployment_status`. Without this field, use `metadata.application_build_status`.
       - For `FAILED` or `UNKNOWN`, get logs with `aiven_project_get_service_logs` using `build_id` and `log_type: "application-build"`.
 
   - name: aiven_service_update
