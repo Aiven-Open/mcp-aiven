@@ -176,7 +176,7 @@ export function createApplicationTools(client: AivenClient): ToolDefinition[] {
     category: ServiceCategory.Application,
     definition: {
       title: 'Create Application on Aiven',
-      description: `Create and initially deploy one Dockerized application to Aiven from a Containerfile or Dockerfile. The application service must not already exist, and the API returns 409 if it does. A successful response means the application was created and its initial deployment is continuing asynchronously, not that deployment completed. The service state may not reflect the deployment immediately. Tell the user the operation is continuing and ask when they want to check its status with \`aiven_service_get\`; do not poll in a loop. For an existing application, use \`aiven_application_redeploy\` to rebuild from its configured repository without changing its service configuration, \`aiven_service_update\` to change plan, cloud, or \`user_config.application.environment_variables\`, or \`aiven_service_integration_create\`, \`aiven_service_integration_update\`, and \`aiven_service_integration_delete\` to manage service integrations.
+      description: `Create and initially deploy one Dockerized application to Aiven from a Containerfile or Dockerfile. The application service must not already exist, and the API returns 409 if it does. A successful response means the application was created and its initial deployment is continuing asynchronously, not that deployment completed. The service state may not reflect the deployment immediately. Tell the user the operation is continuing and ask when they want to check its status with \`aiven_service_get\`; do not poll in a loop. For an existing application, use \`aiven_service_update\` to deploy a new commit by setting \`user_config.application.source.commit_sha\`, or to change plan, cloud, or \`user_config.application.environment_variables\`, or \`aiven_service_integration_create\`, \`aiven_service_integration_update\`, and \`aiven_service_integration_delete\` to manage service integrations.
 
 This tool does not accept a Compose file directly. Repository scanning requires a connected VCS account and repository. To derive candidate Aiven service configurations from a Compose file, use \`aiven_vcs_integration_repository_container_manifest_files_list\`, then \`aiven_vcs_integration_repository_scan_container_manifest\`. The scanner recognizes application services with a build configuration and selected Aiven-compatible data services; it may omit services or settings it cannot map. Review its \`service_suggestions\` before creating accepted services with \`aiven_service_create\`.
 
@@ -409,22 +409,25 @@ CMD ["node", "dist/index.js"]
       category: ServiceCategory.Application,
       definition: {
         title: 'Redeploy Application',
-        description: `Rebuild and redeploy an existing Aiven application service after new code has been pushed to its repository.
+        description: `Fallback for rebuilding and redeploying an existing Aiven application service. This is the same action as the Deploy latest commit button in Aiven Console.
+
+For applications connected through a VCS integration, deploy new code with \`aiven_service_update\` instead: set \`user_config.application.source.commit_sha\` to the commit to deploy. To deploy the latest changes, get the newest \`commit_sha\` of the branch with \`aiven_vcs_integration_repository_branch_list\`.
 
 Use this ONLY when:
 - The application service already exists and was previously created successfully with \`aiven_application_create\`
-- The user has pushed a code change to the same repository and branch the service was deployed from
+- The application is not connected through a VCS integration (for example, it deploys from a public repository URL), or the user explicitly asks to redeploy
 - Everything else stays the same: same repo, same port, same service configuration
 
 Do NOT use this tool:
+- To deploy a commit of an application connected through a VCS integration — use \`aiven_service_update\` with \`commit_sha\`.
 - When the Aiven service itself was never created (e.g. \`aiven_application_create\` returned an API error and no service exists) — call \`aiven_application_create\` again instead.
 - To change plan, cloud, or \`user_config.application.environment_variables\` — use \`aiven_service_update\`.
 - To add, update, or remove service integrations — use \`aiven_service_integration_create\`, \`aiven_service_integration_update\`, or \`aiven_service_integration_delete\`.
 - To update an existing application via \`aiven_application_create\` — it is create-only and returns 409 when the service already exists.
 
-Runtime errors in the app (500s, crashes, SSL errors) are NOT deploy failures — the service exists and is running. Use this tool to pick up a code fix in those cases.
+Runtime errors in the app (500s, crashes, SSL errors) are NOT deploy failures — the service exists and is running. Deploy the commit with the code fix in those cases.
 
-The rebuild pulls the latest commit from the configured branch and rebuilds the Docker image. Optionally, pass \`branch\` to switch to a different branch or tag before rebuilding — all other service settings remain unchanged.
+The rebuild uses the latest commit of the configured branch. If \`user_config.application.source.commit_sha\` is set, the rebuild uses that commit instead. Optionally, pass \`branch\` to switch to a different branch or tag before rebuilding — all other service settings remain unchanged.
 
 A successful response means the redeploy was triggered, not that it completed. The service state may not reflect the redeploy immediately. Tell the user it was triggered and ask when they want to check its status with \`aiven_service_get\`; do not poll in a loop. A newly created application may return 409 until its initial deployment has created the underlying application resource.`,
         inputSchema: redeployApplicationInput,
@@ -747,6 +750,8 @@ Returns \`remote_repository_id\`, \`full_name\`, \`source_url\`, and \`default_b
         description: `List branches in a repository accessible through a VCS integration.
 
 Use this after \`aiven_vcs_integration_repository_list\` to select a branch and obtain its current \`commit_sha\`. Pass the commit SHA to the repository manifest tools to inspect that revision, and pass the branch name when scanning so it is included in the resulting service suggestions. Scanning is pinned to the commit SHA, but service creation follows the branch's current HEAD. Before creating a service from a suggestion, list branches again and verify that the branch still points to the inspected commit SHA; if it changed, scan the new commit and use the refreshed suggestions.
+
+To deploy the latest changes of an existing application, pass the branch's \`commit_sha\` to \`aiven_service_update\` as \`user_config.application.source.commit_sha\`.
 
 The tool follows pagination until there are no more pages, or until ${MAX_VCS_BRANCH_LIST_ITEMS} branches have been collected. If \`truncated\` is true, the repository has more than ${MAX_VCS_BRANCH_LIST_ITEMS} branches and the requested branch may exist outside the returned set. Do not conclude that the branch does not exist; ask the user for its current head commit SHA or use another trusted source to resolve it.`,
         inputSchema: vcsIntegrationRepositoryBranchListInput,
