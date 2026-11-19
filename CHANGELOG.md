@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.21.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.20.0...v1.21.0) (2026-11-19)
+
+
+### Features
+
+* **applications:** Add new build visibility features [APP-510] ([#198](https://github.com/Aiven-Open/mcp-aiven/issues/198)) ([7436bfa](https://github.com/Aiven-Open/mcp-aiven/commit/7436bfaf7357783c62e518613cdd9ab0d822feab))
+* **applications:** Add new release management features [APP-611] ([#199](https://github.com/Aiven-Open/mcp-aiven/issues/199)) ([36c85c5](https://github.com/Aiven-Open/mcp-aiven/commit/36c85c5fd2a36bab376e55b05e77301b5e8a4c0b))
+
 ## [1.20.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.19.0...v1.20.0) (2026-11-11)
 
 
