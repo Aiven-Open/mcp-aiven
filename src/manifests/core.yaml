@@ -190,6 +190,27 @@ tools:
         user_config={"pg_version": "<major from available_versions>"})
       ```
 
+      Deploy a new version of an application service connected through a VCS integration.
+      This is the main way to deploy, and it is what the Release management section of Aiven
+      Console does. To deploy the latest changes, get the newest `commit_sha` of the branch
+      with `aiven_vcs_integration_repository_branch_list`. To roll back, use the SHA of an
+      earlier commit. Use the full 40-character lowercase SHA. The deployed commit is
+      `metadata.application_deployment_commit_sha` in `aiven_service_get`. Setting a different
+      commit starts a build and deploy of it, and setting the deployed commit does nothing.
+      If the service is powered off, the commit is deployed
+      when the service is powered on, and setting it does not power the service on.
+      ```
+      aiven_service_update(project="my-project", service_name="my-app",
+        user_config={"application": {"source": {"commit_sha": "<full commit SHA>"}}})
+      ```
+
+      Change the branch of an application service and deploy the latest commit of the new
+      branch. A `commit_sha` set earlier is cleared when the branch changes.
+      ```
+      aiven_service_update(project="my-project", service_name="my-app",
+        user_config={"application": {"source": {"branch": "<branch name>"}}})
+      ```
+
   - name: aiven_project_get_service_logs
     method: POST
     path: /project/{project}/service/{service_name}/logs

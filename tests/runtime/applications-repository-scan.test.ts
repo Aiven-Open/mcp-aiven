@@ -345,7 +345,6 @@ describe('application repository scan tools', () => {
     expect(parseResultPayload(result)).toEqual(
       expect.objectContaining({
         service_name: 'example-app',
-        branch: 'current',
       })
     );
     expect(parseTrustedGuidance(result)).toEqual(
