@@ -409,7 +409,7 @@ CMD ["node", "dist/index.js"]
       category: ServiceCategory.Application,
       definition: {
         title: 'Redeploy Application',
-        description: `Fallback for rebuilding and redeploying an existing Aiven application service. This is the same action as the Deploy latest commit button in Aiven Console.
+        description: `Fallback for rebuilding and redeploying an existing Aiven application service. This is the same action as the Redeploy application button in Aiven Console.
 
 For applications connected through a VCS integration, deploy new code with \`aiven_service_update\` instead: set \`user_config.application.source.commit_sha\` to the commit to deploy. To deploy the latest changes, get the newest \`commit_sha\` of the branch with \`aiven_vcs_integration_repository_branch_list\`.
 
