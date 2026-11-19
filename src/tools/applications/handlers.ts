@@ -57,7 +57,7 @@ const VCS_REPOSITORY_LIST_NO_MATCH_NEXT_STEP =
   `If \`remote_configure_url\` is null, offer \`${ApplicationToolName.VcsIntegrationInitialize}\` instead.`;
 
 const ASYNC_DEPLOYMENT_NEXT_STEP =
-  'The service state may not reflect the deployment immediately. Tell the user the operation is continuing asynchronously and ask when they want to check its status; do not poll in a loop.';
+  'The service state may not reflect the deployment immediately. Build progress appears in `metadata.application_latest_build` in `aiven_service_get`. Tell the user the operation is continuing asynchronously and ask when they want to check its status; do not poll in a loop.';
 
 const VCS_INTEGRATION_INITIALIZE_GUIDANCE = {
   message: 'Show `redirect_url` verbatim so the user can connect a GitHub account to Aiven.',
