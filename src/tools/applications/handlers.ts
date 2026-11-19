@@ -427,14 +427,14 @@ Do NOT use this tool:
 
 Runtime errors in the app (500s, crashes, SSL errors) are NOT deploy failures — the service exists and is running. Deploy the commit with the code fix in those cases.
 
-The rebuild uses the latest commit of the configured branch. If \`user_config.application.source.commit_sha\` is set, the rebuild uses that commit instead. Optionally, pass \`branch\` to switch to a different branch or tag before rebuilding — all other service settings remain unchanged.
+The rebuild uses the latest commit of the configured branch. If \`user_config.application.source.commit_sha\` is set, the rebuild uses that commit instead. To change the branch, use \`aiven_service_update\`.
 
 A successful response means the redeploy was triggered, not that it completed. The service state may not reflect the redeploy immediately. Tell the user it was triggered and ask when they want to check its status with \`aiven_service_get\`; do not poll in a loop. A newly created application may return 409 until its initial deployment has created the underlying application resource.`,
         inputSchema: redeployApplicationInput,
         annotations: { ...UPDATE_ANNOTATIONS, destructiveHint: true },
       },
       handler: async (params, context?: HandlerContext): Promise<ToolResult> => {
-        const { project, service_name: serviceName, branch } = params as z.infer<
+        const { project, service_name: serviceName } = params as z.infer<
           typeof redeployApplicationInput
         >;
 
@@ -444,16 +444,6 @@ A successful response means the redeploy was triggered, not that it completed. T
             requestId: context?.requestId,
             toolReasoning: context?.toolReasoning,
           };
-
-          // Switching branch is a service-config change, so PUT user_config first.
-          // An empty PUT does NOT rebuild — only the dedicated redeploy endpoint does.
-          if (branch) {
-            await client.put<Record<string, unknown>>(
-              `/project/${encodeURIComponent(project)}/service/${encodeURIComponent(serviceName)}`,
-              { user_config: { application: { source: { branch } } } },
-              opts
-            );
-          }
 
           // Triggers the actual pull + rebuild + deploy. Returns 204 No Content.
           await client.post<Record<string, unknown>>(
@@ -469,7 +459,6 @@ A successful response means the redeploy was triggered, not that it completed. T
               ),
               {
                 service_name: serviceName,
-                branch: branch ?? 'current',
               }
             ),
             ApplicationToolName.Redeploy
