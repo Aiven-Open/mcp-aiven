@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.21.1](https://github.com/Aiven-Open/mcp-aiven/compare/v1.21.0...v1.21.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* **applications:** Fix the wrong button label reference ([#201](https://github.com/Aiven-Open/mcp-aiven/issues/201)) ([d07c8ee](https://github.com/Aiven-Open/mcp-aiven/commit/d07c8eed0ad623cbe2c811384c32ef0e17a37253))
+
 ## [1.21.0](https://github.com/Aiven-Open/mcp-aiven/compare/v1.20.0...v1.21.0) (2026-11-19)
 
 
