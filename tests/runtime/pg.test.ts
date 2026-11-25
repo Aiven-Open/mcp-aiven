@@ -215,6 +215,69 @@ describe('validateReadQuery', () => {
     }
   });
 
+  it('should reject the expanded list of side-effecting functions (commit 2)', async () => {
+    // Every function added to READONLY_BLOCKED_FUNCTIONS in commit 2:
+    // the 21 verified to bypass the PR guard plus same-class additions.
+    for (const query of [
+      "SELECT pg_sleep_for('1 second')",
+      'SELECT pg_sleep_until(now())',
+      'SELECT pg_switch_wal()',
+      "SELECT pg_backup_start('label')",
+      'SELECT pg_backup_stop()',
+      "SELECT pg_create_restore_point('rp')",
+      'SELECT lo_unlink(12345)',
+      "SELECT lo_put(12345, 0, 'x')",
+      'SELECT pg_promote()',
+      "SELECT set_config('x', 'y', false)",
+      'SELECT pg_advisory_lock(1)',
+      'SELECT pg_advisory_unlock(1)',
+      'SELECT pg_advisory_unlock_all()',
+      'SELECT pg_try_advisory_lock(1)',
+      "SELECT pg_file_write('/tmp/x', 'data', false)",
+      "SELECT nextval('seq')",
+      "SELECT pg_logical_emit_message(true, 'prefix', 'msg')",
+      "SELECT pg_replication_origin_advance('o', 123)",
+      'SELECT lo_create(12345)',
+      'SELECT lo_open(12345, 262144)',
+      "SELECT pg_import_system_collations('pg_catalog')",
+      "SELECT pg_notify('chan', 'msg')",
+      "SELECT setval('seq', 1)",
+      "SELECT lo_write(12345, 'data')",
+      'SELECT lo_lseek(12345, 0, 0)',
+      'SELECT lo_truncate(12345, 0)',
+      'SELECT pg_advisory_xact_lock(1)',
+      'SELECT pg_try_advisory_xact_lock(1)',
+      "SELECT pg_logical_slot_peek_changes('slot', NULL, NULL)",
+      "SELECT pg_logical_slot_get_changes('slot', NULL, NULL)",
+      "SELECT pg_replication_origin_create('o')",
+      "SELECT pg_replication_origin_drop('o')",
+      "SELECT pg_replication_origin_session_setup('o')",
+      'SELECT pg_replication_origin_session_reset()',
+      "SELECT pg_start_backup('label')",
+      'SELECT pg_stop_backup()',
+    ]) {
+      const r = await validateReadQuery(query);
+      expect(r.valid).toBe(false);
+    }
+  });
+
+  it('should still allow legitimate read-only queries (commit 2)', async () => {
+    for (const query of [
+      'SELECT * FROM users',
+      'WITH c AS (SELECT 1) SELECT * FROM c',
+      'WITH RECURSIVE r(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM r WHERE n < 5) SELECT * FROM r',
+      'EXPLAIN ANALYZE SELECT 1',
+      'SELECT * FROM users FOR UPDATE',
+      'SELECT * FROM users u, LATERAL (SELECT 1) l(x)',
+      "SELECT 'CreateStmt'",
+      "SELECT currval('seq')",
+      'SELECT now(), count(*) FROM pg_stat_activity',
+    ]) {
+      const r = await validateReadQuery(query);
+      expect(r.valid).toBe(true);
+    }
+  });
+
   it('should allow a read-only CTE', async () => {
     const r = await validateReadQuery('WITH c AS (SELECT 1) SELECT * FROM c');
     expect(r.valid).toBe(true);
