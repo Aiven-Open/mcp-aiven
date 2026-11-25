@@ -41,6 +41,14 @@ const WRITE_BLOCKED = new Set([
 // CreateTableAsStmt, not CreateStmt) — is a bypass attempt. An allowlist
 // is used instead of a denylist so future statement types are rejected
 // by default.
+//
+// NOTE: the allowlist applies to STATEMENT TYPES only. The function
+// check below (READONLY_BLOCKED_FUNCTIONS) is still a denylist of known
+// side-effecting functions — a function not on that list is allowed, so
+// new side-effecting functions must be added here when found. A full
+// function allowlist is not realistic: it would reject legitimate
+// read-only queries that call ordinary functions (aggregates, now(),
+// currval(), ...).
 const READ_STMT_TYPES = new Set(['SelectStmt', 'ExplainStmt']);
 
 // Functions with side effects (file access, large objects, backend control,
@@ -57,14 +65,50 @@ const READONLY_BLOCKED_FUNCTIONS = new Set([
   'pg_ls_logicalsnapdir',
   'pg_ls_replslotdir',
   'pg_logdir_ls',
+  'pg_file_write',
   'lo_import',
   'lo_import_with_oid',
   'lo_export',
+  'lo_create',
+  'lo_open',
+  'lo_put',
+  'lo_unlink',
+  'lo_write',
+  'lo_lseek',
+  'lo_truncate',
   'pg_terminate_backend',
   'pg_cancel_backend',
   'pg_reload_conf',
   'pg_rotate_logfile',
   'pg_sleep',
+  'pg_sleep_for',
+  'pg_sleep_until',
+  'pg_promote',
+  'pg_switch_wal',
+  'pg_backup_start',
+  'pg_backup_stop',
+  'pg_start_backup',
+  'pg_stop_backup',
+  'pg_create_restore_point',
+  'pg_import_system_collations',
+  'pg_logical_emit_message',
+  'pg_logical_slot_peek_changes',
+  'pg_logical_slot_get_changes',
+  'pg_replication_origin_advance',
+  'pg_replication_origin_create',
+  'pg_replication_origin_drop',
+  'pg_replication_origin_session_setup',
+  'pg_replication_origin_session_reset',
+  'pg_notify',
+  'set_config',
+  'nextval',
+  'setval',
+  'pg_advisory_lock',
+  'pg_advisory_unlock',
+  'pg_advisory_unlock_all',
+  'pg_try_advisory_lock',
+  'pg_advisory_xact_lock',
+  'pg_try_advisory_xact_lock',
   'dblink',
   'dblink_exec',
   'dblink_open',
