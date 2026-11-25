@@ -155,7 +155,9 @@ describe('aiven_pg_read', () => {
 });
 
 describe('validateReadQuery', () => {
-  let validateReadQuery: (query: string) => Promise<{ valid: boolean; error?: string; stmtType?: string }>;
+  let validateReadQuery: (
+    query: string
+  ) => Promise<{ valid: boolean; error?: string; stmtType?: string }>;
 
   beforeEach(async () => {
     vi.resetModules();
@@ -169,6 +171,56 @@ describe('validateReadQuery', () => {
     expect(r.stmtType).toBe('SelectStmt');
   });
 
+  it('should reject data-modifying CTEs', async () => {
+    for (const query of [
+      'WITH d AS (DELETE FROM users RETURNING id) SELECT * FROM d',
+      "WITH i AS (INSERT INTO users (name) VALUES ('Alice') RETURNING id) SELECT * FROM i",
+      "WITH u AS (UPDATE users SET name='Bob' RETURNING id) SELECT * FROM u",
+    ]) {
+      const r = await validateReadQuery(query);
+      expect(r.valid).toBe(false);
+    }
+  });
+
+  it('should reject SELECT ... INTO', async () => {
+    for (const query of [
+      'SELECT * INTO copy FROM users',
+      'SELECT * INTO TEMPORARY TABLE t2 FROM users',
+    ]) {
+      const r = await validateReadQuery(query);
+      expect(r.valid).toBe(false);
+    }
+  });
+
+  it('should reject EXPLAIN of a data-modifying statement', async () => {
+    for (const query of [
+      'EXPLAIN ANALYZE DELETE FROM users',
+      "EXPLAIN ANALYZE INSERT INTO users (name) VALUES ('Alice')",
+      'EXPLAIN ANALYZE CREATE TABLE pwned2 AS SELECT 1',
+    ]) {
+      const r = await validateReadQuery(query);
+      expect(r.valid).toBe(false);
+    }
+  });
+
+  it('should reject side-effecting functions', async () => {
+    for (const query of [
+      "SELECT pg_read_file('/etc/passwd')",
+      "SELECT lo_import('/tmp/x')",
+      'SELECT pg_terminate_backend(12345)',
+      "SELECT * FROM dblink('dbname=x', 'SELECT 1') AS t(a int)",
+    ]) {
+      const r = await validateReadQuery(query);
+      expect(r.valid).toBe(false);
+    }
+  });
+
+  it('should allow a read-only CTE', async () => {
+    const r = await validateReadQuery('WITH c AS (SELECT 1) SELECT * FROM c');
+    expect(r.valid).toBe(true);
+    expect(r.stmtType).toBe('SelectStmt');
+  });
+
   it('should reject INSERT', async () => {
     const r = await validateReadQuery("INSERT INTO users (name) VALUES ('Alice')");
     expect(r.valid).toBe(false);
@@ -176,7 +228,9 @@ describe('validateReadQuery', () => {
 });
 
 describe('validateWriteQuery', () => {
-  let validateWriteQuery: (query: string) => Promise<{ valid: boolean; error?: string; stmtType?: string }>;
+  let validateWriteQuery: (
+    query: string
+  ) => Promise<{ valid: boolean; error?: string; stmtType?: string }>;
 
   beforeEach(async () => {
     vi.resetModules();
