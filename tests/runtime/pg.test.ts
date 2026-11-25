@@ -155,7 +155,9 @@ describe('aiven_pg_read', () => {
 });
 
 describe('validateReadQuery', () => {
-  let validateReadQuery: (query: string) => Promise<{ valid: boolean; error?: string; stmtType?: string }>;
+  let validateReadQuery: (
+    query: string
+  ) => Promise<{ valid: boolean; error?: string; stmtType?: string }>;
 
   beforeEach(async () => {
     vi.resetModules();
@@ -169,6 +171,119 @@ describe('validateReadQuery', () => {
     expect(r.stmtType).toBe('SelectStmt');
   });
 
+  it('should reject data-modifying CTEs', async () => {
+    for (const query of [
+      'WITH d AS (DELETE FROM users RETURNING id) SELECT * FROM d',
+      "WITH i AS (INSERT INTO users (name) VALUES ('Alice') RETURNING id) SELECT * FROM i",
+      "WITH u AS (UPDATE users SET name='Bob' RETURNING id) SELECT * FROM u",
+    ]) {
+      const r = await validateReadQuery(query);
+      expect(r.valid).toBe(false);
+    }
+  });
+
+  it('should reject SELECT ... INTO', async () => {
+    for (const query of [
+      'SELECT * INTO copy FROM users',
+      'SELECT * INTO TEMPORARY TABLE t2 FROM users',
+    ]) {
+      const r = await validateReadQuery(query);
+      expect(r.valid).toBe(false);
+    }
+  });
+
+  it('should reject EXPLAIN of a data-modifying statement', async () => {
+    for (const query of [
+      'EXPLAIN ANALYZE DELETE FROM users',
+      "EXPLAIN ANALYZE INSERT INTO users (name) VALUES ('Alice')",
+      'EXPLAIN ANALYZE CREATE TABLE pwned2 AS SELECT 1',
+    ]) {
+      const r = await validateReadQuery(query);
+      expect(r.valid).toBe(false);
+    }
+  });
+
+  it('should reject side-effecting functions', async () => {
+    for (const query of [
+      "SELECT pg_read_file('/etc/passwd')",
+      "SELECT lo_import('/tmp/x')",
+      'SELECT pg_terminate_backend(12345)',
+      "SELECT * FROM dblink('dbname=x', 'SELECT 1') AS t(a int)",
+    ]) {
+      const r = await validateReadQuery(query);
+      expect(r.valid).toBe(false);
+    }
+  });
+
+  it('should reject the expanded list of side-effecting functions (commit 2)', async () => {
+    // Every function added to READONLY_BLOCKED_FUNCTIONS in commit 2:
+    // the 21 verified to bypass the PR guard plus same-class additions.
+    for (const query of [
+      "SELECT pg_sleep_for('1 second')",
+      'SELECT pg_sleep_until(now())',
+      'SELECT pg_switch_wal()',
+      "SELECT pg_backup_start('label')",
+      'SELECT pg_backup_stop()',
+      "SELECT pg_create_restore_point('rp')",
+      'SELECT lo_unlink(12345)',
+      "SELECT lo_put(12345, 0, 'x')",
+      'SELECT pg_promote()',
+      "SELECT set_config('x', 'y', false)",
+      'SELECT pg_advisory_lock(1)',
+      'SELECT pg_advisory_unlock(1)',
+      'SELECT pg_advisory_unlock_all()',
+      'SELECT pg_try_advisory_lock(1)',
+      "SELECT pg_file_write('/tmp/x', 'data', false)",
+      "SELECT nextval('seq')",
+      "SELECT pg_logical_emit_message(true, 'prefix', 'msg')",
+      "SELECT pg_replication_origin_advance('o', 123)",
+      'SELECT lo_create(12345)',
+      'SELECT lo_open(12345, 262144)',
+      "SELECT pg_import_system_collations('pg_catalog')",
+      "SELECT pg_notify('chan', 'msg')",
+      "SELECT setval('seq', 1)",
+      "SELECT lo_write(12345, 'data')",
+      'SELECT lo_lseek(12345, 0, 0)',
+      'SELECT lo_truncate(12345, 0)',
+      'SELECT pg_advisory_xact_lock(1)',
+      'SELECT pg_try_advisory_xact_lock(1)',
+      "SELECT pg_logical_slot_peek_changes('slot', NULL, NULL)",
+      "SELECT pg_logical_slot_get_changes('slot', NULL, NULL)",
+      "SELECT pg_replication_origin_create('o')",
+      "SELECT pg_replication_origin_drop('o')",
+      "SELECT pg_replication_origin_session_setup('o')",
+      'SELECT pg_replication_origin_session_reset()',
+      "SELECT pg_start_backup('label')",
+      'SELECT pg_stop_backup()',
+    ]) {
+      const r = await validateReadQuery(query);
+      expect(r.valid).toBe(false);
+    }
+  });
+
+  it('should still allow legitimate read-only queries (commit 2)', async () => {
+    for (const query of [
+      'SELECT * FROM users',
+      'WITH c AS (SELECT 1) SELECT * FROM c',
+      'WITH RECURSIVE r(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM r WHERE n < 5) SELECT * FROM r',
+      'EXPLAIN ANALYZE SELECT 1',
+      'SELECT * FROM users FOR UPDATE',
+      'SELECT * FROM users u, LATERAL (SELECT 1) l(x)',
+      "SELECT 'CreateStmt'",
+      "SELECT currval('seq')",
+      'SELECT now(), count(*) FROM pg_stat_activity',
+    ]) {
+      const r = await validateReadQuery(query);
+      expect(r.valid).toBe(true);
+    }
+  });
+
+  it('should allow a read-only CTE', async () => {
+    const r = await validateReadQuery('WITH c AS (SELECT 1) SELECT * FROM c');
+    expect(r.valid).toBe(true);
+    expect(r.stmtType).toBe('SelectStmt');
+  });
+
   it('should reject INSERT', async () => {
     const r = await validateReadQuery("INSERT INTO users (name) VALUES ('Alice')");
     expect(r.valid).toBe(false);
@@ -176,7 +291,9 @@ describe('validateReadQuery', () => {
 });
 
 describe('validateWriteQuery', () => {
-  let validateWriteQuery: (query: string) => Promise<{ valid: boolean; error?: string; stmtType?: string }>;
+  let validateWriteQuery: (
+    query: string
+  ) => Promise<{ valid: boolean; error?: string; stmtType?: string }>;
 
   beforeEach(async () => {
     vi.resetModules();
